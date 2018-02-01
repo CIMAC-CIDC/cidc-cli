@@ -10,7 +10,7 @@ import os.path
 import datetime
 import requests
 
-EVE_URL = "http://127.0.0.1:5000"
+EVE_URL = "http://0.0.0.0:5000"
 
 PARSER = argparse.ArgumentParser(description='Upload files to google.')
 PARSER.add_argument('username', help='Your CIDC assigned username')
