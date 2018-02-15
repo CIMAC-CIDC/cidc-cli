@@ -8,6 +8,7 @@ name = "pypi"
 [packages]
 
 requests = "*"
+"nose2" = "*"
 
 
 [dev-packages]

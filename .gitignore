@@ -1,3 +1,5 @@
 /TESTWDL
 /TESTWDL/*
 token.token
+tests/__pycache__/*
+upload/__pycache__/*
