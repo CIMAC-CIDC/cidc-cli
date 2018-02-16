@@ -3,7 +3,6 @@
 This is a simple command-line tool that allows users to upload data to our google storage
 """
 
-import argparse
 import re
 import subprocess
 import os
@@ -12,17 +11,6 @@ import datetime
 import requests
 
 EVE_URL = "http://0.0.0.0:5000"
-
-# PARSER = argparse.ArgumentParser(description='Upload files to google.')
-# PARSER.add_argument('username', help='Your CIDC assigned username')
-# PARSER.add_argument(
-#     '-d',
-#     '--directory',
-#     help='Directory where files you want to upload are stored'
-#     )
-# PARSER.add_argument('-n', '--name', help='Name of the experiment')
-# PARSER.add_argument("-t", '--token', help='The directory of your .token file')
-# ARGS = PARSER.parse_args()
 
 
 def register_upload_job(username, eve_token, file_names, experiment_name):
@@ -177,7 +165,7 @@ def upload_files(directory, files_uploaded, mongo_data, eve_token, headers):
             stderr=subprocess.STDOUT
         )
         files_with_uris = create_data_entries(
-            files_uploaded, google_url, google_path
+            files_uploaded, google_url, google_path, 0, 0
         )
         update_job_status(True, mongo_data, eve_token, files_with_uris)
         return files_with_uris
@@ -207,40 +195,7 @@ def find_eve_token(token_dir):
 
 
 def main():
-    """
-    Main execution
-    """
-    # Parse the command line arguments
-    file_dir = ARGS.directory if ARGS.directory else '.'
-    token_dir = ARGS.token if ARGS.token else "."
-    eve_token = find_eve_token(token_dir)
-    name = ARGS.name if ARGS.name else os.path.basename(
-        os.path.dirname(file_dir)
-        )
-    # creates a list of file names in the directory specified or CWD if no path given
-    files_in_job = [
-        name for name in os.listdir(file_dir) if
-        os.path.isfile(os.path.join(file_dir, name))
-        ]
-    # Register the upload, and receive back the appropriate "routing" information for upload
-    response_data = register_upload_job(ARGS.username, eve_token, files_in_job, name)
-    # Check to make sure the registration was accepted
-    if response_data.status_code == 201:
-        result = upload_files(
-            file_dir, files_in_job, response_data.json(), eve_token, response_data.headers
-            )
-        print('''File upload has completed without error.\n
-        Your files can be found in the following locations:''')
-        for uploaded_file in result:
-            print("File name: " + uploaded_file['filename'])
-            print("Google URI: " + uploaded_file['google_uri'] + "\n")
-    else:
-        print(
-            "There was a problem with your request: " +
-            str(response_data.status_code)
-            )
-        print(response_data.text)
-
+    print("")
 
 if __name__ == "__main__":
     main()
