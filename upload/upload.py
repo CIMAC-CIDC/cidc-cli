@@ -13,34 +13,36 @@ import requests
 EVE_URL = "http://0.0.0.0:5000"
 
 
-def register_upload_job(username, eve_token, file_names, experiment_name):
-    """Contacts the EVE API and creates an entry for the the upload
+def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
+    """
+    Generic method for running a request against the API with authorization
 
     Arguments:
-        username {str} -- Name of user uploading job.
-        eve_token {str} -- API token.
-        file_names {[str]} -- List of names of files in job.
-        experiment_name {str} -- Name under which the files are to be collected.
+        eve_token {str} -- API token
+        payload_data {dict} -- The payload to be sent
+        endpoint {str} -- Name of the endpoint the request should be sent to
 
     Returns:
-        Object -- Returns a response object with status code and data.
+        obj -- Returns request object
     """
-    return requests.post(
-        EVE_URL + "/ingestion",
-        json={
-            "started_by": username,
-            "number_of_files": len(file_names),
-            "experiment_name": experiment_name,
-            "status": {
-                "progress": "In Progress",
-                "message": ""
-            },
-            "start_time": datetime.datetime.now().isoformat(),
-            "files": file_names,
-        },
-        headers={
-            "Authorization": 'token {}'.format(eve_token)
-        }
+
+    method_dictionary = {
+        'GET': requests.get,
+        'POST': requests.post,
+        'PUT': requests.put,
+        'HEAD': requests.head,
+        'OPTIONS': requests.options,
+        'DELETE': requests.delete
+    }
+    if method not in method_dictionary:
+        error_string = 'Method argument ' + method + ' not a valid operation'
+        raise KeyError(error_string)
+
+    request_func = method_dictionary[method]
+    return request_func(
+        EVE_URL + "/" + endpoint,
+        json=payload_data,
+        headers={"Authorization": 'token {}'.format(eve_token)}
     )
 
 
@@ -67,7 +69,7 @@ def validate_and_extract(file_names, sample_ids):
     return dict((name, name_dictionary[name].group()) for name in name_dictionary)
 
 
-def create_data_entries(name_dictionary, google_url, google_folder_path, trial_id, pipeline):
+def create_data_entries(name_dictionary, google_url, google_folder_path, trial, assay):
     """Function that creates google bucket URIs from file names.
 
     Arguments:
@@ -82,8 +84,8 @@ def create_data_entries(name_dictionary, google_url, google_folder_path, trial_i
         {
             "filename": name,
             "gs_uri": google_url + google_folder_path + "/" + name,
-            "trial_id": trial_id,
-            "pipeline": pipeline,
+            "trial": trial,
+            "assay": assay,
             "date_created": datetime.datetime.now().isoformat(),
             "sample_id": name_dictionary[name]
         }
@@ -134,7 +136,7 @@ def update_job_status(status, mongo_data, eve_token, google_data=None, message=N
         )
 
 
-def upload_files(directory, files_uploaded, mongo_data, eve_token, headers):
+def upload_files(directory, files_uploaded, mongo_data, eve_token, headers, assay, trial):
     """Launches the gsutil command using subprocess and uploads files to the
     google bucket.
 
@@ -153,25 +155,24 @@ def upload_files(directory, files_uploaded, mongo_data, eve_token, headers):
         google_path = headers['google_folder_path']
         if len(files_uploaded) > 5:
             gsutil_args.append("-m")
+        # Insert records into a staging area for later processing
         gsutil_args.extend(
             [
                 "cp", "-r",
                 directory,
-                google_url + google_path
+                google_url + google_path + 'staging/' + mongo_data['_id']
             ]
         )
         subprocess.check_output(
             gsutil_args,
             stderr=subprocess.STDOUT
         )
-        files_with_uris = create_data_entries(
-            files_uploaded, google_url, google_path, 0, 0
-        )
-        update_job_status(True, mongo_data, eve_token, files_with_uris)
-        return files_with_uris
+        update_job_status(True, mongo_data, eve_token)
+        return mongo_data['_id']
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: " + error)
         update_job_status(False, mongo_data, eve_token, error)
+        return None
 
 
 def find_eve_token(token_dir):
@@ -187,15 +188,8 @@ def find_eve_token(token_dir):
         str -- Authorization token
     """
     for file_name in os.listdir(token_dir):
-        if file_name.endswith(".token"):
-            with open(file_name) as token_file:
+        if file_name.endswith('.token'):
+            with open(token_dir + '/' + file_name) as token_file:
                 eve_token = token_file.read().strip()
                 return eve_token
     raise FileNotFoundError('No valid token file was found')
-
-
-def main():
-    print("")
-
-if __name__ == "__main__":
-    main()
