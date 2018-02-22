@@ -30,7 +30,7 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: ~/ingestion-api-test
+          at: ~/upload-cli-test
       - run:
           name: Run tests
           command: |
