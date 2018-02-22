@@ -13,6 +13,6 @@ Run `pipenv install` or `pipenv run upload-script.py`
 
 To start the command line tool, run the following command:
 
-`python 3 -m 'interface.cli'`
+`python3 -m 'interface.cli'`
 
 Then enter `upload_data` to begin the upload process. Follow the prompts as they are given, directories should be given in relative path form to the execution directory (e.g. if you want to search the current directory, type './')
