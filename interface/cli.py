@@ -204,8 +204,6 @@ def run_upload_process():
         print(response_upload.reason)
         return
 
-    print(file_upload_dict)
-
     # Execute uploads
     job_id = upload_files(
         upload_dir,
