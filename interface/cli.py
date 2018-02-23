@@ -6,9 +6,9 @@ Class defining the behavior of the interactive command line interface
 
 import cmd
 import os
-import datetime
-import json
+import subprocess
 import requests
+import json
 from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files
 
 
@@ -25,7 +25,6 @@ def generate_options_list(options, header):
     opts = ''.join(
         [('[' + str(idx + 1) + '] - ' + option + '\n') for idx, option in enumerate(options)]
     )
-    print(opts)
     return header + '\n' + opts
 
 
@@ -93,7 +92,7 @@ def user_prompt_yn(prompt):
 def get_files(sample_ids):
     """
     Asks the user for input, then returns list of files in that directory
-    
+
     Returns:
         [str] -- List of filenames
     """
@@ -154,14 +153,17 @@ def create_payload_objects(file_dict, trial, assay):
     ]
 
 
-def run_upload_process():
+def select_assay_trial(username_prompt):
     """
-    Function responsible for guiding the user through the upload process
-    """
+    Returns the user's selection of adday and trial
 
-    # Get username
-    username = input("This is the upload functionality, to begin please enter a username:\n")
-    # Get auth token
+    Arguments:
+        username_prompt {[type]} -- [description]
+
+    Returns:
+        tuple -- username, selected trial and selected assay
+    """
+    username = input(username_prompt)
     token_path = input(
         "Welcome, " + username + " please enter the path to your authorization token:\n"
         )
@@ -171,7 +173,6 @@ def run_upload_process():
     if not response.status_code == 200:
         print('There was a problem fetching the data')
         return
-
     # Select Trial
     response_data = response.json()
     trials = response_data['_items']
@@ -184,7 +185,65 @@ def run_upload_process():
     assay_selection = option_select_framework(assays, '=====| Available Assays |=====')
     selected_assay = assays[assay_selection - 1]
 
-    # Get list of files in directory
+    return username, eve_token, selected_trial, selected_assay
+
+
+def run_download_process():
+    """
+    Function for users to download data.
+    """
+
+    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+        "This is the download function, please enter your username:\n"
+    )
+    query_object = '{"trial": "' + selected_trial['_id'] + '", "assay": "' + selected_assay + '"}'
+    params = {"where": query_object}
+    data_response = request_eve_endpoint(eve_token, params, "data", 'GET')
+
+    if not data_response.status_code == 200:
+        print("Request failed, exiting")
+        print(data_response.reason)
+        return
+
+    records = data_response.json()
+    download_directory = None
+
+    while not download_directory:
+        download_directory = input(
+            "Please enter the path where you would like the files to be downloaded:\n"
+        )
+        if not os.path.isdir(download_directory):
+            print("The given path is not valid, please enter a new one.")
+            download_directory = None
+
+    for record in records['_items']:
+        gs_uri = record['gs_uri']
+        gs_args = [
+            "gsutil",
+            "cp",
+            gs_uri,
+            download_directory
+        ]
+        try:
+            results = subprocess.run(gs_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            formatted_results = results.stdout.decode('utf-8')
+            print(formatted_results)
+        except subprocess.CalledProcessError as error:
+            error_string = 'Shell command generated error' + str(error.output)
+            print(error_string)
+
+    print("Download of files complete")
+
+
+def run_upload_process():
+    """
+    Function responsible for guiding the user through the upload process
+    """
+
+    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+        "This is the upload function, please enter your username:\n"
+    )
+
     sample_ids = selected_trial['samples']
     file_upload_dict, upload_dir = get_files(sample_ids)
 
@@ -230,6 +289,12 @@ class CIDCCLI(cmd.Cmd):
         Starts the upload process
         """
         run_upload_process()
+
+    def do_download_data(self, rest=None):
+        """
+        Starts the download process
+        """
+        run_download_process()
 
     def do_EOF(self, rest=None):
         """

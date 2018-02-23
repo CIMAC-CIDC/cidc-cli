@@ -39,6 +39,12 @@ def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
         raise KeyError(error_string)
 
     request_func = method_dictionary[method]
+    if request_func == requests.get:
+        return request_func(
+            EVE_URL + "/" + endpoint,
+            headers={"Authorization": 'token {}'.format(eve_token)},
+            params=payload_data
+        )
     return request_func(
         EVE_URL + "/" + endpoint,
         json=payload_data,
