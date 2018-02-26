@@ -196,9 +196,11 @@ def run_download_process():
     username, eve_token, selected_trial, selected_assay = select_assay_trial(
         "This is the download function, please enter your username:\n"
     )
-    query_object = '{"trial": "' + selected_trial['_id'] + '", "assay": "' + selected_assay + '"}'
-    params = {"where": query_object}
-    data_response = request_eve_endpoint(eve_token, params, "data", 'GET')
+    trial_query = {'trial': selected_trial['_id']}
+    assay_query = {'assay': selected_assay}
+
+    query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
+    data_response = request_eve_endpoint(eve_token, None, query_string, 'GET')
 
     if not data_response.status_code == 200:
         print("Request failed, exiting")
@@ -207,6 +209,16 @@ def run_download_process():
 
     records = data_response.json()
     download_directory = None
+
+    retreived = records['_items']
+
+    if not retreived:
+        print('No data records found matching that criteria')
+        return
+
+    print('Files to be downloaded: ')
+    for x in retreived:
+        print(x['file_name'])
 
     while not download_directory:
         download_directory = input(
