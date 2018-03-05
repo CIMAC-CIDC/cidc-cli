@@ -7,7 +7,6 @@ Class defining the behavior of the interactive command line interface
 import cmd
 import os
 import subprocess
-import requests
 import json
 from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files
 
@@ -145,7 +144,7 @@ def create_payload_objects(file_dict, trial, assay):
 
     return [
         {
-            'assay': assay,
+            'assay': assay['assay_id'],
             'trial': trial['_id'],
             'file_name': key,
             'sample_id': file_dict[key]
@@ -182,7 +181,8 @@ def select_assay_trial(username_prompt):
 
     # Select Assay
     assays = selected_trial['assays']
-    assay_selection = option_select_framework(assays, '=====| Available Assays |=====')
+    assay_names = [x['assay_name'] for x in assays]
+    assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
     selected_assay = assays[assay_selection - 1]
 
     return username, eve_token, selected_trial, selected_assay
@@ -197,7 +197,7 @@ def run_download_process():
         "This is the download function, please enter your username:\n"
     )
     trial_query = {'trial': selected_trial['_id']}
-    assay_query = {'assay': selected_assay}
+    assay_query = {'assay': selected_assay['assay_id']}
 
     query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
     data_response = request_eve_endpoint(eve_token, None, query_string, 'GET')
@@ -210,6 +210,7 @@ def run_download_process():
     records = data_response.json()
     download_directory = None
 
+    print(records)
     retreived = records['_items']
 
     if not retreived:
@@ -217,8 +218,8 @@ def run_download_process():
         return
 
     print('Files to be downloaded: ')
-    for x in retreived:
-        print(x['file_name'])
+    for ret in retreived:
+        print(ret['file_name'])
 
     while not download_directory:
         download_directory = input(
@@ -289,6 +290,35 @@ def run_upload_process():
     # Poll for completed job:
 
 
+def run_analysis():
+    """
+    Developer function for letting user select analysis to run
+    """
+
+    # Obtain user information
+    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+        "This is the analysis function, please enter your username:\n"
+    )
+
+    # Get list of sample IDs
+    sample_ids = selected_trial['samples']
+
+    # Construct payload, for now just run on all samples
+    payload = {
+        'started_by': username,
+        'trial': selected_trial['_id'],
+        'assay': selected_assay['assay_id'],
+        'samples': sample_ids
+    }
+
+    run_start_response = request_eve_endpoint('testing_token', payload, "analysis", 'POST')
+
+    if not run_start_response.status_code == 201:
+        print("Error communicating with server: " + run_start_response.reason)
+    
+    run_start_data = run_start_response.json()
+
+
 class CIDCCLI(cmd.Cmd):
     """
     Defines the CLI interface
@@ -307,6 +337,12 @@ class CIDCCLI(cmd.Cmd):
         Starts the download process
         """
         run_download_process()
+
+    def do_run_analysis(self, rest=None):
+        """
+        Lets user run analysis
+        """
+        run_analysis()
 
     def do_EOF(self, rest=None):
         """
