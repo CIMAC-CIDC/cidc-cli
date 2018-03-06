@@ -238,9 +238,7 @@ def run_download_process():
             download_directory
         ]
         try:
-            results = subprocess.run(gs_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            formatted_results = results.stdout.decode('utf-8')
-            print(formatted_results)
+            subprocess.run(gs_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         except subprocess.CalledProcessError as error:
             error_string = 'Shell command generated error' + str(error.output)
             print(error_string)
@@ -308,14 +306,14 @@ def run_analysis():
         'started_by': username,
         'trial': selected_trial['_id'],
         'assay': selected_assay['assay_id'],
-        'samples': sample_ids
+        'samples': sample_ids,
     }
 
     run_start_response = request_eve_endpoint('testing_token', payload, "analysis", 'POST')
 
     if not run_start_response.status_code == 201:
         print("Error communicating with server: " + run_start_response.reason)
-    
+
     run_start_data = run_start_response.json()
 
 

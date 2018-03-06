@@ -79,7 +79,7 @@ def create_data_entries(name_dictionary, google_url, google_folder_path, trial, 
     """Function that creates google bucket URIs from file names.
 
     Arguments:
-        file_names {dict} -- Dictionary mapping filename to sample ID. 
+        file_names {dict} -- Dictionary mapping filename to sample ID.
         google_url {str} -- URL of the google bucket.
         google_folder_path {str} -- Storage path under which files are sorted.
 
@@ -99,7 +99,7 @@ def create_data_entries(name_dictionary, google_url, google_folder_path, trial, 
     ]
 
 
-def update_job_status(status, mongo_data, eve_token, google_data=None, message=None):
+def update_job_status(status, mongo_data, eve_token, message=None):
     """Updates the status of the job in MongoDB, either with the URIs if the upload
     was succesfull, or with the error message if it failed.
 
