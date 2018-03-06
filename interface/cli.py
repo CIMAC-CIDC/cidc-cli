@@ -355,5 +355,9 @@ class CIDCCLI(cmd.Cmd):
         return True
 
 
+def main():
+    CIDCCLI().cmdloop()
+
+
 if __name__ == '__main__':
     CIDCCLI().cmdloop()
