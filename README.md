@@ -8,7 +8,7 @@ Install pipenv if you do not have it installed `pip install pipenv`
 
 Run `pipenv install` or `pipenv run upload-script.py`
 
-Next, run `easy_install .` inside the package directory to install the package on your system
+Next, run `pip3 install . --user` inside the package directory to install the package on your system
 
 ### Running command line tool
 
