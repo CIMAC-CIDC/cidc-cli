@@ -176,20 +176,25 @@ def select_assay_trial(username_prompt):
             "Welcome, " + username + " please enter the path to your authorization token:\n"
             )
         eve_token = find_eve_token(token_path)
-        USER_CACHE.add_login_to_cache(username, eve_token)
     else:
         username = creds['username']
         eve_token = creds['token']
 
     # Fetch list of trials
-    response = request_eve_endpoint(eve_token, None, 'trials', 'GET')
+    response = request_eve_endpoint(eve_token, {'username': username}, 'trials', 'GET')
     if not response.status_code == 200:
         print('There was a problem fetching the data')
-        return
+        return None
 
     # Select Trial
     response_data = response.json()
     trials = response_data['_items']
+
+    if not trials:
+        print("No trials were found for your username, your credentials will not be saved")
+        return None
+
+    USER_CACHE.add_login_to_cache(username, eve_token)
     trial_names = [x['trial_name'] for x in trials]
     trial_selection = option_select_framework(trial_names, '=====| Available Trials |=====')
     selected_trial = trials[trial_selection - 1]
@@ -221,9 +226,14 @@ def run_download_process():
     Function for users to download data.
     """
 
-    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+    selections = select_assay_trial(
         "This is the download function, please enter your username:\n"
     )
+    if not selections:
+        return
+
+    username, eve_token, selected_trial, selected_assay = selections
+
     trial_query = {'trial': selected_trial['_id']}
     assay_query = {'assay': selected_assay['assay_id']}
 
@@ -279,9 +289,14 @@ def run_upload_process():
     Function responsible for guiding the user through the upload process
     """
 
-    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+    selections = select_assay_trial(
         "This is the upload function, please enter your username:\n"
     )
+
+    if not selections:
+        return
+
+    username, eve_token, selected_trial, selected_assay = selections
 
     sample_ids = selected_trial['samples']
     file_upload_dict, upload_dir = get_files(sample_ids)
@@ -309,8 +324,6 @@ def run_upload_process():
         response_upload.json(),
         eve_token,
         response_upload.headers,
-        selected_assay,
-        selected_trial
     )
     # If this line is reached, upload has been completed
     # Poll for completed job:
@@ -322,9 +335,14 @@ def run_analysis():
     """
 
     # Obtain user information
-    username, eve_token, selected_trial, selected_assay = select_assay_trial(
+    selections = select_assay_trial(
         "This is the analysis function, please enter your username:\n"
     )
+
+    if not selections:
+        return
+
+    username, eve_token, selected_trial, selected_assay = selections
 
     # Get list of sample IDs
     sample_ids = selected_trial['samples']
@@ -337,12 +355,41 @@ def run_analysis():
         'samples': sample_ids,
     }
 
-    run_start_response = request_eve_endpoint('testing_token', payload, "analysis", 'POST')
+    run_start_response = request_eve_endpoint(eve_token, payload, "analysis", 'POST')
 
     if not run_start_response.status_code == 201:
         print("Error communicating with server: " + run_start_response.reason)
 
-    run_start_data = run_start_response.json()
+
+def run_login_process():
+    """
+    Function allowing users to manually change credentials
+    """
+    username = None
+    eve_token = None
+
+    creds = check_for_credentials()
+    if not creds:
+        username = input("Please enter your username:\n")
+        token_path = input(
+            "Welcome, " + username + " please enter the path to your authorization token:\n"
+            )
+        eve_token = find_eve_token(token_path)
+        USER_CACHE.add_login_to_cache(username, eve_token)
+        return
+    else:
+        username = creds['username']
+        eve_token = creds['token']
+        print("There is already a user logged in: " + username)
+        yorn = user_prompt_yn("Would you liked to log in a different user?")
+        if yorn:
+            username = input("Please enter your username:\n")
+            token_path = input(
+                "Welcome, " + username + " please enter the path to your authorization token:\n"
+                )
+            eve_token = find_eve_token(token_path)
+            USER_CACHE.add_login_to_cache(username, eve_token)
+        return
 
 
 class CIDCCLI(cmd.Cmd):
@@ -351,6 +398,12 @@ class CIDCCLI(cmd.Cmd):
     """
 
     intro = "Welcome to the CIDC CLI Tool"
+
+    def do_login(self, rest=None):
+        """
+        Allows the user to log in or change credentials.
+        """
+        run_login_process()
 
     def do_upload_data(self, rest=None):
         """

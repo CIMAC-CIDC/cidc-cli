@@ -9,6 +9,9 @@ name = "pypi"
 
 requests = "*"
 "nose2" = "*"
+appdirs = "*"
+cachetools = "*"
+"oauth2client" = "*"
 
 
 [dev-packages]

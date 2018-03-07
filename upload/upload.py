@@ -142,7 +142,7 @@ def update_job_status(status, mongo_data, eve_token, message=None):
         )
 
 
-def upload_files(directory, files_uploaded, mongo_data, eve_token, headers, assay, trial):
+def upload_files(directory, files_uploaded, mongo_data, eve_token, headers):
     """Launches the gsutil command using subprocess and uploads files to the
     google bucket.
 
