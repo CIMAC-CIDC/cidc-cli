@@ -13,5 +13,6 @@ setup(
         'console_scripts': [
             'CIDC-CLI = interface.cli:main'
         ]
-    }
+    },
+    python_requires='>=3'
 )

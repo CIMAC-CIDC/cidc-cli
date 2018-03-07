@@ -8,7 +8,10 @@ import cmd
 import os
 import subprocess
 import json
-from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files
+from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files, \
+    CredentialCache
+
+USER_CACHE = CredentialCache(100, 600)
 
 
 def generate_options_list(options, header):
@@ -157,21 +160,33 @@ def select_assay_trial(username_prompt):
     Returns the user's selection of adday and trial
 
     Arguments:
-        username_prompt {[type]} -- [description]
+        username_prompt {String} -- Text promp describing the function and asking for username.
 
     Returns:
         tuple -- username, selected trial and selected assay
     """
-    username = input(username_prompt)
-    token_path = input(
-        "Welcome, " + username + " please enter the path to your authorization token:\n"
-        )
-    eve_token = find_eve_token(token_path)
+
+    username = None
+    eve_token = None
+
+    creds = check_for_credentials()
+    if not creds:
+        username = input(username_prompt)
+        token_path = input(
+            "Welcome, " + username + " please enter the path to your authorization token:\n"
+            )
+        eve_token = find_eve_token(token_path)
+        USER_CACHE.add_login_to_cache(username, eve_token)
+    else:
+        username = creds['username']
+        eve_token = creds['token']
+
     # Fetch list of trials
     response = request_eve_endpoint(eve_token, None, 'trials', 'GET')
     if not response.status_code == 200:
         print('There was a problem fetching the data')
         return
+
     # Select Trial
     response_data = response.json()
     trials = response_data['_items']
@@ -186,6 +201,19 @@ def select_assay_trial(username_prompt):
     selected_assay = assays[assay_selection - 1]
 
     return username, eve_token, selected_trial, selected_assay
+
+
+def check_for_credentials():
+    """
+    Function that checks if the user has credentials in the cache,
+    if credentials are found, retreives them
+
+    Returns:
+        dict -- Dictionary container user's login info.
+    """
+    if bool(USER_CACHE.get_login()):
+        return USER_CACHE.get_login()
+    return None
 
 
 def run_download_process():
