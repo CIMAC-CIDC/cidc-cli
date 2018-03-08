@@ -311,10 +311,11 @@ def run_upload_process():
     }
 
     response_upload = request_eve_endpoint(eve_token, payload, 'ingestion')
-    print(response_upload.json())
+
     if not response_upload.status_code == 201:
-        print('Communication with Eve Failed, exiting')
-        print(response_upload.reason)
+        print('Communication with Eve Failed:')
+        if response_upload.json:
+            print(response_upload.json()['message'])
         return
 
     # Execute uploads
