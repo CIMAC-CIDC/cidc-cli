@@ -1,3 +1,5 @@
+![circleci](https://circleci.com/gh/dfci/cidc-cli.svg?style=shield&circle-token=f1cc21bf7abc3bddd43d1ed02bc2d24849d18f0f|alt=circleci)
+
 ## CIDC-CLI
 
 Command line tool for interfacing with the CIDC workflow pipeline
