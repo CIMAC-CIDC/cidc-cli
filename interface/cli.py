@@ -10,215 +10,11 @@ import subprocess
 import json
 from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files, \
     CredentialCache
+from interface import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
+    get_files, create_payload_objects, \
+    select_assay_trial, check_for_credentials
 
 USER_CACHE = CredentialCache(100, 600)
-
-
-def generate_options_list(options, header):
-    """
-    Generates a list of user options
-
-    Arguments:
-        trial_list {str} -- List of options
-
-    Returns:
-        str -- Completed list in string form
-    """
-    opts = ''.join(
-        [('[' + str(idx + 1) + '] - ' + option + '\n') for idx, option in enumerate(options)]
-    )
-    return header + '\n' + opts
-
-
-def force_valid_menu_selection(number_options, prompt, err_msg='Invalid selection'):
-    """
-    Script that forces a user to choose a valid option based on the number of options.
-
-    Arguments:
-        number_options {int} -- number of valid options
-        prompt {str} -- Message you want displayed to user
-        err_msg {str} -- Message to be printed when a bad selection is made
-
-    Returns:
-        int -- The user's selection
-    """
-    selection = "-1"
-    # Force user to make valid selection
-    while int(selection) not in range(1, number_options + 1):
-        selection = input(prompt)
-        if int(selection) not in range(1, number_options + 1):
-            print(err_msg)
-    return int(selection)
-
-
-def option_select_framework(options, prompt_header):
-    """
-    Framework for generating a list of options, having the user select one,
-    and returning the selection
-
-    Arguments:
-        options {[str]} -- List of options for user to choose from
-        prompt_header {str} -- Banner message to display above options
-
-    Returns:
-        int - index of user selection
-    """
-    number_of_options = len(options)
-    prompt = generate_options_list(options, prompt_header)
-    return force_valid_menu_selection(
-        number_of_options,
-        prompt
-    )
-
-
-def user_prompt_yn(prompt):
-    """
-    Prompts the user to pick in a yes or no scenario
-
-    Arguments:
-        prompt {str} -- User input prompt
-
-    Returns:
-        bool -- True if yes, false if no
-    """
-    selection = -1
-    while selection not in ['y', 'yes', 'n', 'no', 'Y', 'Yes', 'YES', 'N', 'NO']:
-        selection = input(prompt)
-        if selection not in ['y', 'yes', 'n', 'no', 'Y', 'Yes', 'YES', 'N', 'NO']:
-            print("Please select either yes or no")
-    if selection in ['y', 'yes', 'Y', 'Yes', 'YES']:
-        return True
-    return False
-
-
-def get_files(sample_ids):
-    """
-    Asks the user for input, then returns list of files in that directory
-
-    Returns:
-        [str] -- List of filenames
-    """
-    confirm_upload = False
-    valid_sample_ids = False
-    files_to_upload = None
-    upload_dir = None
-    while not confirm_upload or not valid_sample_ids:
-
-        if confirm_upload:
-            upload_dictionary = validate_and_extract(files_to_upload, sample_ids)
-            if upload_dictionary:
-                return upload_dictionary, upload_dir
-            else:
-                confirm_upload = False
-                print('Files contained invalid IDs!')
-
-        upload_dir = input("Enter the path to the files you wish to upload:\n")
-        try:
-            files_to_upload = [
-                name for name in os.listdir(upload_dir) if
-                os.path.isfile(os.path.join(upload_dir, name))
-            ]
-        except FileNotFoundError as error:
-            print("Error: " + error)
-
-        for file_name in files_to_upload:
-            print(file_name)
-
-        if files_to_upload:
-            confirm_upload = user_prompt_yn(
-                "These are the files found in provided directory, proceed? [Y/N]"
-            )
-        else:
-            print("Directory contained no files")
-
-
-def create_payload_objects(file_dict, trial, assay):
-    """
-    Returns objects formatted for inserting into the API
-
-    Arguments:
-        file_dict {[dict]} -- [description]
-        trial {str} -- Trial ID
-        assay {str} -- Assay ID
-
-    Returns:
-        [type] -- [description]
-    """
-
-    return [
-        {
-            'assay': assay['assay_id'],
-            'trial': trial['_id'],
-            'file_name': key,
-            'sample_id': file_dict[key]
-        } for key in file_dict
-    ]
-
-
-def select_assay_trial(username_prompt):
-    """
-    Returns the user's selection of adday and trial
-
-    Arguments:
-        username_prompt {String} -- Text promp describing the function and asking for username.
-
-    Returns:
-        tuple -- username, selected trial and selected assay
-    """
-
-    username = None
-    eve_token = None
-
-    creds = check_for_credentials()
-    if not creds:
-        username = input(username_prompt)
-        token_path = input(
-            "Welcome, " + username + " please enter the path to your authorization token:\n"
-            )
-        eve_token = find_eve_token(token_path)
-    else:
-        username = creds['username']
-        eve_token = creds['token']
-
-    # Fetch list of trials
-    response = request_eve_endpoint(eve_token, {'username': username}, 'trials', 'GET')
-    if not response.status_code == 200:
-        print('There was a problem fetching the data')
-        return None
-
-    # Select Trial
-    response_data = response.json()
-    trials = response_data['_items']
-
-    if not trials:
-        print("No trials were found for your username, your credentials will not be saved")
-        return None
-
-    USER_CACHE.add_login_to_cache(username, eve_token)
-    trial_names = [x['trial_name'] for x in trials]
-    trial_selection = option_select_framework(trial_names, '=====| Available Trials |=====')
-    selected_trial = trials[trial_selection - 1]
-
-    # Select Assay
-    assays = selected_trial['assays']
-    assay_names = [x['assay_name'] for x in assays]
-    assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
-    selected_assay = assays[assay_selection - 1]
-
-    return username, eve_token, selected_trial, selected_assay
-
-
-def check_for_credentials():
-    """
-    Function that checks if the user has credentials in the cache,
-    if credentials are found, retreives them
-
-    Returns:
-        dict -- Dictionary container user's login info.
-    """
-    if bool(USER_CACHE.get_login()):
-        return USER_CACHE.get_login()
-    return None
 
 
 def run_download_process():
@@ -238,17 +34,9 @@ def run_download_process():
     assay_query = {'assay': selected_assay['assay_id']}
 
     query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
-    data_response = request_eve_endpoint(eve_token, None, query_string, 'GET')
 
-    if not data_response.status_code == 200:
-        print("Request failed, exiting")
-        print(data_response.reason)
-        return
-
-    records = data_response.json()
+    records = fetch_eve_or_fail(eve_token, query_string, None, 200, 'GET')
     download_directory = None
-
-    print(records)
     retreived = records['_items']
 
     if not retreived:
@@ -313,7 +101,7 @@ def run_upload_process():
     response_upload = request_eve_endpoint(eve_token, payload, 'ingestion')
 
     if not response_upload.status_code == 201:
-        print('Communication with Eve Failed:')
+        print('Upload Failed:')
         if response_upload.json:
             print(response_upload.json()['message'])
         return
@@ -356,10 +144,9 @@ def run_analysis():
         'samples': sample_ids,
     }
 
-    run_start_response = request_eve_endpoint(eve_token, payload, "analysis", 'POST')
-
-    if not run_start_response.status_code == 201:
-        print("Error communicating with server: " + run_start_response.reason)
+    res_json = fetch_eve_or_fail(eve_token, "analysis", payload, 201)
+    print("Your run has started, to check on its status, query this id: " + res_json['_id'])
+    USER_CACHE.add_job_to_cache(res_json['_id'])
 
 
 def run_login_process():
@@ -393,7 +180,121 @@ def run_login_process():
         return
 
 
-class CIDCCLI(cmd.Cmd):
+def ensure_logged_in():
+
+    username = None
+    eve_token = None
+    creds = check_for_credentials()
+
+    if not creds:
+        username = input("Please enter your username:\n")
+        token_path = input(
+            "Welcome, " + username + " please enter the path to your authorization token:\n"
+        )
+        eve_token = find_eve_token(token_path)
+        USER_CACHE.add_login_to_cache(username, eve_token)
+    else:
+        username = creds['username']
+        eve_token = creds['token']
+
+    return username, eve_token
+
+
+def run_job_query():
+    """
+    Allows user to check on the status of running jobs.
+    """
+
+    username = None
+    eve_token = None
+    progress = None
+    status = None
+    jobs = USER_CACHE.get_jobs()
+
+    if not jobs:
+        answer = user_prompt_yn(
+            'No records found locally for jobs, would you like to query the database?'
+            )
+        if not answer:
+            return
+        username, eve_token = ensure_logged_in()
+        res = fetch_eve_or_fail(eve_token, 'status', {'started_by': username}, 200, 'GET')
+        jobs = res['_items']
+        job_ids = [x['_id'] for x in jobs]
+        for job in job_ids:
+            print(job)
+        selection = option_select_framework(job_ids, "===Jobs===")
+        status = jobs[selection - 1]
+        progress = status['status']['progress']
+    else:
+        username, eve_token = ensure_logged_in()
+        selection = option_select_framework(jobs, '====Jobs====')
+        res = fetch_eve_or_fail(eve_token, 'analysis', {'_id': jobs[selection - 1]}, 200, 'GET')
+        progress = res['_items'][0]['status']['progress']
+
+    if progress == 'In Progress':
+        print('Job is still in progress, check back later')
+    elif progress == 'Completed':
+        print('Job is completed.')
+    elif progress == 'Aborted':
+        print('Job was aborted: ' + status['status']['message'])
+
+    if not jobs:
+        print("There appears to be no running jobs")
+        return
+
+
+class ShellCmd(cmd.Cmd, object):
+    """
+    Class to impart shell functionality to CMD
+    """
+
+    def do_shell(self, s):
+        os.system(s)
+
+    def help_shell(self):
+        print("Execute shell commands")
+
+
+class ExitCmd(cmd.Cmd, object):
+    """
+    Class put together to generate more graceful exit functionality for CMD.
+    """
+
+    def cmdloop(self, intro=None):
+        """
+        Overrides default method to catch ctrl-c and exit gracefully.
+        """
+        print(self.intro)
+        while True:
+            try:
+                super(ExitCmd, self).cmdloop(intro="")
+                self.postloop()
+                break
+            except KeyboardInterrupt:
+                return True
+
+    def can_exit(self):
+        return True
+
+    def onecmd(self, line):
+        r = super(ExitCmd, self).onecmd(line)
+        if r and (self.can_exit() or input('exit anyway ? (yes/no):') == 'yes'):
+            return True
+        return False
+
+    def do_exit(self, s):
+        return True
+
+    def help_exit(self):
+        print("Exit the interpreter.")
+        print("You can also use the Ctrl-D shortcut.")
+
+    do_EOF = do_exit
+    help_EOF = help_exit
+
+
+class CIDCCLI(ExitCmd, ShellCmd):
     """
     Defines the CLI interface
     """
@@ -424,20 +325,17 @@ class CIDCCLI(cmd.Cmd):
         """
         run_analysis()
 
-    def do_EOF(self, rest=None):
+    def do_query_job(self, rest=None):
         """
-        Provides a way to exit tool
-
-        Arguments:
-            line {[type]} -- [description]
-
-        Returns:
-            [type] -- [description]
+        Allows user to check if their job is done
         """
-        return True
+        run_job_query()
 
 
 def main():
+    """
+    Main, starts the loop
+    """
     CIDCCLI().cmdloop()
 
 
