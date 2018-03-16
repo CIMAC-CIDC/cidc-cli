@@ -3,10 +3,10 @@
 Utility methods for the CIDC-CLI Interface
 """
 
-import os
 import json
-from upload import find_eve_token, request_eve_endpoint, validate_and_extract, CredentialCache
-
+import os
+from upload.cache_user import CredentialCache
+from upload.upload import request_eve_endpoint, validate_and_extract, find_eve_token
 
 USER_CACHE = CredentialCache(100, 600)
 
@@ -27,7 +27,6 @@ def fetch_eve_or_fail(token, endpoint, data, code, method='POST'):
     Returns:
         dict -- json formatted response from eve
     """
-    print(endpoint)
     response = request_eve_endpoint(token, data, endpoint, method)
     if not response.status_code == code:
         error_string = "There was a problem with your request: "
@@ -116,7 +115,7 @@ def user_prompt_yn(prompt):
     return False
 
 
-def get_files(sample_ids):
+def get_files(sample_ids, non_static_inputs):
     """
     Asks the user for input, then returns list of files in that directory
 
@@ -130,7 +129,9 @@ def get_files(sample_ids):
     while not confirm_upload or not valid_sample_ids:
 
         if confirm_upload:
-            upload_dictionary = validate_and_extract(files_to_upload, sample_ids)
+            upload_dictionary = validate_and_extract(
+                files_to_upload, sample_ids, non_static_inputs
+                )
             if upload_dictionary:
                 return upload_dictionary, upload_dir
             else:
@@ -143,6 +144,11 @@ def get_files(sample_ids):
                 name for name in os.listdir(upload_dir) if
                 os.path.isfile(os.path.join(upload_dir, name))
             ]
+
+            if not len(files_to_upload) == len(set(files_to_upload)):
+                print("Error, duplicate names in file list, aborting")
+                return
+
         except FileNotFoundError as error:
             print("Error: " + error)
 
@@ -156,7 +162,7 @@ def get_files(sample_ids):
         else:
             print("Directory contained no files")
 
-
+   
 def create_payload_objects(file_dict, trial, assay):
     """
     Returns objects formatted for inserting into the API
@@ -172,10 +178,11 @@ def create_payload_objects(file_dict, trial, assay):
 
     return [
         {
-            'assay': assay['assay_id'],
-            'trial': trial['_id'],
-            'file_name': key,
-            'sample_id': file_dict[key]
+            "assay": assay['assay_id'],
+            "trial": trial['_id'],
+            "file_name": key,
+            "sample_id": file_dict[key]['sample_id'],
+            "mapping": file_dict[key]['mapping']
         } for key in file_dict
     ]
 
@@ -239,7 +246,6 @@ def check_for_credentials():
     """
     Function that checks if the user has credentials in the cache,
     if credentials are found, retreives them
-
     Returns:
         dict -- Dictionary container user's login info.
     """

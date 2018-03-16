@@ -12,6 +12,7 @@ requests = "*"
 appdirs = "*"
 cachetools = "*"
 "oauth2client" = "*"
+gsutil = "*"
 
 
 [dev-packages]

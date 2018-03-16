@@ -10,6 +10,7 @@ import os.path
 import datetime
 import requests
 
+
 EVE_URL = "http://0.0.0.0:5000"
 
 
@@ -52,7 +53,7 @@ def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
     )
 
 
-def validate_and_extract(file_names, sample_ids):
+def validate_and_extract(file_names, sample_ids, non_static_inputs):
     """
     Compares each file name in upload to list of valid sample IDs in trial.
     If all names are valid, returns a mapping of filename to sample id.
@@ -62,7 +63,13 @@ def validate_and_extract(file_names, sample_ids):
         sample_ids {[str]} -- list of valid ids
 
     Returns:
-        dict -- Dictionary mapping file name to sample id.
+        dict -- Dictionary mapping file name to sample id. Format:
+        {
+            file_name: {
+                sample_id: "sample_id",
+                mapped_input: "mapping"
+            }
+        }
     """
     # Create RE object based on valid samples
     search_string = re.compile(str.join('|', sample_ids))
@@ -72,7 +79,49 @@ def validate_and_extract(file_names, sample_ids):
     if not all(name_dictionary.values()):
         return []
     # If all valid, return map of filename: sample_id
-    return dict((name, name_dictionary[name].group()) for name in name_dictionary)
+    mapped_names = dict((name, name_dictionary[name].group()) for name in name_dictionary)
+
+    # Create dictionary of involved sampleIDS
+    sample_id_dict = {}
+
+    # Group filenames under associated sampleIDs.
+    # Format: sample_id: [list, of, files, with, that, id]
+    for key, value in mapped_names.items():
+        if value in sample_id_dict:
+            sample_id_dict[value].append(key)
+        else:
+            sample_id_dict[value] = [key]
+
+    # Guide for associating file names with sample ids, and later, inputs
+    upload_guide = dict((item, {"sample_id": mapped_names[item]}) for item in mapped_names)
+
+    for sample_id in sample_id_dict:
+
+        # Copy list by value for manipulation
+        nsi = non_static_inputs[:]
+
+        print(
+            "These files are associated with SampleID: " + sample_id + ", please map them to the \
+            assay inputs"
+        )
+        files_to_map = sample_id_dict[sample_id]
+
+        # Sanity check number of files per ID
+        if len(files_to_map) > len(nsi):
+            print("Error! Too many files for this sampleID")
+            return []
+
+        # Loop over files and make the user map them.
+        for filename in files_to_map:
+            selection = option_select_framework(
+                nsi,
+                "Please choose which input " + filename + " maps to."
+            )
+            # save selection, then delete from list.
+            upload_guide[filename]['mapping'] = nsi[selection - 1]
+            del nsi[selection - 1]
+
+    return upload_guide
 
 
 def create_data_entries(name_dictionary, google_url, google_folder_path, trial, assay):
@@ -112,8 +161,8 @@ def update_job_status(status, mongo_data, eve_token, message=None):
         message {str} -- If upload failed, contains error.
     """
     if status:
-        requests.patch(
-            EVE_URL + "/ingestion/" + mongo_data['_id'],
+        res = requests.patch(
+            EVE_URL + "/ingestion/" + mongo_data["_id"],
             json={
                 "status": {
                     "progress": "Completed",
@@ -123,9 +172,13 @@ def update_job_status(status, mongo_data, eve_token, message=None):
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'token {}'.format(eve_token)
+                "Authorization": 'token {}'.format(eve_token),
+                "Content-Type": "application/json"
             }
         )
+        if res.json:
+            print(res.json())
+            print(res.reason)
     else:
         requests.patch(
             EVE_URL + "/ingestion/" + mongo_data['_id'],
@@ -170,8 +223,7 @@ def upload_files(directory, files_uploaded, mongo_data, eve_token, headers):
             ]
         )
         subprocess.check_output(
-            gsutil_args,
-            stderr=subprocess.STDOUT
+            gsutil_args
         )
         update_job_status(True, mongo_data, eve_token)
         return mongo_data['_id']
@@ -199,3 +251,5 @@ def find_eve_token(token_dir):
                 eve_token = token_file.read().strip()
                 return eve_token
     raise FileNotFoundError('No valid token file was found')
+
+from utilities.cli_utilities import option_select_framework

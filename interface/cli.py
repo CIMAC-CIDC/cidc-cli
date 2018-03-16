@@ -8,11 +8,10 @@ import cmd
 import os
 import subprocess
 import json
-from upload import find_eve_token, request_eve_endpoint, validate_and_extract, upload_files, \
-    CredentialCache
-from interface import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
-    get_files, create_payload_objects, \
-    select_assay_trial, check_for_credentials
+from upload.upload import find_eve_token, request_eve_endpoint, upload_files
+from upload.cache_user import CredentialCache
+from utilities.cli_utilities import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
+    get_files, create_payload_objects, select_assay_trial, check_for_credentials
 
 USER_CACHE = CredentialCache(100, 600)
 
@@ -84,10 +83,16 @@ def run_upload_process():
     if not selections:
         return
 
+    # Have user make their selections
     username, eve_token, selected_trial, selected_assay = selections
 
+    # Query the selected assay ID to get the inputs.
+    assay_r = fetch_eve_or_fail(
+        eve_token, "assays/" + selected_assay['assay_id'], None, 200, 'GET'
+    )
+    non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
-    file_upload_dict, upload_dir = get_files(sample_ids)
+    file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
 
     payload = {
         'number_of_files': len(file_upload_dict),
@@ -103,8 +108,10 @@ def run_upload_process():
     if not response_upload.status_code == 201:
         print('Upload Failed:')
         if response_upload.json:
-            print(response_upload.json()['message'])
+            print(response_upload.json())
         return
+
+    print(response_upload.json())
 
     # Execute uploads
     job_id = upload_files(
@@ -114,8 +121,8 @@ def run_upload_process():
         eve_token,
         response_upload.headers,
     )
-    # If this line is reached, upload has been completed
-    # Poll for completed job:
+
+    print("Uploaded, your ID is: " + job_id)
 
 
 def run_analysis():
