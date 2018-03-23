@@ -6,8 +6,8 @@ Tests for the command line interface
 import requests
 from unittest.mock import patch, MagicMock
 from cachetools import TTLCache
-from interface import generate_options_list, force_valid_menu_selection, user_prompt_yn,\
-    get_files, check_for_credentials, fetch_eve_or_fail, create_payload_objects
+from utilities.cli_utilities import generate_options_list, force_valid_menu_selection, \
+    user_prompt_yn, get_files, check_for_credentials, fetch_eve_or_fail, create_payload_objects
 
 
 def test_generate_options_list():

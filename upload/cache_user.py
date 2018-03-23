@@ -42,9 +42,26 @@ class CredentialCache(TTLCache):
         else:
             return {}
 
+    def cache_key(self, key):
+        """
+        Adds an access key to the cache
+
+        Arguments:
+            key {str} -- Google access token.
+        """
+        self['access_token'] = key
+
+    def get_key(self) -> str:
+        """
+        Retreive key from cache.
+        """
+        if 'access_token' in self:
+            return self['access_token']
+        return
+
     def get_jobs(self):
         """
-        Returns job objects 
+        Returns job objects
         Returns:
             [type] -- [description]
         """

@@ -8,15 +8,19 @@ import cmd
 import os
 import subprocess
 import json
-from upload.upload import find_eve_token, request_eve_endpoint, upload_files
+from typing import Tuple
+from upload.upload import upload_files
 from upload.cache_user import CredentialCache
 from utilities.cli_utilities import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
-    get_files, create_payload_objects, select_assay_trial, check_for_credentials
+    get_files, create_payload_objects, select_assay_trial, check_for_credentials, \
+    find_eve_token, request_eve_endpoint
+from oath_auth0.auth0 import run_auth_proc
 
 USER_CACHE = CredentialCache(100, 600)
+CREDENTIALS = Tuple[str, str]
 
 
-def run_download_process():
+def run_download_process() -> None:
     """
     Function for users to download data.
     """
@@ -71,7 +75,7 @@ def run_download_process():
     print("Download of files complete")
 
 
-def run_upload_process():
+def run_upload_process() -> None:
     """
     Function responsible for guiding the user through the upload process
     """
@@ -125,7 +129,7 @@ def run_upload_process():
     print("Uploaded, your ID is: " + job_id)
 
 
-def run_analysis():
+def run_analysis() -> None:
     """
     Developer function for letting user select analysis to run
     """
@@ -156,7 +160,7 @@ def run_analysis():
     USER_CACHE.add_job_to_cache(res_json['_id'])
 
 
-def run_login_process():
+def run_login_process() -> None:
     """
     Function allowing users to manually change credentials
     """
@@ -187,8 +191,13 @@ def run_login_process():
         return
 
 
-def ensure_logged_in():
+def ensure_logged_in() -> CREDENTIALS:
+    """
+    Checks if the user is logged in, and if they are not, promps them to log in.
 
+    Returns:
+        [type] -- [description]
+    """
     username = None
     eve_token = None
     creds = check_for_credentials()
@@ -207,7 +216,7 @@ def ensure_logged_in():
     return username, eve_token
 
 
-def run_job_query():
+def run_job_query() -> None:
     """
     Allows user to check on the status of running jobs.
     """
@@ -251,15 +260,31 @@ def run_job_query():
         return
 
 
+def run_oauth() -> None:
+    """
+    Runs the oauth pipeline.
+    """
+    key = run_auth_proc()
+    USER_CACHE.cache_key(key)
+
+
 class ShellCmd(cmd.Cmd, object):
     """
     Class to impart shell functionality to CMD
     """
 
     def do_shell(self, s):
+        """Instantiates shell environment
+
+        Arguments:
+            s {[type]} -- [description]
+        """
         os.system(s)
 
     def help_shell(self):
+        """
+        Help message.
+        """
         print("Execute shell commands")
 
 
@@ -281,19 +306,42 @@ class ExitCmd(cmd.Cmd, object):
             except KeyboardInterrupt:
                 return True
 
-    def can_exit(self):
+    def can_exit(self) -> bool:
+        """Confirms that the CLI can exit.
+
+        Returns:
+            boolean -- Simply returns true.
+        """
         return True
 
-    def onecmd(self, line):
-        r = super(ExitCmd, self).onecmd(line)
-        if r and (self.can_exit() or input('exit anyway ? (yes/no):') == 'yes'):
+    def onecmd(self, line) -> bool:
+        """Graceful exit behavior
+
+        Arguments:
+            line {[type]} -- [description]
+
+        Returns:
+            [type] -- [description]
+        """
+        response = super(ExitCmd, self).onecmd(line)
+        if response and (self.can_exit() or input('exit anyway ? (yes/no):') == 'yes'):
             return True
         return False
 
-    def do_exit(self, s):
+    def do_exit(self, s) -> bool:
+        """[summary]
+        
+        Arguments:
+            s {[type]} -- [description]
+        
+        Returns:
+            bool -- [description]
+        """
         return True
 
     def help_exit(self):
+        """[summary]
+        """
         print("Exit the interpreter.")
         print("You can also use the Ctrl-D shortcut.")
 
@@ -308,31 +356,39 @@ class CIDCCLI(ExitCmd, ShellCmd):
 
     intro = "Welcome to the CIDC CLI Tool"
 
-    def do_login(self, rest=None):
+    def do_login(self, rest=None) -> None:
         """
         Allows the user to log in or change credentials.
         """
         run_login_process()
 
-    def do_upload_data(self, rest=None):
+    def do_upload_data(self, rest=None) -> None:
         """
         Starts the upload process
         """
         run_upload_process()
 
-    def do_download_data(self, rest=None):
+    def do_oauth(self, rest=None) -> None:
+        """[summary]
+        
+        Keyword Arguments:
+            rest {[type]} -- [description] (default: {None})
+        """
+        run_oauth()
+
+    def do_download_data(self, rest=None) -> None:
         """
         Starts the download process
         """
         run_download_process()
 
-    def do_run_analysis(self, rest=None):
+    def do_run_analysis(self, rest=None) -> None:
         """
         Lets user run analysis
         """
         run_analysis()
 
-    def do_query_job(self, rest=None):
+    def do_query_job(self, rest=None) -> None:
         """
         Allows user to check if their job is done
         """
