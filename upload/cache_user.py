@@ -16,32 +16,6 @@ class CredentialCache(TTLCache):
     Returns:
         CredentialCache -- [description]
     """
-    def add_login_to_cache(self, username, token):
-        """
-        Add user's credentials to the cache
-
-        Arguments:
-            username {string} -- user's name
-            token {string} -- eve access token
-        """
-        self['username'] = username
-        self['token'] = token
-
-    def get_login(self):
-        """
-        Retreives the login credentials, or an empty dict if not found
-
-        Returns:
-            dict -- Dict containing user information
-        """
-        if 'username' in self and 'token' in self:
-            return {
-                'username': self['username'],
-                'token': self['token']
-            }
-        else:
-            return {}
-
     def cache_key(self, key):
         """
         Adds an access key to the cache
@@ -57,6 +31,7 @@ class CredentialCache(TTLCache):
         """
         if 'access_token' in self:
             return self['access_token']
+
         return
 
     def get_jobs(self):

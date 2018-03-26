@@ -12,12 +12,11 @@ from typing import Tuple
 from upload.upload import upload_files
 from upload.cache_user import CredentialCache
 from utilities.cli_utilities import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
-    get_files, create_payload_objects, select_assay_trial, check_for_credentials, \
-    find_eve_token, request_eve_endpoint
+    get_files, create_payload_objects, select_assay_trial, \
+    find_eve_token, request_eve_endpoint, ensure_logged_in
 from oath_auth0.auth0 import run_auth_proc
 
 USER_CACHE = CredentialCache(100, 600)
-CREDENTIALS = Tuple[str, str]
 
 
 def run_download_process() -> None:
@@ -25,13 +24,12 @@ def run_download_process() -> None:
     Function for users to download data.
     """
 
-    selections = select_assay_trial(
-        "This is the download function, please enter your username:\n"
-    )
+    selections = select_assay_trial("This is the download function\n")
+
     if not selections:
         return
 
-    username, eve_token, selected_trial, selected_assay = selections
+    eve_token, selected_trial, selected_assay = selections
 
     trial_query = {'trial': selected_trial['_id']}
     assay_query = {'assay': selected_assay['assay_id']}
@@ -81,14 +79,14 @@ def run_upload_process() -> None:
     """
 
     selections = select_assay_trial(
-        "This is the upload function, please enter your username:\n"
+        "This is the upload function\n"
     )
 
     if not selections:
         return
 
     # Have user make their selections
-    username, eve_token, selected_trial, selected_assay = selections
+    eve_token, selected_trial, selected_assay = selections
 
     # Query the selected assay ID to get the inputs.
     assay_r = fetch_eve_or_fail(
@@ -100,7 +98,6 @@ def run_upload_process() -> None:
 
     payload = {
         'number_of_files': len(file_upload_dict),
-        'started_by': username,
         'status': {
             'progress': 'In Progress',
         },
@@ -136,20 +133,19 @@ def run_analysis() -> None:
 
     # Obtain user information
     selections = select_assay_trial(
-        "This is the analysis function, please enter your username:\n"
+        "This is the analysis function\n"
     )
 
     if not selections:
         return
 
-    username, eve_token, selected_trial, selected_assay = selections
+    eve_token, selected_trial, selected_assay = selections
 
     # Get list of sample IDs
     sample_ids = selected_trial['samples']
 
     # Construct payload, for now just run on all samples
     payload = {
-        'started_by': username,
         'trial': selected_trial['_id'],
         'assay': selected_assay['assay_id'],
         'samples': sample_ids,
@@ -158,62 +154,6 @@ def run_analysis() -> None:
     res_json = fetch_eve_or_fail(eve_token, "analysis", payload, 201)
     print("Your run has started, to check on its status, query this id: " + res_json['_id'])
     USER_CACHE.add_job_to_cache(res_json['_id'])
-
-
-def run_login_process() -> None:
-    """
-    Function allowing users to manually change credentials
-    """
-    username = None
-    eve_token = None
-
-    creds = check_for_credentials()
-    if not creds:
-        username = input("Please enter your username:\n")
-        token_path = input(
-            "Welcome, " + username + " please enter the path to your authorization token:\n"
-            )
-        eve_token = find_eve_token(token_path)
-        USER_CACHE.add_login_to_cache(username, eve_token)
-        return
-    else:
-        username = creds['username']
-        eve_token = creds['token']
-        print("There is already a user logged in: " + username)
-        yorn = user_prompt_yn("Would you liked to log in a different user?")
-        if yorn:
-            username = input("Please enter your username:\n")
-            token_path = input(
-                "Welcome, " + username + " please enter the path to your authorization token:\n"
-                )
-            eve_token = find_eve_token(token_path)
-            USER_CACHE.add_login_to_cache(username, eve_token)
-        return
-
-
-def ensure_logged_in() -> CREDENTIALS:
-    """
-    Checks if the user is logged in, and if they are not, promps them to log in.
-
-    Returns:
-        [type] -- [description]
-    """
-    username = None
-    eve_token = None
-    creds = check_for_credentials()
-
-    if not creds:
-        username = input("Please enter your username:\n")
-        token_path = input(
-            "Welcome, " + username + " please enter the path to your authorization token:\n"
-        )
-        eve_token = find_eve_token(token_path)
-        USER_CACHE.add_login_to_cache(username, eve_token)
-    else:
-        username = creds['username']
-        eve_token = creds['token']
-
-    return username, eve_token
 
 
 def run_job_query() -> None:
@@ -330,10 +270,10 @@ class ExitCmd(cmd.Cmd, object):
 
     def do_exit(self, s) -> bool:
         """[summary]
-        
+
         Arguments:
             s {[type]} -- [description]
-        
+
         Returns:
             bool -- [description]
         """
@@ -356,12 +296,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
 
     intro = "Welcome to the CIDC CLI Tool"
 
-    def do_login(self, rest=None) -> None:
-        """
-        Allows the user to log in or change credentials.
-        """
-        run_login_process()
-
     def do_upload_data(self, rest=None) -> None:
         """
         Starts the upload process
@@ -370,7 +304,7 @@ class CIDCCLI(ExitCmd, ShellCmd):
 
     def do_oauth(self, rest=None) -> None:
         """[summary]
-        
+
         Keyword Arguments:
             rest {[type]} -- [description] (default: {None})
         """

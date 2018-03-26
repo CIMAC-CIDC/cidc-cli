@@ -5,3 +5,4 @@ tests/__pycache__/*
 upload/__pycache__/*
 interface/__pycache__/*
 oath_auth0/__pycache__/*
+**.pyc

@@ -5,15 +5,21 @@ Utility methods for the CIDC-CLI Interface
 
 import json
 import os
-import requests
 import re
+from typing import List, Tuple
+
+import requests
+from oath_auth0.auth0 import run_auth_proc
 from upload.cache_user import CredentialCache
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_URL = "http://0.0.0.0:5000"
+SELECTIONS = Tuple[str, dict, dict]
 
 
-def fetch_eve_or_fail(token, endpoint, data, code, method='POST'):
+def fetch_eve_or_fail(
+    token: str, endpoint: str, data: dict, code: int, method: str='POST'
+) -> dict:
     """
     Method for fetching results from eve with a fail safe
 
@@ -40,12 +46,13 @@ def fetch_eve_or_fail(token, endpoint, data, code, method='POST'):
     return response.json()
 
 
-def generate_options_list(options, header):
+def generate_options_list(options: List[str], header: str) -> str:
     """
     Generates a list of user options
 
     Arguments:
-        trial_list {str} -- List of options
+        options {[str]} -- List of options
+        header {str} -- Text you want displayed above the list.
 
     Returns:
         str -- Completed list in string form
@@ -56,7 +63,9 @@ def generate_options_list(options, header):
     return header + '\n' + opts
 
 
-def force_valid_menu_selection(number_options, prompt, err_msg='Invalid selection'):
+def force_valid_menu_selection(
+        number_options: int, prompt: str, err_msg: str='Invalid selection'
+) -> int:
     """
     Script that forces a user to choose a valid option based on the number of options.
 
@@ -72,12 +81,16 @@ def force_valid_menu_selection(number_options, prompt, err_msg='Invalid selectio
     # Force user to make valid selection
     while int(selection) not in range(1, number_options + 1):
         selection = input(prompt)
+        try:
+            int(selection)
+        except ValueError:
+            print('Please enter an integer')
         if int(selection) not in range(1, number_options + 1):
             print(err_msg)
     return int(selection)
 
 
-def option_select_framework(options, prompt_header):
+def option_select_framework(options: List[str], prompt_header: str) -> int:
     """
     Framework for generating a list of options, having the user select one,
     and returning the selection
@@ -97,7 +110,27 @@ def option_select_framework(options, prompt_header):
     )
 
 
-def user_prompt_yn(prompt):
+def ensure_logged_in() -> str:
+    """
+    Checks if the user is logged in, and if they are not, promps them to log in.
+
+    Returns:
+        str -- API access token
+    """
+    eve_token = None
+    creds = USER_CACHE.get_key()
+
+    if not creds:
+        print('You are not currently authenticated. Launching a page to sign in with google')
+        eve_token = run_auth_proc()
+        USER_CACHE.cache_key(eve_token)
+    else:
+        eve_token = creds
+
+    return eve_token
+
+
+def user_prompt_yn(prompt: str) -> bool:
     """
     Prompts the user to pick in a yes or no scenario
 
@@ -114,12 +147,17 @@ def user_prompt_yn(prompt):
             print("Please select either yes or no")
     if selection in ['y', 'yes', 'Y', 'Yes', 'YES']:
         return True
+
     return False
 
 
-def get_files(sample_ids, non_static_inputs):
+def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
     """
-    Asks the user for input, then returns list of files in that directory
+    Asks for user to input a directory, then fetches all files from it.
+
+    Arguments:
+        sample_ids {[str]} -- List of sample IDs from selected trial.
+        non_static_inputs {[str]} -- Variable inputs from selected assay.
 
     Returns:
         [str] -- List of filenames
@@ -128,8 +166,8 @@ def get_files(sample_ids, non_static_inputs):
     valid_sample_ids = False
     files_to_upload = None
     upload_dir = None
-    while not confirm_upload or not valid_sample_ids:
 
+    while not confirm_upload or not valid_sample_ids:
         if confirm_upload:
             upload_dictionary = validate_and_extract(
                 files_to_upload, sample_ids, non_static_inputs
@@ -141,6 +179,7 @@ def get_files(sample_ids, non_static_inputs):
                 print('Files contained invalid IDs!')
 
         upload_dir = input("Enter the path to the files you wish to upload:\n")
+
         try:
             files_to_upload = [
                 name for name in os.listdir(upload_dir) if
@@ -164,20 +203,19 @@ def get_files(sample_ids, non_static_inputs):
         else:
             print("Directory contained no files")
 
-   
-def create_payload_objects(file_dict, trial, assay):
+
+def create_payload_objects(file_dict: List[dict], trial: dict, assay: dict) -> List[dict]:
     """
     Returns objects formatted for inserting into the API
 
     Arguments:
-        file_dict {[dict]} -- [description]
-        trial {str} -- Trial ID
-        assay {str} -- Assay ID
+        file_dict {[dict]} -- List of file objects.
+        trial {dict} -- Trial ID dictionary
+        assay {dict} -- Assay ID dictionary
 
     Returns:
         [type] -- [description]
     """
-
     return [
         {
             "assay": assay['assay_id'],
@@ -189,33 +227,21 @@ def create_payload_objects(file_dict, trial, assay):
     ]
 
 
-def select_assay_trial(username_prompt):
+def select_assay_trial(prompt: str) -> SELECTIONS:
     """
-    Returns the user's selection of adday and trial
+    Returns the user's selection of assay and trial
 
     Arguments:
-        username_prompt {String} -- Text promp describing the function and asking for username.
+        prompt {String} -- Text promp describing the function.
 
     Returns:
-        tuple -- username, selected trial and selected assay
+        tuple -- selected trial and selected assay
     """
-
-    username = None
-    eve_token = None
-
-    creds = check_for_credentials()
-    if not creds:
-        username = input(username_prompt)
-        token_path = input(
-            "Welcome, " + username + " please enter the path to your authorization token:\n"
-            )
-        eve_token = find_eve_token(token_path)
-    else:
-        username = creds['username']
-        eve_token = creds['token']
+    print(prompt)
+    eve_token = ensure_logged_in()
 
     # Fetch list of trials
-    response = request_eve_endpoint(eve_token, {'username': username}, 'trials', 'GET')
+    response = request_eve_endpoint(eve_token, None, 'trials', 'GET')
     if not response.status_code == 200:
         print('There was a problem fetching the data: ')
         if response.json:
@@ -227,10 +253,10 @@ def select_assay_trial(username_prompt):
     trials = response_data['_items']
 
     if not trials:
-        print("No trials were found for your username, your credentials will not be saved")
+        print("No trials were found for your id, your credentials will not be saved")
         return None
 
-    USER_CACHE.add_login_to_cache(username, eve_token)
+    USER_CACHE.cache_key(eve_token)
     trial_names = [x['trial_name'] for x in trials]
     trial_selection = option_select_framework(trial_names, '=====| Available Trials |=====')
     selected_trial = trials[trial_selection - 1]
@@ -241,22 +267,12 @@ def select_assay_trial(username_prompt):
     assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
     selected_assay = assays[assay_selection - 1]
 
-    return username, eve_token, selected_trial, selected_assay
+    return eve_token, selected_trial, selected_assay
 
 
-def check_for_credentials():
-    """
-    Function that checks if the user has credentials in the cache,
-    if credentials are found, retreives them
-    Returns:
-        dict -- Dictionary container user's login info.
-    """
-    if bool(USER_CACHE.get_login()):
-        return USER_CACHE.get_login()
-    return None
-
-
-def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
+def request_eve_endpoint(
+        eve_token: str, payload_data: dict, endpoint: str, method: str='POST'
+) -> requests.Response:
     """
     Generic method for running a request against the API with authorization
 
@@ -266,9 +282,8 @@ def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
         endpoint {str} -- Name of the endpoint the request should be sent to
 
     Returns:
-        obj -- Returns request object
+        requests.Response -- Returns request object
     """
-
     method_dictionary = {
         'GET': requests.get,
         'POST': requests.post,
@@ -277,6 +292,7 @@ def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
         'OPTIONS': requests.options,
         'DELETE': requests.delete
     }
+
     if method not in method_dictionary:
         error_string = 'Method argument ' + method + ' not a valid operation'
         raise KeyError(error_string)
@@ -285,17 +301,19 @@ def request_eve_endpoint(eve_token, payload_data, endpoint, method='POST'):
     if request_func == requests.get:
         return request_func(
             EVE_URL + "/" + endpoint,
-            headers={"Authorization": 'token {}'.format(eve_token)},
+            headers={"Authorization": 'Bearer {}'.format(eve_token)},
             params=payload_data
         )
     return request_func(
         EVE_URL + "/" + endpoint,
         json=payload_data,
-        headers={"Authorization": 'token {}'.format(eve_token)}
+        headers={"Authorization": 'Bearer {}'.format(eve_token)}
     )
 
 
-def validate_and_extract(file_names, sample_ids, non_static_inputs):
+def validate_and_extract(
+        file_names: List[str], sample_ids: List[str], non_static_inputs: List[str]
+) -> dict:
     """
     Compares each file name in upload to list of valid sample IDs in trial.
     If all names are valid, returns a mapping of filename to sample id.
@@ -303,7 +321,7 @@ def validate_and_extract(file_names, sample_ids, non_static_inputs):
     Arguments:
         file_names {[str]} -- list of file names
         sample_ids {[str]} -- list of valid ids
-
+        non_static_inputs {[str]} -- list of non static inputs for selected assay.
     Returns:
         dict -- Dictionary mapping file name to sample id. Format:
         {
@@ -366,7 +384,7 @@ def validate_and_extract(file_names, sample_ids, non_static_inputs):
     return upload_guide
 
 
-def find_eve_token(token_dir):
+def find_eve_token(token_dir: str) -> str:
     """Searches for a file containing a token for the API
 
     Arguments:

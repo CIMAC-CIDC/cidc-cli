@@ -46,7 +46,11 @@ def test_create_payload_objects():
     """
 
     file_dict = {
-        'file_name_1': '1234'
+        'file_name_1': {
+            'mapping': 'map',
+            'sample_id': '1234'
+        }
+
     }
     assay = {'assay_id': '321'}
     trial = {'_id': '456'}
@@ -55,5 +59,6 @@ def test_create_payload_objects():
         'assay': '321',
         'trial': '456',
         'file_name': 'file_name_1',
-        'sample_id': '1234'
+        'sample_id': '1234',
+        'mapping': 'map'
     }]
