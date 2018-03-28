@@ -64,15 +64,15 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'token {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token)
             }
         )
 
-        if not res.status_code == 201:
+        if not res.status_code == 200:
             print('Error! Patching unsuccesful')
             print(res.reason)
             if res.json:
-                print(res.json())
+                print(res.json)
 
     else:
         requests.patch(
@@ -85,7 +85,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'token {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token)
             }
         )
 

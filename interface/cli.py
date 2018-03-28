@@ -3,18 +3,15 @@
 Class defining the behavior of the interactive command line interface
 """
 
-
 import cmd
 import os
 import subprocess
 import json
-from typing import Tuple
 from upload.upload import upload_files
 from upload.cache_user import CredentialCache
 from utilities.cli_utilities import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
-    get_files, create_payload_objects, select_assay_trial, \
-    find_eve_token, request_eve_endpoint, ensure_logged_in
-from oath_auth0.auth0 import run_auth_proc
+    get_files, create_payload_objects, select_assay_trial, request_eve_endpoint, ensure_logged_in
+from auth0.auth0 import run_auth_proc
 
 USER_CACHE = CredentialCache(100, 600)
 
@@ -30,12 +27,9 @@ def run_download_process() -> None:
         return
 
     eve_token, selected_trial, selected_assay = selections
-
     trial_query = {'trial': selected_trial['_id']}
     assay_query = {'assay': selected_assay['assay_id']}
-
     query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
-
     records = fetch_eve_or_fail(eve_token, query_string, None, 200, 'GET')
     download_directory = None
     retreived = records['_items']
@@ -112,8 +106,6 @@ def run_upload_process() -> None:
             print(response_upload.json())
         return
 
-    print(response_upload.json())
-
     # Execute uploads
     job_id = upload_files(
         upload_dir,
@@ -161,7 +153,6 @@ def run_job_query() -> None:
     Allows user to check on the status of running jobs.
     """
 
-    username = None
     eve_token = None
     progress = None
     status = None
@@ -173,8 +164,8 @@ def run_job_query() -> None:
             )
         if not answer:
             return
-        username, eve_token = ensure_logged_in()
-        res = fetch_eve_or_fail(eve_token, 'status', {'started_by': username}, 200, 'GET')
+        eve_token = ensure_logged_in()
+        res = fetch_eve_or_fail(eve_token, 'status', None, 200, 'GET')
         jobs = res['_items']
         job_ids = [x['_id'] for x in jobs]
         for job in job_ids:
@@ -183,7 +174,7 @@ def run_job_query() -> None:
         status = jobs[selection - 1]
         progress = status['status']['progress']
     else:
-        username, eve_token = ensure_logged_in()
+        eve_token = ensure_logged_in()
         selection = option_select_framework(jobs, '====Jobs====')
         res = fetch_eve_or_fail(eve_token, 'analysis', {'_id': jobs[selection - 1]}, 200, 'GET')
         progress = res['_items'][0]['status']['progress']

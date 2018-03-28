@@ -9,7 +9,7 @@ import re
 from typing import List, Tuple
 
 import requests
-from oath_auth0.auth0 import run_auth_proc
+from auth0.auth0 import run_auth_proc
 from upload.cache_user import CredentialCache
 
 USER_CACHE = CredentialCache(100, 600)
@@ -263,8 +263,13 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
 
     # Select Assay
     assays = selected_trial['assays']
+
+    if not assays:
+        print("No assays are registered for the selected trial.")
+        return
+
     assay_names = [x['assay_name'] for x in assays]
-    assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
+    assay_selection = option_select_framework(assay_names, '=====| Available Ass ays |=====')
     selected_assay = assays[assay_selection - 1]
 
     return eve_token, selected_trial, selected_assay
