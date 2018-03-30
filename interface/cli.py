@@ -86,6 +86,7 @@ def run_upload_process() -> None:
     assay_r = fetch_eve_or_fail(
         eve_token, "assays/" + selected_assay['assay_id'], None, 200, 'GET'
     )
+    print(assay_r)
     non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
     file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
@@ -191,14 +192,6 @@ def run_job_query() -> None:
         return
 
 
-def run_oauth() -> None:
-    """
-    Runs the oauth pipeline.
-    """
-    key = run_auth_proc()
-    USER_CACHE.cache_key(key)
-
-
 class ShellCmd(cmd.Cmd, object):
     """
     Class to impart shell functionality to CMD
@@ -292,14 +285,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
         Starts the upload process
         """
         run_upload_process()
-
-    def do_oauth(self, rest=None) -> None:
-        """[summary]
-
-        Keyword Arguments:
-            rest {[type]} -- [description] (default: {None})
-        """
-        run_oauth()
 
     def do_download_data(self, rest=None) -> None:
         """

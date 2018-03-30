@@ -8,7 +8,7 @@ from setuptools import setup
 setup(
     name="cidc-cli",
     version='0.1.0',
-    packages=['interface', 'tests', 'upload'],
+    packages=['interface', 'tests', 'upload', 'auth0'],
     entry_points={
         'console_scripts': [
             'cidc-cli = interface.cli:main'

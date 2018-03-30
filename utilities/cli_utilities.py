@@ -6,11 +6,13 @@ Utility methods for the CIDC-CLI Interface
 import json
 import os
 import re
+from json import JSONDecodeError
 from typing import List, Tuple
 
 import requests
-from auth0.auth0 import run_auth_proc
 from upload.cache_user import CredentialCache
+from auth0.auth0 import run_auth_proc
+
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_URL = "http://0.0.0.0:5000"
@@ -18,7 +20,7 @@ SELECTIONS = Tuple[str, dict, dict]
 
 
 def fetch_eve_or_fail(
-    token: str, endpoint: str, data: dict, code: int, method: str='POST'
+        token: str, endpoint: str, data: dict, code: int, method: str='POST'
 ) -> dict:
     """
     Method for fetching results from eve with a fail safe
@@ -102,12 +104,8 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
     Returns:
         int - index of user selection
     """
-    number_of_options = len(options)
     prompt = generate_options_list(options, prompt_header)
-    return force_valid_menu_selection(
-        number_of_options,
-        prompt
-    )
+    return force_valid_menu_selection(len(options), prompt)
 
 
 def ensure_logged_in() -> str:
@@ -244,8 +242,10 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
     response = request_eve_endpoint(eve_token, None, 'trials', 'GET')
     if not response.status_code == 200:
         print('There was a problem fetching the data: ')
-        if response.json:
-            print(response.json())
+        try:
+            response.json()
+        except JSONDecodeError:
+            print(response.reason)
         return None
 
     # Select Trial
@@ -266,7 +266,7 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
 
     if not assays:
         print("No assays are registered for the selected trial.")
-        return
+        return None
 
     assay_names = [x['assay_name'] for x in assays]
     assay_selection = option_select_framework(assay_names, '=====| Available Ass ays |=====')
@@ -374,6 +374,8 @@ def validate_and_extract(
         # Sanity check number of files per ID
         if len(files_to_map) > len(nsi):
             print("Error! Too many files for this sampleID")
+            print(files_to_map)
+            print(nsi)
             return []
 
         # Loop over files and make the user map them.

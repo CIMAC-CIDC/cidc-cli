@@ -9,6 +9,7 @@ import webbrowser
 import hashlib
 import secrets
 import socket
+import time
 from typing import Tuple
 from base64 import urlsafe_b64encode
 import requests
@@ -20,7 +21,7 @@ AUDIENCE = 'http://localhost:5000'
 CLIENT_ID = 'w0PxQ5deugPZSnP0kWbtXyw5olaEAOMy'
 CODE_CHALLENGE_METHOD = 'S256'
 REDIRECT_URI = 'http://localhost:5001/get_code'
-SCOPE = 'openid profile'
+SCOPE = 'openid profile email'
 
 
 def base_64_urlencode(random_bytes) -> bytes:
@@ -104,7 +105,14 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
         'redirect_uri': REDIRECT_URI
     }
     res = requests.post("https://cidc-test.auth0.com/oauth/token", json=payload)
+
+    if not res.status_code == 200:
+        print("Error exchanging code for token")
+        print(res.reason)
+        return None
+
     res_json = res.json()
+
     return res_json['access_token']
 
 
@@ -123,7 +131,13 @@ def run_auth_proc() -> str:
 
     # Listen for response from the login.
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    serversocket.bind(('localhost', 5001))
+    while True:
+        try:
+            serversocket.bind(('localhost', 5001))
+            break
+        except OSError:
+            time.sleep(1)
+
     serversocket.listen(2)
     response = None
 
@@ -134,13 +148,22 @@ def run_auth_proc() -> str:
         if len(buf) > 0:
             # When response received, take value, send response, then close.
             response = buf
-            connection.sendall(b'Authorization Success! Please return to CLI')
+            connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
+            connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
+            connection.send(bytes('\n', 'utf-8'))
+            connection.send(bytes("""
+                <html>
+                <body>
+                <h1>Authentication Succeeded! Return to CLI.</h1>
+                </body>
+                </html>
+            """, 'utf-8'))
+            serversocket.shutdown(socket.SHUT_WR)
             serversocket.close()
             break
 
     # Response is bytes, so decode, then grab the code.
     response_str = response.decode('utf-8')
-    print(response_str)
     code = re.search(r'get_code\?code=(\w+)', response_str).group(1)
 
     # Exchange code for token and return.
