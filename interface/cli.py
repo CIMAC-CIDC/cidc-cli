@@ -86,7 +86,6 @@ def run_upload_process() -> None:
     assay_r = fetch_eve_or_fail(
         eve_token, "assays/" + selected_assay['assay_id'], None, 200, 'GET'
     )
-    print(assay_r)
     non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
     file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
@@ -119,36 +118,6 @@ def run_upload_process() -> None:
     print("Uploaded, your ID is: " + job_id)
 
 
-def run_analysis() -> None:
-    """
-    Developer function for letting user select analysis to run
-    """
-
-    # Obtain user information
-    selections = select_assay_trial(
-        "This is the analysis function\n"
-    )
-
-    if not selections:
-        return
-
-    eve_token, selected_trial, selected_assay = selections
-
-    # Get list of sample IDs
-    sample_ids = selected_trial['samples']
-
-    # Construct payload, for now just run on all samples
-    payload = {
-        'trial': selected_trial['_id'],
-        'assay': selected_assay['assay_id'],
-        'samples': sample_ids,
-    }
-
-    res_json = fetch_eve_or_fail(eve_token, "analysis", payload, 201)
-    print("Your run has started, to check on its status, query this id: " + res_json['_id'])
-    USER_CACHE.add_job_to_cache(res_json['_id'])
-
-
 def run_job_query() -> None:
     """
     Allows user to check on the status of running jobs.
@@ -157,28 +126,23 @@ def run_job_query() -> None:
     eve_token = None
     progress = None
     status = None
-    jobs = USER_CACHE.get_jobs()
+
+    eve_token = ensure_logged_in()
+    res = fetch_eve_or_fail(eve_token, 'status', None, 200, 'GET')
+    jobs = res['_items']
 
     if not jobs:
-        answer = user_prompt_yn(
-            'No records found locally for jobs, would you like to query the database?'
-            )
-        if not answer:
-            return
-        eve_token = ensure_logged_in()
-        res = fetch_eve_or_fail(eve_token, 'status', None, 200, 'GET')
-        jobs = res['_items']
-        job_ids = [x['_id'] for x in jobs]
-        for job in job_ids:
-            print(job)
-        selection = option_select_framework(job_ids, "===Jobs===")
-        status = jobs[selection - 1]
-        progress = status['status']['progress']
-    else:
-        eve_token = ensure_logged_in()
-        selection = option_select_framework(jobs, '====Jobs====')
-        res = fetch_eve_or_fail(eve_token, 'analysis', {'_id': jobs[selection - 1]}, 200, 'GET')
-        progress = res['_items'][0]['status']['progress']
+        print("No jobs found for this user.")
+        return
+
+    job_ids = [x['_id'] for x in jobs]
+
+    for job in job_ids:
+        print(job)
+
+    selection = option_select_framework(job_ids, "===Jobs===")
+    status = jobs[selection - 1]
+    progress = status['status']['progress']
 
     if progress == 'In Progress':
         print('Job is still in progress, check back later')
@@ -187,10 +151,6 @@ def run_job_query() -> None:
     elif progress == 'Aborted':
         print('Job was aborted: ' + status['status']['message'])
 
-    if not jobs:
-        print("There appears to be no running jobs")
-        return
-
 
 class ShellCmd(cmd.Cmd, object):
     """
@@ -198,7 +158,8 @@ class ShellCmd(cmd.Cmd, object):
     """
 
     def do_shell(self, s):
-        """Instantiates shell environment
+        """
+        Instantiates shell environment
 
         Arguments:
             s {[type]} -- [description]
@@ -231,7 +192,8 @@ class ExitCmd(cmd.Cmd, object):
                 return True
 
     def can_exit(self) -> bool:
-        """Confirms that the CLI can exit.
+        """
+        Confirms that the CLI can exit.
 
         Returns:
             boolean -- Simply returns true.
@@ -245,7 +207,7 @@ class ExitCmd(cmd.Cmd, object):
             line {[type]} -- [description]
 
         Returns:
-            [type] -- [description]
+            bool -- Returns whether or not user wants to exit.
         """
         response = super(ExitCmd, self).onecmd(line)
         if response and (self.can_exit() or input('exit anyway ? (yes/no):') == 'yes'):
@@ -253,7 +215,8 @@ class ExitCmd(cmd.Cmd, object):
         return False
 
     def do_exit(self, s) -> bool:
-        """[summary]
+        """
+        Exit the command line tool.
 
         Arguments:
             s {[type]} -- [description]
@@ -261,10 +224,12 @@ class ExitCmd(cmd.Cmd, object):
         Returns:
             bool -- [description]
         """
+        print('Now exiting')
         return True
 
     def help_exit(self):
-        """[summary]
+        """
+        Help function for exit function.
         """
         print("Exit the interpreter.")
         print("You can also use the Ctrl-D shortcut.")
@@ -291,12 +256,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
         Starts the download process
         """
         run_download_process()
-
-    def do_run_analysis(self, rest=None) -> None:
-        """
-        Lets user run analysis
-        """
-        run_analysis()
 
     def do_query_job(self, rest=None) -> None:
         """

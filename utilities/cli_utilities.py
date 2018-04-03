@@ -41,7 +41,12 @@ def fetch_eve_or_fail(
     if not response.status_code == code:
         error_string = "There was a problem with your request: "
         if response.json:
-            error_string += json.dumps(response.json())
+            try:
+                error_string += json.dumps(response.json())
+            except Exception as exc:
+                print(exc)
+                error_string += response.reason
+                raise RuntimeError(error_string)
         else:
             error_string += response.reason
         raise RuntimeError(error_string)
@@ -79,12 +84,15 @@ def force_valid_menu_selection(
     Returns:
         int -- The user's selection
     """
-    selection = "-1"
+    selection = -1
+    user_input = None
+
     # Force user to make valid selection
     while int(selection) not in range(1, number_options + 1):
-        selection = input(prompt)
+        user_input = input(prompt)
         try:
-            int(selection)
+            int(user_input)
+            selection = user_input
         except ValueError:
             print('Please enter an integer')
         if int(selection) not in range(1, number_options + 1):
@@ -212,7 +220,7 @@ def create_payload_objects(file_dict: List[dict], trial: dict, assay: dict) -> L
         assay {dict} -- Assay ID dictionary
 
     Returns:
-        [type] -- [description]
+        [dict] -- List of records in payload format.
     """
     return [
         {
@@ -303,16 +311,18 @@ def request_eve_endpoint(
         raise KeyError(error_string)
 
     request_func = method_dictionary[method]
+    auth_header = {"Authorization": 'Bearer {}'.format(eve_token)}
+    url = EVE_URL + "/" + endpoint
     if request_func == requests.get:
         return request_func(
-            EVE_URL + "/" + endpoint,
-            headers={"Authorization": 'Bearer {}'.format(eve_token)},
+            url,
+            headers=auth_header,
             params=payload_data
         )
     return request_func(
-        EVE_URL + "/" + endpoint,
+        url,
         json=payload_data,
-        headers={"Authorization": 'Bearer {}'.format(eve_token)}
+        headers=auth_header
     )
 
 
@@ -374,9 +384,7 @@ def validate_and_extract(
         # Sanity check number of files per ID
         if len(files_to_map) > len(nsi):
             print("Error! Too many files for this sampleID")
-            print(files_to_map)
-            print(nsi)
-            return []
+            raise RuntimeError
 
         # Loop over files and make the user map them.
         for filename in files_to_map:

@@ -6,6 +6,7 @@ This is a simple command-line tool that allows users to upload data to our googl
 import subprocess
 import datetime
 from typing import List
+from json import JSONDecodeError
 
 import requests
 
@@ -71,8 +72,10 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
         if not res.status_code == 200:
             print('Error! Patching unsuccesful')
             print(res.reason)
-            if res.json:
-                print(res.json)
+            try:
+                print(res.json())
+            except JSONDecodeError:
+                print("No valid JSON response")
 
     else:
         requests.patch(

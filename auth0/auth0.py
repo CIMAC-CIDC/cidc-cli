@@ -24,7 +24,7 @@ REDIRECT_URI = 'http://localhost:5001/get_code'
 SCOPE = 'openid profile email'
 
 
-def base_64_urlencode(random_bytes) -> bytes:
+def base_64_urlencode(random_bytes: bytes) -> bytes:
     """
     Encodes bytes to a URL safe b64 encoded sequence.
 
@@ -37,7 +37,7 @@ def base_64_urlencode(random_bytes) -> bytes:
     return urlsafe_b64encode(random_bytes)
 
 
-def sha256(buffer) -> bytes:
+def sha256(buffer: bytes) -> bytes:
     """
     Hashes a series of b64 encoded bits using sha256.
 
@@ -59,11 +59,14 @@ def create_crypto_pair() -> CRYPTOPAIR:
     Returns:
         Tuple -- Verifier (bytes), Challenge_str (string)
     """
-    verifier = base_64_urlencode(secrets.token_bytes(32))
-    challenge = base_64_urlencode(sha256(verifier))
-    # Removes the padding character if one is used, Auth0 bugs out if this is left in.
-    challenge_str = re.sub('=$', '', challenge.decode()).encode('utf-8')
-    return verifier, challenge_str
+    try:
+        verifier = base_64_urlencode(secrets.token_bytes(32))
+        challenge = base_64_urlencode(sha256(verifier))
+        # Removes the padding character if one is used, Auth0 bugs out if this is left in.
+        challenge_str = re.sub('=$', '', challenge.decode()).encode('utf-8')
+        return verifier, challenge_str
+    except TypeError as tye:
+        print(tye)
 
 
 def authorize_user(challenge_str) -> None:
@@ -82,8 +85,11 @@ def authorize_user(challenge_str) -> None:
         'code_challenge_method': CODE_CHALLENGE_METHOD,
         'redirect_uri': REDIRECT_URI
     }
-    url = DOMAIN + urllib.parse.urlencode(params)
-    webbrowser.open(url)
+    try:
+        url = DOMAIN + urllib.parse.urlencode(params)
+        webbrowser.open(url)
+    except TypeError as tye:
+        print(tye)
 
 
 def exchange_code_for_token(code: str, verifier: bytes) -> str:
