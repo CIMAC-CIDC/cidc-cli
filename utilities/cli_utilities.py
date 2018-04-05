@@ -6,10 +6,11 @@ Utility methods for the CIDC-CLI Interface
 import json
 import os
 import re
-from json import JSONDecodeError
 from typing import List, Tuple
 
 import requests
+from simplejson.errors import JSONDecodeError
+
 from upload.cache_user import CredentialCache
 from auth0.auth0 import run_auth_proc
 
@@ -50,6 +51,7 @@ def fetch_eve_or_fail(
         else:
             error_string += response.reason
         raise RuntimeError(error_string)
+    print(response.json())
     return response.json()
 
 
@@ -194,7 +196,7 @@ def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
 
             if not len(files_to_upload) == len(set(files_to_upload)):
                 print("Error, duplicate names in file list, aborting")
-                return
+                return None
 
         except FileNotFoundError as error:
             print("Error: " + error)
@@ -397,23 +399,3 @@ def validate_and_extract(
             del nsi[selection - 1]
 
     return upload_guide
-
-
-def find_eve_token(token_dir: str) -> str:
-    """Searches for a file containing a token for the API
-
-    Arguments:
-        token_dir {str} -- directory where token is stored
-
-    Raises:
-        FileNotFoundError -- Raise error if no token file found
-
-    Returns:
-        str -- Authorization token
-    """
-    for file_name in os.listdir(token_dir):
-        if file_name.endswith('.token'):
-            with open(token_dir + '/' + file_name) as token_file:
-                eve_token = token_file.read().strip()
-                return eve_token
-    raise FileNotFoundError('No valid token file was found')
