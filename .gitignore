@@ -1,8 +1,7 @@
 /TESTWDL
 /TESTWDL/*
 token.token
-tests/__pycache__/*
-upload/__pycache__/*
-interface/__pycache__/*
-oath_auth0/__pycache__/*
+**/__pycache__/
 **.pyc
+/sample_data
+

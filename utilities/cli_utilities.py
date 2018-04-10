@@ -3,56 +3,19 @@
 Utility methods for the CIDC-CLI Interface
 """
 
-import json
 import os
 import re
 from typing import List, Tuple
 
-import requests
-from simplejson.errors import JSONDecodeError
-
-from upload.cache_user import CredentialCache
+from cidc_utils.requests import SmartFetch
+from cidc_utils.caching import CredentialCache
 from auth0.auth0 import run_auth_proc
 
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_URL = "http://0.0.0.0:5000"
 SELECTIONS = Tuple[str, dict, dict]
-
-
-def fetch_eve_or_fail(
-        token: str, endpoint: str, data: dict, code: int, method: str='POST'
-) -> dict:
-    """
-    Method for fetching results from eve with a fail safe
-
-    Arguments:
-        token {string} -- access token
-        endpoint {string} -- endpoint data is being inserted into
-        data {dict} -- payload data to be uploaded
-        code {int} -- expected status code of the response
-
-    Keyword Arguments:
-        method {str} -- HTTP method (default: {'POST'})
-
-    Returns:
-        dict -- json formatted response from eve
-    """
-    response = request_eve_endpoint(token, data, endpoint, method)
-    if not response.status_code == code:
-        error_string = "There was a problem with your request: "
-        if response.json:
-            try:
-                error_string += json.dumps(response.json())
-            except Exception as exc:
-                print(exc)
-                error_string += response.reason
-                raise RuntimeError(error_string)
-        else:
-            error_string += response.reason
-        raise RuntimeError(error_string)
-    print(response.json())
-    return response.json()
+EVE_FETCHER = SmartFetch(EVE_URL)
 
 
 def generate_options_list(options: List[str], header: str) -> str:
@@ -249,14 +212,7 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
     eve_token = ensure_logged_in()
 
     # Fetch list of trials
-    response = request_eve_endpoint(eve_token, None, 'trials', 'GET')
-    if not response.status_code == 200:
-        print('There was a problem fetching the data: ')
-        try:
-            response.json()
-        except JSONDecodeError:
-            print(response.reason)
-        return None
+    response = EVE_FETCHER.get(token=eve_token, endpoint='trials')
 
     # Select Trial
     response_data = response.json()
@@ -283,49 +239,6 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
     selected_assay = assays[assay_selection - 1]
 
     return eve_token, selected_trial, selected_assay
-
-
-def request_eve_endpoint(
-        eve_token: str, payload_data: dict, endpoint: str, method: str='POST'
-) -> requests.Response:
-    """
-    Generic method for running a request against the API with authorization
-
-    Arguments:
-        eve_token {str} -- API token
-        payload_data {dict} -- The payload to be sent
-        endpoint {str} -- Name of the endpoint the request should be sent to
-
-    Returns:
-        requests.Response -- Returns request object
-    """
-    method_dictionary = {
-        'GET': requests.get,
-        'POST': requests.post,
-        'PUT': requests.put,
-        'HEAD': requests.head,
-        'OPTIONS': requests.options,
-        'DELETE': requests.delete
-    }
-
-    if method not in method_dictionary:
-        error_string = 'Method argument ' + method + ' not a valid operation'
-        raise KeyError(error_string)
-
-    request_func = method_dictionary[method]
-    auth_header = {"Authorization": 'Bearer {}'.format(eve_token)}
-    url = EVE_URL + "/" + endpoint
-    if request_func == requests.get:
-        return request_func(
-            url,
-            headers=auth_header,
-            params=payload_data
-        )
-    return request_func(
-        url,
-        json=payload_data,
-        headers=auth_header
-    )
 
 
 def validate_and_extract(

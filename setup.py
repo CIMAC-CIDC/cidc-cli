@@ -3,15 +3,16 @@
 Setup for the package
 """
 
-from setuptools import setup
+from setuptools import setup, find_packages
+
 
 setup(
-    name="cidc-cli",
+    name="cidc_cli",
     version='0.1.0',
-    packages=['interface', 'tests', 'upload', 'auth0'],
+    packages=find_packages(exclude=('tests', 'Pipfile', 'Pipfile.lock')),
     entry_points={
         'console_scripts': [
-            'cidc-cli = interface.cli:main'
+            'cidc_cli = interface.cli:main'
         ]
     },
     python_requires='>=3'

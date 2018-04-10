@@ -7,13 +7,20 @@ import cmd
 import os
 import subprocess
 import json
+
+from cidc_utils.requests import SmartFetch
+from cidc_utils.caching import CredentialCache
 from upload.upload import upload_files
-from upload.cache_user import CredentialCache
-from utilities.cli_utilities import fetch_eve_or_fail, option_select_framework, user_prompt_yn, \
-    get_files, create_payload_objects, select_assay_trial, request_eve_endpoint, ensure_logged_in
-from auth0.auth0 import run_auth_proc
+from utilities.cli_utilities import (
+    option_select_framework,
+    get_files,
+    create_payload_objects,
+    select_assay_trial,
+    ensure_logged_in
+)
 
 USER_CACHE = CredentialCache(100, 600)
+EVE_FETCHER = SmartFetch('http://0.0.0.0:5000')
 
 
 def run_download_process() -> None:
@@ -30,7 +37,8 @@ def run_download_process() -> None:
     trial_query = {'trial': selected_trial['_id']}
     assay_query = {'assay': selected_assay['assay_id']}
     query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
-    records = fetch_eve_or_fail(eve_token, query_string, None, 200, 'GET')
+    records = EVE_FETCHER.post(
+        token=eve_token, endpoint=query_string, code=200).json()
     download_directory = None
     retreived = records['_items']
 
@@ -39,7 +47,7 @@ def run_download_process() -> None:
         return
 
     print('Files to be downloaded: ')
-    for ret in retreived:
+    for ret in records['_items']:
         print(ret['file_name'])
 
     while not download_directory:
@@ -83,9 +91,9 @@ def run_upload_process() -> None:
     eve_token, selected_trial, selected_assay = selections
 
     # Query the selected assay ID to get the inputs.
-    assay_r = fetch_eve_or_fail(
-        eve_token, "assays/" + selected_assay['assay_id'], None, 200, 'GET'
-    )
+    assay_r = EVE_FETCHER.get(
+        token=eve_token, endpoint="assays/" + selected_assay['assay_id']).json()
+
     non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
     file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
@@ -98,13 +106,7 @@ def run_upload_process() -> None:
         'files': create_payload_objects(file_upload_dict, selected_trial, selected_assay)
     }
 
-    response_upload = request_eve_endpoint(eve_token, payload, 'ingestion')
-
-    if not response_upload.status_code == 201:
-        print('Upload Failed:')
-        if response_upload.json:
-            print(response_upload.json())
-        return
+    response_upload = EVE_FETCHER.post(token=eve_token, endpoint='ingestion', json=payload)
 
     # Execute uploads
     job_id = upload_files(
@@ -128,7 +130,7 @@ def run_job_query() -> None:
     status = None
 
     eve_token = ensure_logged_in()
-    res = fetch_eve_or_fail(eve_token, 'status', None, 200, 'GET')
+    res = EVE_FETCHER.get(token=eve_token, endpoint='status').json()
     jobs = res['_items']
 
     if not jobs:
@@ -187,7 +189,7 @@ class ExitCmd(cmd.Cmd, object):
             try:
                 super(ExitCmd, self).cmdloop(intro="")
                 self.postloop()
-                break
+                return False
             except KeyboardInterrupt:
                 return True
 
@@ -242,7 +244,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
     """
     Defines the CLI interface
     """
-
     intro = "Welcome to the CIDC CLI Tool"
 
     def do_upload_data(self, rest=None) -> None:
