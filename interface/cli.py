@@ -5,6 +5,7 @@ Class defining the behavior of the interactive command line interface
 
 import cmd
 import os
+from os import environ as env
 import subprocess
 import json
 
@@ -19,8 +20,15 @@ from utilities.cli_utilities import (
     ensure_logged_in
 )
 
+EVE_URL = None
+
+if env.get('EVE_URL'):
+    EVE_URL = env.get('EVE_URL')
+else:
+    EVE_URL = 'http://0.0.0.0:5000'
+
 USER_CACHE = CredentialCache(100, 600)
-EVE_FETCHER = SmartFetch('http://0.0.0.0:5000')
+EVE_FETCHER = SmartFetch(EVE_URL)
 
 
 def run_download_process() -> None:
@@ -106,7 +114,7 @@ def run_upload_process() -> None:
         'files': create_payload_objects(file_upload_dict, selected_trial, selected_assay)
     }
 
-    response_upload = EVE_FETCHER.post(token=eve_token, endpoint='ingestion', json=payload)
+    response_upload = EVE_FETCHER.post(token=eve_token, endpoint='ingestion', json=payload, code=201)
 
     # Execute uploads
     job_id = upload_files(

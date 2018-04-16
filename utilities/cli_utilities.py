@@ -4,6 +4,7 @@ Utility methods for the CIDC-CLI Interface
 """
 
 import os
+from os import environ as env
 import re
 from typing import List, Tuple
 
@@ -13,7 +14,13 @@ from auth0.auth0 import run_auth_proc
 
 
 USER_CACHE = CredentialCache(100, 600)
-EVE_URL = "http://0.0.0.0:5000"
+EVE_URL = None
+
+if env.get('EVE_URL'):
+    EVE_URL = env.get('EVE_URL')
+else:
+    EVE_URL = 'http://0.0.0.0:5000'
+
 SELECTIONS = Tuple[str, dict, dict]
 EVE_FETCHER = SmartFetch(EVE_URL)
 

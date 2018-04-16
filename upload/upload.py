@@ -5,13 +5,18 @@ This is a simple command-line tool that allows users to upload data to our googl
 
 import subprocess
 import datetime
+from os import environ as env
 from typing import List
 from json import JSONDecodeError
 
 import requests
 
+EVE_URL = None
 
-EVE_URL = "http://0.0.0.0:5000"
+if env.get('EVE_URL'):
+    EVE_URL = env.get('EVE_URL')
+else:
+    EVE_URL = "http://0.0.0.0:5000"
 
 
 def create_data_entries(
