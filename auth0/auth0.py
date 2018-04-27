@@ -154,23 +154,25 @@ def run_auth_proc() -> str:
         if len(buf) > 0:
             # When response received, take value, send response, then close.
             response = buf
-            connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
-            connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
-            connection.send(bytes('\n', 'utf-8'))
-            connection.send(bytes("""
-                <html>
-                <body>
-                <h1>Authentication Succeeded! Return to CLI.</h1>
-                </body>
-                </html>
-            """, 'utf-8'))
-            serversocket.shutdown(socket.SHUT_WR)
-            serversocket.close()
-            break
+            response_str = response.decode('utf-8')
+            if re.search(r'get_code\?code=(\w+)', response_str).group(1):
+                connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
+                connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
+                connection.send(bytes('\n', 'utf-8'))
+                connection.send(bytes("""
+                    <html>
+                    <body>
+                    <h1>Authentication Succeeded! Return to CLI.</h1>
+                    </body>
+                    </html>
+                """, 'utf-8'))
+                serversocket.shutdown(socket.SHUT_WR)
+                serversocket.close()
+                break
 
     # Response is bytes, so decode, then grab the code.
-    response_str = response.decode('utf-8')
-    code = re.search(r'get_code\?code=(\w+)', response_str).group(1)
+    response_st = response.decode('utf-8')
+    code = re.search(r'get_code\?code=(\w+)', response_st).group(1)
 
     # Exchange code for token and return.
     return exchange_code_for_token(code, verifier)
