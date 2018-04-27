@@ -59,7 +59,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
         message {str} -- If upload failed, contains error.
     """
     if status:
-        res = requests.patch(
+        res = requests.post(
             EVE_URL + "/ingestion/" + mongo_data["_id"],
             json={
                 "status": {
@@ -70,7 +70,8 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'Bearer {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token),
+                "X-HTTP-Method-Override": "PATCH"
             }
         )
 
@@ -83,7 +84,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
                 print("No valid JSON response")
 
     else:
-        requests.patch(
+        requests.post(
             EVE_URL + "/ingestion/" + mongo_data['_id'],
             json={
                 "status": {
@@ -93,7 +94,8 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'Bearer {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token),
+                "X-HTTP-Method-Override": "PATCH"
             }
         )
 

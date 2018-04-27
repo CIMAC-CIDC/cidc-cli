@@ -1,0 +1,45 @@
+-e git+https://git@github.com/uc-cdis/cdiserrors.git@a9c5726cf7a988d4c846b3ee7649882695ddf625#egg=cdiserrors
+-e git+https://git@github.com/uc-cdis/cdislogging.git@13dc465013e5139de73ebe6dabf7b571314a9324#egg=cdislogging
+-e git+https://github.com/uc-cdis/authutils.git@c71f582dc32929f36fd53478fd8d6c08c296eb19#egg=authutils
+-e git+https://github.com/uc-cdis/cdis-python-utils.git@17bf71863cfa722e947d564ed159076937d80b70#egg=cdispyutils
+-e git+https://github.com/uc-cdis/cdisutils-test.git@c63051837f66858071e71a5f73337e2c09b1d44a#egg=cdisutilstest
+-e git+https://github.com/uc-cdis/cirrus.git@fb9251c626e18c77f5dd0b55bc61043be2d8b076#egg=cirrus
+-e git+https://github.com/uc-cdis/datamodelutils.git@3a046ee1b5479be8d457f10405ef6176e3e95a9f#egg=datamodelutils
+-e git+https://github.com/uc-cdis/fence.git@aafb4eb993b11c5c2d3e73485ed8ec37662d0443#egg=fence
+-e git+https://github.com/uc-cdis/flask-postgres-session.git@68bf5a9723a351729855c429eca8a0f4bbb830c7#egg=flask-postgres-session
+-e git+https://github.com/uc-cdis/storage-client.git@44f0834155bf00c29a555410dd89a5b7048d1093#egg=storageclient
+-e git+https://github.com/uc-cdis/userdatamodel.git@5504662f95f4ca1c1f84e65e8a426d818e2deb4a#egg=userdatamodel
+appdirs==1.4.3
+argcomplete==1.9.4
+asn1crypto==0.24.0
+boto==2.48.0
+cachetools==2.0.1
+certifi==2018.1.18
+cffi==1.11.5; platform_python_implementation != 'PyPy'
+chardet==3.0.4
+coverage==4.5.1
+crcmod==1.7
+cryptography==2.2.2
+fasteners==0.14.1
+gcs-oauth2-boto-plugin==1.14
+git+https://github.com/dfci/cidc-utils.git#egg=cidc-utils
+google-apitools==0.5.22
+gsutil==4.30
+httplib2==0.11.3
+idna==2.6
+mock==2.0.0
+monotonic==1.4
+nose2==0.7.4
+oauth2client==4.1.2
+pbr==4.0.1
+pyasn1-modules==0.2.1
+pyasn1==0.4.2
+pycparser==2.18
+pyopenssl==17.5.0
+python-gflags==3.1.2
+requests==2.18.4
+retry-decorator==1.1.0
+rsa==3.4.2
+six==1.11.0
+socksipy-branch==1.1
+urllib3==1.22
