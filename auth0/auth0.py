@@ -134,10 +134,10 @@ def send_response_html(connection, status: bool) -> None:
     Returns:
         None -- [description]
     """
-    connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
-    connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
-    connection.send(bytes('\n', 'utf-8'))
     if status:
+        connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
+        connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
+        connection.send(bytes('\n', 'utf-8'))
         connection.send(bytes("""
             <html>
             <body>
@@ -146,6 +146,9 @@ def send_response_html(connection, status: bool) -> None:
             </html>
         """, 'utf-8'))
     else:
+        connection.send(bytes('HTTP/1.1 401 UNAUTHORIZED\n', 'utf-8'))
+        connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
+        connection.send(bytes('\n', 'utf-8'))
         connection.send(bytes("""
             <html>
             <body>
@@ -184,6 +187,7 @@ def run_auth_proc() -> str:
 
     if sleep == 10:
         print('Failed to connect, exiting!')
+        serversocket.close()
         return None
 
     serversocket.listen(5)
@@ -215,6 +219,7 @@ def run_auth_proc() -> str:
                 break
         except OSError as error:
             print('OS ERROR: ' + error)
+            exchange_code_for_token('failed_exchange', verifier)
             send_response_html(connection, False)
         finally:
             serversocket.close()

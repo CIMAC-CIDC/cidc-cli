@@ -61,9 +61,13 @@ def run_download_process() -> None:
         download_directory = input(
             "Please enter the path where you would like the files to be downloaded:\n"
         )
-        if not os.path.isdir(download_directory):
-            print("The given path is not valid, please enter a new one.")
+        try:
+            if not os.path.isdir(download_directory):
+                print("The given path is not valid, please enter a new one.")
+                download_directory = None
+        except ValueError:
             download_directory = None
+            print("Please only enter valid filepaths")
 
     for record in records['_items']:
         gs_uri = record['gs_uri']
@@ -99,7 +103,8 @@ def run_upload_process() -> None:
 
     # Query the selected assay ID to get the inputs.
     assay_r = EVE_FETCHER.get(
-        token=eve_token, endpoint="assays/" + selected_assay['assay_id']).json()
+        token=eve_token, endpoint="assays/" + selected_assay['assay_id']
+    ).json()
 
     non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
@@ -113,7 +118,9 @@ def run_upload_process() -> None:
         'files': create_payload_objects(file_upload_dict, selected_trial, selected_assay)
     }
 
-    response_upload = EVE_FETCHER.post(token=eve_token, endpoint='ingestion', json=payload, code=201)
+    response_upload = EVE_FETCHER.post(
+        token=eve_token, endpoint='ingestion', json=payload, code=201
+    )
 
     # Execute uploads
     job_id = upload_files(
