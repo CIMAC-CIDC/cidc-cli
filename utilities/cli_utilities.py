@@ -219,6 +219,7 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
     eve_token = ensure_logged_in()
 
     # Fetch list of trials
+    print(eve_token)
     response = EVE_FETCHER.get(token=eve_token, endpoint='trials')
 
     # Select Trial
@@ -242,7 +243,7 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
         return None
 
     assay_names = [x['assay_name'] for x in assays]
-    assay_selection = option_select_framework(assay_names, '=====| Available Ass ays |=====')
+    assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
     selected_assay = assays[assay_selection - 1]
 
     return eve_token, selected_trial, selected_assay
@@ -298,8 +299,8 @@ def validate_and_extract(
         nsi = non_static_inputs[:]
 
         print(
-            "These files are associated with SampleID: " + sample_id + ", please map them to the \
-            assay inputs"
+            "These files are associated with SampleID: " + sample_id + ", please map them to th " +
+            "assay inputs"
         )
         files_to_map = sample_id_dict[sample_id]
 

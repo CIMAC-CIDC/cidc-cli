@@ -42,10 +42,9 @@ def run_download_process() -> None:
         return
 
     eve_token, selected_trial, selected_assay = selections
-    trial_query = {'trial': selected_trial['_id']}
-    assay_query = {'assay': selected_assay['assay_id']}
-    query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
-    records = EVE_FETCHER.post(
+    trial_query = {'trial': selected_trial['_id'], 'assay': selected_assay['assay_id']}
+    query_string = "data?where=%s" % (json.dumps(trial_query))
+    records = EVE_FETCHER.get(
         token=eve_token, endpoint=query_string, code=200).json()
     download_directory = None
     retreived = records['_items']
@@ -75,7 +74,7 @@ def run_download_process() -> None:
             download_directory
         ]
         try:
-            subprocess.run(gs_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(gs_args)
         except subprocess.CalledProcessError as error:
             error_string = 'Shell command generated error' + str(error.output)
             print(error_string)

@@ -110,6 +110,7 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
         'code': code,
         'redirect_uri': REDIRECT_URI
     }
+
     res = requests.post("https://cidc-test.auth0.com/oauth/token", json=payload)
 
     if not res.status_code == 200:
@@ -120,6 +121,38 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
     res_json = res.json()
 
     return res_json['access_token']
+
+
+def send_response_html(connection, status: bool) -> None:
+    """
+    Sends HTML to tell the user whether or not the authentication worked.
+
+    Arguments:
+        connection {[type]} -- [description]
+        status {bool} -- [description]
+
+    Returns:
+        None -- [description]
+    """
+    connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
+    connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
+    connection.send(bytes('\n', 'utf-8'))
+    if status:
+        connection.send(bytes("""
+            <html>
+            <body>
+            <h1>Authentication Succeeded! Return to CLI.</h1>
+            </body>
+            </html>
+        """, 'utf-8'))
+    else:
+        connection.send(bytes("""
+            <html>
+            <body>
+            <h1>Authentication Failed: </h1>
+            </body>
+            </html>
+        """, 'utf-8'))
 
 
 def run_auth_proc() -> str:
@@ -137,42 +170,52 @@ def run_auth_proc() -> str:
 
     # Listen for response from the login.
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    while True:
+
+    sleep = 0
+    while True and sleep < 10:
         try:
             serversocket.bind(('localhost', 5001))
             break
-        except OSError:
+        except OSError as oser:
+            print('failed to bind!')
+            print(oser)
             time.sleep(1)
+            sleep += 1
 
-    serversocket.listen(2)
+    if sleep == 10:
+        print('Failed to connect, exiting!')
+        return None
+
+    serversocket.listen(5)
     response = None
 
     # Keep connection alive until response.
     while True:
         connection, address = serversocket.accept()
         buf = connection.recv(1024)
-        if len(buf) > 0:
-            # When response received, take value, send response, then close.
-            response = buf
-            response_str = response.decode('utf-8')
-            if re.search(r'get_code\?code=(\w+)', response_str).group(1):
-                connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
-                connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
-                connection.send(bytes('\n', 'utf-8'))
-                connection.send(bytes("""
-                    <html>
-                    <body>
-                    <h1>Authentication Succeeded! Return to CLI.</h1>
-                    </body>
-                    </html>
-                """, 'utf-8'))
-                serversocket.shutdown(socket.SHUT_WR)
-                serversocket.close()
+        try:
+            if buf:
+                # When response received, take value, send response, then close.
+                response = buf
+                response_str = response.decode('utf-8')
+                if re.search(r'get_code\?code=(\w+)', response_str).group(1):
+                    code = re.search(r'get_code\?code=(\w+)', response_str).group(1)
+                    try:
+                        token = exchange_code_for_token(code, verifier)
+                        send_response_html(connection, True)
+                        return token
+                    except RuntimeError:
+                        # Testing to see if this fixes the auth thing. It may wait for *some*
+                        # attempt to redeem the code, so lets hard-fail it, so it starts fresh.
+                        exchange_code_for_token('failed_exchange', verifier)
+                        send_response_html(connection, False)
+                        break
+            else:
+                print('nothing....')
                 break
-
-    # Response is bytes, so decode, then grab the code.
-    response_st = response.decode('utf-8')
-    code = re.search(r'get_code\?code=(\w+)', response_st).group(1)
-
-    # Exchange code for token and return.
-    return exchange_code_for_token(code, verifier)
+        except OSError as error:
+            print('OS ERROR: ' + error)
+            send_response_html(connection, False)
+        finally:
+            serversocket.close()
+    return None
