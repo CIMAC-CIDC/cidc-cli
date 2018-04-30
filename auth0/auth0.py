@@ -2,7 +2,6 @@
 """
 Module that handles authentication with auth0
 """
-
 import urllib
 import re
 import webbrowser
@@ -13,15 +12,9 @@ import time
 from typing import Tuple
 from base64 import urlsafe_b64encode
 import requests
-
+from auth0.constants import DOMAIN, AUDIENCE, CLIENT_ID, CODE_CHALLENGE_METHOD, SCOPE, REDIRECT_URI
 
 CRYPTOPAIR = Tuple[bytes, str]
-DOMAIN = "https://cidc-test.auth0.com/authorize?"
-AUDIENCE = 'http://localhost:5000'
-CLIENT_ID = 'w0PxQ5deugPZSnP0kWbtXyw5olaEAOMy'
-CODE_CHALLENGE_METHOD = 'S256'
-REDIRECT_URI = 'http://localhost:5001/get_code'
-SCOPE = 'openid profile email'
 
 
 def base_64_urlencode(random_bytes: bytes) -> bytes:
@@ -87,9 +80,10 @@ def authorize_user(challenge_str) -> None:
     }
     try:
         url = DOMAIN + urllib.parse.urlencode(params)
-        webbrowser.open(url)
+        return url
     except TypeError as tye:
         print(tye)
+        return None
 
 
 def exchange_code_for_token(code: str, verifier: bytes) -> str:
@@ -116,7 +110,7 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
     if not res.status_code == 200:
         print("Error exchanging code for token")
         print(res.reason)
-        return None
+        raise RuntimeError
 
     res_json = res.json()
 
@@ -128,11 +122,8 @@ def send_response_html(connection, status: bool) -> None:
     Sends HTML to tell the user whether or not the authentication worked.
 
     Arguments:
-        connection {[type]} -- [description]
-        status {bool} -- [description]
-
-    Returns:
-        None -- [description]
+        connection {object} -- Socket connection
+        status {bool} -- True if auth worked, else false.
     """
     if status:
         connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
@@ -169,19 +160,19 @@ def run_auth_proc() -> str:
     verifier, challenge_str = create_crypto_pair()
 
     # Open link and have user log in.
-    authorize_user(challenge_str)
+    url = authorize_user(challenge_str)
 
     # Listen for response from the login.
     serversocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    serversocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
     sleep = 0
-    while True and sleep < 10:
+    while True and sleep < 4:
         try:
             serversocket.bind(('localhost', 5001))
             break
-        except OSError as oser:
-            print('failed to bind!')
-            print(oser)
+        except OSError:
+            print('Socket in use... waiting')
             time.sleep(1)
             sleep += 1
 
@@ -190,6 +181,7 @@ def run_auth_proc() -> str:
         serversocket.close()
         return None
 
+    webbrowser.open(url)
     serversocket.listen(5)
     response = None
 
@@ -208,10 +200,9 @@ def run_auth_proc() -> str:
                         token = exchange_code_for_token(code, verifier)
                         send_response_html(connection, True)
                         return token
-                    except RuntimeError:
-                        # Testing to see if this fixes the auth thing. It may wait for *some*
-                        # attempt to redeem the code, so lets hard-fail it, so it starts fresh.
-                        exchange_code_for_token('failed_exchange', verifier)
+                    except RuntimeError as error:
+                        # If exchange fails, 401 will raise RuntimeError.
+                        print(error)
                         send_response_html(connection, False)
                         break
             else:

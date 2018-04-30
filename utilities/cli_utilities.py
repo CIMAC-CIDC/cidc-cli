@@ -1,17 +1,14 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.7
 """
 Utility methods for the CIDC-CLI Interface
 """
-
 import os
 from os import environ as env
 import re
 from typing import List, Tuple
-
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
 from auth0.auth0 import run_auth_proc
-
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_URL = None

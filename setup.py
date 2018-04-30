@@ -15,5 +15,5 @@ setup(
             'cidc_cli = interface.cli:main'
         ]
     },
-    python_requires='>=3'
+    python_requires='>=3.6'
 )

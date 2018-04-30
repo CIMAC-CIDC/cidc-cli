@@ -5,4 +5,4 @@ token.token
 **.pyc
 /sample_data
 .coverage
-
+*.env

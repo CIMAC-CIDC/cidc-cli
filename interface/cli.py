@@ -19,13 +19,7 @@ from utilities.cli_utilities import (
     select_assay_trial,
     ensure_logged_in
 )
-
-EVE_URL = None
-
-if env.get('EVE_URL'):
-    EVE_URL = env.get('EVE_URL')
-else:
-    EVE_URL = 'http://0.0.0.0:5000'
+from auth0.constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -35,7 +29,6 @@ def run_download_process() -> None:
     """
     Function for users to download data.
     """
-
     selections = select_assay_trial("This is the download function\n")
 
     if not selections:
