@@ -1,28 +1,28 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.7
 """
 Utility methods for the CIDC-CLI Interface
 """
-
 import os
-from os import environ as env
 import re
-from typing import List, Tuple
-
+from typing import List
+import attr
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
 from auth0.auth0 import run_auth_proc
-
+from auth0.constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
-EVE_URL = None
-
-if env.get('EVE_URL'):
-    EVE_URL = env.get('EVE_URL')
-else:
-    EVE_URL = 'http://0.0.0.0:5000'
-
-SELECTIONS = Tuple[str, dict, dict]
 EVE_FETCHER = SmartFetch(EVE_URL)
+
+
+@attr.s(slots=True)
+class Selections(object):
+    """
+    Simple class for storing user selections
+    """
+    eve_token = attr.ib()
+    selected_trial = attr.ib(attr.Factory(dict))
+    selected_assay = attr.ib(attr.Factory(dict))
 
 
 def generate_options_list(options: List[str], header: str) -> str:
@@ -205,7 +205,7 @@ def create_payload_objects(file_dict: List[dict], trial: dict, assay: dict) -> L
     ]
 
 
-def select_assay_trial(prompt: str) -> SELECTIONS:
+def select_assay_trial(prompt: str) -> Selections:
     """
     Returns the user's selection of assay and trial
 
@@ -213,7 +213,7 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
         prompt {String} -- Text promp describing the function.
 
     Returns:
-        tuple -- selected trial and selected assay
+        Selections -- token, selected trial, and selected assay.
     """
     print(prompt)
     eve_token = ensure_logged_in()
@@ -242,10 +242,10 @@ def select_assay_trial(prompt: str) -> SELECTIONS:
         return None
 
     assay_names = [x['assay_name'] for x in assays]
-    assay_selection = option_select_framework(assay_names, '=====| Available Ass ays |=====')
+    assay_selection = option_select_framework(assay_names, '=====| Available Assays |=====')
     selected_assay = assays[assay_selection - 1]
 
-    return eve_token, selected_trial, selected_assay
+    return Selections(eve_token, selected_trial, selected_assay)
 
 
 def validate_and_extract(
@@ -298,8 +298,8 @@ def validate_and_extract(
         nsi = non_static_inputs[:]
 
         print(
-            "These files are associated with SampleID: " + sample_id + ", please map them to the \
-            assay inputs"
+            "These files are associated with SampleID: " + sample_id +
+            ", please map them to the " + "assay inputs"
         )
         files_to_map = sample_id_dict[sample_id]
 
