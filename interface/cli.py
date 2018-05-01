@@ -5,10 +5,8 @@ Class defining the behavior of the interactive command line interface
 
 import cmd
 import os
-from os import environ as env
 import subprocess
 import json
-
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
 from upload.upload import upload_files
@@ -34,11 +32,14 @@ def run_download_process() -> None:
     if not selections:
         return
 
-    eve_token, selected_trial, selected_assay = selections
-    trial_query = {'trial': selected_trial['_id'], 'assay': selected_assay['assay_id']}
+    trial_query = {
+        'trial': selections.selected_assay['_id'],
+        'assay': selections.selected_trial['assay_id']
+    }
+
     query_string = "data?where=%s" % (json.dumps(trial_query))
     records = EVE_FETCHER.get(
-        token=eve_token, endpoint=query_string, code=200).json()
+        token=selections.eve_token, endpoint=query_string, code=200).json()
     download_directory = None
     retreived = records['_items']
 
@@ -92,7 +93,9 @@ def run_upload_process() -> None:
         return
 
     # Have user make their selections
-    eve_token, selected_trial, selected_assay = selections
+    eve_token = selections.eve_token
+    selected_trial = selections.selected_trial
+    selected_assay = selections.selected_assay
 
     # Query the selected assay ID to get the inputs.
     assay_r = EVE_FETCHER.get(
