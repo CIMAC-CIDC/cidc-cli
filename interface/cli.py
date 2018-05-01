@@ -5,10 +5,8 @@ Class defining the behavior of the interactive command line interface
 
 import cmd
 import os
-from os import environ as env
 import subprocess
 import json
-
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
 from upload.upload import upload_files
@@ -19,13 +17,7 @@ from utilities.cli_utilities import (
     select_assay_trial,
     ensure_logged_in
 )
-
-EVE_URL = None
-
-if env.get('EVE_URL'):
-    EVE_URL = env.get('EVE_URL')
-else:
-    EVE_URL = 'http://0.0.0.0:5000'
+from auth0.constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -35,18 +27,19 @@ def run_download_process() -> None:
     """
     Function for users to download data.
     """
-
     selections = select_assay_trial("This is the download function\n")
 
     if not selections:
         return
 
-    eve_token, selected_trial, selected_assay = selections
-    trial_query = {'trial': selected_trial['_id']}
-    assay_query = {'assay': selected_assay['assay_id']}
-    query_string = "data?where=%s&where=%s" % (json.dumps(trial_query), json.dumps(assay_query))
-    records = EVE_FETCHER.post(
-        token=eve_token, endpoint=query_string, code=200).json()
+    trial_query = {
+        'trial': selections.selected_assay['_id'],
+        'assay': selections.selected_trial['assay_id']
+    }
+
+    query_string = "data?where=%s" % (json.dumps(trial_query))
+    records = EVE_FETCHER.get(
+        token=selections.eve_token, endpoint=query_string, code=200).json()
     download_directory = None
     retreived = records['_items']
 
@@ -62,9 +55,13 @@ def run_download_process() -> None:
         download_directory = input(
             "Please enter the path where you would like the files to be downloaded:\n"
         )
-        if not os.path.isdir(download_directory):
-            print("The given path is not valid, please enter a new one.")
+        try:
+            if not os.path.isdir(download_directory):
+                print("The given path is not valid, please enter a new one.")
+                download_directory = None
+        except ValueError:
             download_directory = None
+            print("Please only enter valid filepaths")
 
     for record in records['_items']:
         gs_uri = record['gs_uri']
@@ -75,7 +72,7 @@ def run_download_process() -> None:
             download_directory
         ]
         try:
-            subprocess.run(gs_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            subprocess.run(gs_args)
         except subprocess.CalledProcessError as error:
             error_string = 'Shell command generated error' + str(error.output)
             print(error_string)
@@ -96,11 +93,14 @@ def run_upload_process() -> None:
         return
 
     # Have user make their selections
-    eve_token, selected_trial, selected_assay = selections
+    eve_token = selections.eve_token
+    selected_trial = selections.selected_trial
+    selected_assay = selections.selected_assay
 
     # Query the selected assay ID to get the inputs.
     assay_r = EVE_FETCHER.get(
-        token=eve_token, endpoint="assays/" + selected_assay['assay_id']).json()
+        token=eve_token, endpoint="assays/" + selected_assay['assay_id']
+    ).json()
 
     non_static_inputs = assay_r['non_static_inputs']
     sample_ids = selected_trial['samples']
@@ -114,7 +114,9 @@ def run_upload_process() -> None:
         'files': create_payload_objects(file_upload_dict, selected_trial, selected_assay)
     }
 
-    response_upload = EVE_FETCHER.post(token=eve_token, endpoint='ingestion', json=payload, code=201)
+    response_upload = EVE_FETCHER.post(
+        token=eve_token, endpoint='ingestion', json=payload, code=201
+    )
 
     # Execute uploads
     job_id = upload_files(

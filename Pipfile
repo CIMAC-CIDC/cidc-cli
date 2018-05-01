@@ -4,15 +4,12 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-requests = "*"
-"nose2" = "*"
-appdirs = "*"
-cachetools = "*"
-"oauth2client" = "*"
-gsutil = "*"
-cidc_utils = {git = "https://github.com/dfci/cidc-utils.git"}
+cidc_utils = {git = "https://github.com/dfci/cidc-utils"}
+python-dotenv = "*"
 
 [dev-packages]
+pylint = "*"
+"pep8" = "*"
 
 [requires]
 python_version = "3.6"

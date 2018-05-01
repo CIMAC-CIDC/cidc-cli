@@ -6,4 +6,4 @@ token.token
 /sample_data
 .coverage
 .vscode/settings.json
-.env
+*.env

@@ -2,48 +2,13 @@
 """
 This is a simple command-line tool that allows users to upload data to our google storage
 """
-
 import subprocess
 import datetime
 from os import environ as env
 from typing import List
 from json import JSONDecodeError
-
 import requests
-
-EVE_URL = None
-
-if env.get('EVE_URL'):
-    EVE_URL = env.get('EVE_URL')
-else:
-    EVE_URL = "http://0.0.0.0:5000"
-
-
-def create_data_entries(
-        name_dictionary: dict, google_url: str, google_folder_path: str, trial: str, assay: str
-) -> List[dict]:
-    """Function that creates google bucket URIs from file names.
-
-    Arguments:
-        file_names {dict} -- Dictionary mapping filename to sample ID.
-        google_url {str} -- URL of the google bucket.
-        google_folder_path {str} -- Storage path under which files are sorted.
-        trial {str} -- trialID
-        assay {str} -- assayID
-    Returns:
-        [dict] -- List of dictionaries containing the files and URIs.
-    """
-    return [
-        {
-            "filename": name,
-            "gs_uri": google_url + google_folder_path + "/" + name,
-            "trial": trial,
-            "assay": assay,
-            "date_created": datetime.datetime.now().isoformat(),
-            "sample_id": name_dictionary[name]
-        }
-        for name in name_dictionary
-    ]
+from auth0.constants import EVE_URL
 
 
 def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: str=None) -> None:
@@ -59,7 +24,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
         message {str} -- If upload failed, contains error.
     """
     if status:
-        res = requests.patch(
+        res = requests.post(
             EVE_URL + "/ingestion/" + mongo_data["_id"],
             json={
                 "status": {
@@ -70,7 +35,8 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'Bearer {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token),
+                "X-HTTP-Method-Override": "PATCH"
             }
         )
 
@@ -83,7 +49,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
                 print("No valid JSON response")
 
     else:
-        requests.patch(
+        requests.post(
             EVE_URL + "/ingestion/" + mongo_data['_id'],
             json={
                 "status": {
@@ -93,7 +59,8 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
             },
             headers={
                 "If-Match": mongo_data['_etag'],
-                "Authorization": 'Bearer {}'.format(eve_token)
+                "Authorization": 'Bearer {}'.format(eve_token),
+                "X-HTTP-Method-Override": "PATCH"
             }
         )
 
