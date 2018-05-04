@@ -4,9 +4,8 @@ This is a simple command-line tool that allows users to upload data to our googl
 """
 import subprocess
 import datetime
-from os import environ as env
 from typing import List
-from json import JSONDecodeError
+from simplejson.errors import JSONDecodeError
 import requests
 from auth0.constants import EVE_URL
 
@@ -84,7 +83,7 @@ def upload_files(
         gsutil_args = ["gsutil"]
         google_url = headers['google_url']
         google_path = headers['google_folder_path']
-        if len(files_uploaded) > 5:
+        if len(files_uploaded) > 3:
             gsutil_args.append("-m")
 
         # Insert records into a staging area for later processing

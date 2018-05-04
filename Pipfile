@@ -6,6 +6,8 @@ name = "pypi"
 [packages]
 cidc_utils = {git = "https://github.com/dfci/cidc-utils"}
 python-dotenv = "*"
+cachetools = "*"
+attrs = "*"
 
 [dev-packages]
 pylint = "*"

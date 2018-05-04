@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "123f4dd61e458a2ef648b64b58b299a6ab7e4e454c5c42f135e17438f31dd869"
+            "sha256": "cfaebac0b72aff02a1ba36357975e83ae181c8db713f9c2b4dca6ad794e6b3c6"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -16,6 +16,22 @@
         ]
     },
     "default": {
+        "attrs": {
+            "hashes": [
+                "sha256:1c7960ccfd6a005cd9f7ba884e6316b5e430a3f1a6c37c5f87d8b43f83b54ec9",
+                "sha256:a17a9573a6f475c99b551c0e0a812707ddda1ec9653bed04c13841404ed6f450"
+            ],
+            "index": "pypi",
+            "version": "==17.4.0"
+        },
+        "cachetools": {
+            "hashes": [
+                "sha256:4319bbb78172e7bcf99423e1ecd6914b32336ccfe97d2058ffe62e641a7f3abe",
+                "sha256:ede01f2d3cbd6ddc9e35e16c2b0ce011d8bb70ce0dbaf282f5b4df24b213bc5d"
+            ],
+            "index": "pypi",
+            "version": "==2.0.1"
+        },
         "cidc-utils": {
             "git": "https://github.com/dfci/cidc-utils"
         },
