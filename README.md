@@ -1,6 +1,7 @@
 ![circleci](https://circleci.com/gh/dfci/cidc-cli.svg?style=shield&circle-token=f1cc21bf7abc3bddd43d1ed02bc2d24849d18f0f|alt=circleci)
 
-[![Build Status](http://35.196.130.201/jenk/buildStatus/icon?job=sample-test/PR-17)](http://35.196.130.201/jenk/job/sample-test/view/change-requests/job/PR-17/)
+
+[![Build Status](http://35.196.130.201/jenk/job/sample-test/PR-17/badge/icon)](http://35.196.130.201/jenk/job/sample-test/PR-17)
 
 ## CIDC-CLI
 
