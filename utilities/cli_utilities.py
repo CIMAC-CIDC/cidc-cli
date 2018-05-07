@@ -101,6 +101,9 @@ def ensure_logged_in() -> str:
     if not creds:
         print('You are not currently authenticated. Launching a page to sign in with google')
         eve_token = run_auth_proc()
+        if not eve_token:
+            print('Authentication failed!')
+            return None
         USER_CACHE.cache_key(eve_token)
     else:
         eve_token = creds
@@ -217,6 +220,9 @@ def select_assay_trial(prompt: str) -> Selections:
     """
     print(prompt)
     eve_token = ensure_logged_in()
+
+    if not eve_token:
+        return None
 
     # Fetch list of trials
     response = EVE_FETCHER.get(token=eve_token, endpoint='trials')

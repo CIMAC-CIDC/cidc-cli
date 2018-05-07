@@ -55,8 +55,8 @@ def create_crypto_pair() -> CRYPTOPAIR:
     try:
         verifier = base_64_urlencode(secrets.token_bytes(32))
         challenge = base_64_urlencode(sha256(verifier))
-        # Removes the padding character if one is used, Auth0 bugs out if this is left in.
-        challenge_str = re.sub('=$', '', challenge.decode()).encode('utf-8')
+        code = challenge.decode()
+        challenge_str = code.replace('+', '-').replace('/', '-').replace('=', '').encode('utf-8')
         return verifier, challenge_str
     except TypeError as tye:
         print(tye)

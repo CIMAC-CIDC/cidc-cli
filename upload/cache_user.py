@@ -2,7 +2,6 @@
 """
 Defines caching before for user preferences
 """
-
 from cachetools import TTLCache
 
 
