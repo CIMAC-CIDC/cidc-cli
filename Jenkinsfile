@@ -1,4 +1,4 @@
-node('jnlp') {
+node('default') {
     agent { docker { image 'python:3' }}
     stages {
         stage('build') {
