@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "06a27125ab57a8b4e69d92e78e005646c1ba56e118b69d59b1464d0f22c7ea1a"
+            "sha256": "5e734e81c9f34f6c35d39e442ea69f4c464f9836f2dfa44c37074362a1be8966"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -34,23 +34,6 @@
         },
         "cidc-utils": {
             "git": "https://github.com/dfci/cidc-utils"
-        },
-        "python-dotenv": {
-            "hashes": [
-                "sha256:4965ed170bf51c347a89820e8050655e9c25db3837db6602e906b6d850fad85c",
-                "sha256:509736185257111613009974e666568a1b031b028b61b500ef1ab4ee780089d5"
-            ],
-            "index": "pypi",
-            "version": "==0.8.2"
-        }
-    },
-    "develop": {
-        "astroid": {
-            "hashes": [
-                "sha256:35cfae47aac19c7b407b7095410e895e836f2285ccf1220336afba744cc4c5f2",
-                "sha256:38186e481b65877fd8b1f9acc33e922109e983eb7b6e487bd4c71002134ad331"
-            ],
-            "version": "==1.6.3"
         },
         "coverage": {
             "hashes": [
@@ -92,6 +75,37 @@
                 "sha256:f8a923a85cb099422ad5a2e345fe877bbc89a8a8b23235824a93488150e45f6e"
             ],
             "version": "==4.5.1"
+        },
+        "nose2": {
+            "hashes": [
+                "sha256:954a62cfb2d2ac06dad32995cbc822bf00cc11e20d543963515932fd4eff33fa"
+            ],
+            "index": "pypi",
+            "version": "==0.7.4"
+        },
+        "python-dotenv": {
+            "hashes": [
+                "sha256:4965ed170bf51c347a89820e8050655e9c25db3837db6602e906b6d850fad85c",
+                "sha256:509736185257111613009974e666568a1b031b028b61b500ef1ab4ee780089d5"
+            ],
+            "index": "pypi",
+            "version": "==0.8.2"
+        },
+        "six": {
+            "hashes": [
+                "sha256:70e8a77beed4562e7f14fe23a786b54f6296e34344c23bc42f07b15018ff98e9",
+                "sha256:832dc0e10feb1aa2c68dcc57dbb658f1c7e65b9b61af69048abc87a2db00a0eb"
+            ],
+            "version": "==1.11.0"
+        }
+    },
+    "develop": {
+        "astroid": {
+            "hashes": [
+                "sha256:35cfae47aac19c7b407b7095410e895e836f2285ccf1220336afba744cc4c5f2",
+                "sha256:38186e481b65877fd8b1f9acc33e922109e983eb7b6e487bd4c71002134ad331"
+            ],
+            "version": "==1.6.3"
         },
         "isort": {
             "hashes": [
@@ -141,13 +155,6 @@
                 "sha256:dd8d182285a0fe56bace7f45b5e7d1a6ebcbf524e8f3bd87eb0f125271b8831f"
             ],
             "version": "==0.6.1"
-        },
-        "nose2": {
-            "hashes": [
-                "sha256:954a62cfb2d2ac06dad32995cbc822bf00cc11e20d543963515932fd4eff33fa"
-            ],
-            "index": "pypi",
-            "version": "==0.7.4"
         },
         "pep8": {
             "hashes": [

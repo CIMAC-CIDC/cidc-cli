@@ -8,11 +8,11 @@ cidc_utils = {git = "https://github.com/dfci/cidc-utils"}
 python-dotenv = "*"
 cachetools = "*"
 attrs = "*"
+"nose2" = "*"
 
 [dev-packages]
 pylint = "*"
 "pep8" = "*"
-"nose2" = "*"
 
 [requires]
 python_version = "3.6"
