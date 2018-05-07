@@ -1,7 +1,6 @@
 ![circleci](https://circleci.com/gh/dfci/cidc-cli.svg?style=shield&circle-token=f1cc21bf7abc3bddd43d1ed02bc2d24849d18f0f|alt=circleci)
 
-
-[![Build Status](http://35.196.130.201/jenk/job/sample-test/PR-17/badge/icon)](http://35.196.130.201/jenk/job/sample-test/PR-17)
+![Build Status](http://35.196.130.201/jenk/buildStatus/icon?job=sample-test/master&.png)
 
 ## CIDC-CLI
 
@@ -22,3 +21,4 @@ To start the command line tool, run the following command:
 `CIDC-CLI`
 
 Then enter `upload_data` to begin the upload process. Follow the prompts as they are given, directories should be given in relative path form to the execution directory (e.g. if you want to search the current directory, type './')
+
