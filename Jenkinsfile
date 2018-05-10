@@ -9,7 +9,7 @@ podTemplate(label: label, namespace: "jenkins", containers: [
         checkout scm
         sh 'python --version'
         sh 'ls'
-        sh 'pip3 install -r requirements.txt --no-index'
+        sh 'pip3 install -r requirements.txt'
         sh 'nose2'
       }
     }
