@@ -9,7 +9,8 @@ podTemplate(label: label, namespace: "jenkins", containers: [
       container('python') {
         git 'https://github.com/dfci/cidc-cli.git'
         sh 'python --version'
-        sh 'ls -a'
+        sh 'pip install -r requirements.txt. --no-index'
+        sh 'nose2'
       }
     }
   }
