@@ -6,9 +6,11 @@ podTemplate(label: label, namespace: "jenkins", containers: [
   node(label) {
     def myRepo = checkout scm
     stage('Build Docker image') {
-      git 'https://github.com/dfci/cidc-cli.git'
-      sh 'python --version'
-      sh 'ls -a'
+      container('python') {
+        git 'https://github.com/dfci/cidc-cli.git'
+        sh 'python --version'
+        sh 'ls -a'
+      }
     }
   }
 }
