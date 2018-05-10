@@ -1,7 +1,7 @@
 def label = "worker-${UUID.randomUUID().toString()}"
 
 podTemplate(label: label, containers: [
-  containerTemplate(name: 'python', image: 'python:3.5.1', command: 'cat', ttyEnabled: true)
+  containerTemplate(name: 'python', image: 'python:3.5.1', command: 'cat', ttyEnabled: true, namespace: "jenkins")
 ]) {
   node(label) {
     def myRepo = checkout scm
