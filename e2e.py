@@ -33,9 +33,9 @@ def get_token() -> None:
 
     if not res.status_code == 200:
         print(res.reason)
-    
-    print(res.json())
-    
+    else:
+        print('token fetched succesfully')
+
     return {
         'access_token': res.json()['access_token'],
         'expires_in': res.json()['expires_in'],
@@ -77,7 +77,7 @@ HELLO_ASSAY = {
     "wdl_location": "wdl/wes/hello.wdl"
 }
 
-UPLOAD_DIR = 'sample_data/test'
+UPLOAD_DIR = 'cidc-cli/sample_data/test'
 
 FILES_TO_UPLOAD = [
     name for name in listdir(UPLOAD_DIR) if
