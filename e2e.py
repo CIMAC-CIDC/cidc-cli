@@ -30,6 +30,12 @@ def get_token() -> None:
         'audience': AUDIENCE
     }
     res = requests.post("https://cidc-test.auth0.com/oauth/token", json=payload)
+
+    if not res.status_code == 200:
+        print(res.reason)
+    
+    print(res.json())
+    
     return {
         'access_token': res.json()['access_token'],
         'expires_in': res.json()['expires_in'],
