@@ -88,13 +88,13 @@ UPLOAD_GUIDE = {
 UPLOAD_PAYLOAD = {
     'number_of_files': len(UPLOAD_GUIDE),
     'status': {
-        'PROGRESS': 'In PROGRESS'
+        'progress': 'In Progression'
     },
     'files': create_payload_objects(UPLOAD_GUIDE, HELLO_TRIAL, HELLO_ASSAY)
 }
 
 RESPONSE_UPLOAD = EVE_FETCHER.post(
-    token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
+    token=EVE_TOKEN, endpoint='ingestion/', json=UPLOAD_PAYLOAD, code=201
 )
 
 JOB_ID = upload_files(
