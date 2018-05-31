@@ -88,7 +88,7 @@ UPLOAD_GUIDE = {
 UPLOAD_PAYLOAD = {
     'number_of_files': len(UPLOAD_GUIDE),
     'status': {
-        'progress': 'In Progression'
+        'progress': 'In Progress'
     },
     'files': create_payload_objects(UPLOAD_GUIDE, HELLO_TRIAL, HELLO_ASSAY)
 }
