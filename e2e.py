@@ -94,10 +94,11 @@ UPLOAD_PAYLOAD = {
 
 print(UPLOAD_PAYLOAD)
 
+
 RES = requests.post(EVE_URL + "/test", json={"message": "hello"})
-print(RES.reason)
-print(RES.status_code)
-print(RES.json())
+if RES.status_code == 500:
+    print('error')
+    time.sleep(100)
 
 try:
     RESPONSE_UPLOAD = EVE_FETCHER.post(
