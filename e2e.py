@@ -93,9 +93,14 @@ UPLOAD_PAYLOAD = {
     'files': create_payload_objects(UPLOAD_GUIDE, HELLO_TRIAL, HELLO_ASSAY)
 }
 
-RESPONSE_UPLOAD = EVE_FETCHER.post(
-    token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
-)
+try:
+    RESPONSE_UPLOAD = EVE_FETCHER.post(
+        token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
+    )
+except TypeError:
+    print("Eve error")
+    time.sleep(300)
+
 
 JOB_ID = upload_files(
     UPLOAD_DIR,
