@@ -46,7 +46,7 @@ EVE_TOKEN = get_token()['access_token']
 
 # Set up connection to API
 EVE_FETCHER = SmartFetch(
-    env.get('INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
+    'http://' + env.get('INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
     )
 
 # Mock Trial
