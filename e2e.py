@@ -44,10 +44,9 @@ def get_token() -> dict:
 # Get token
 EVE_TOKEN = get_token()['access_token']
 
+EVE_URL = 'http://' + env.get('INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
 # Set up connection to API
-EVE_FETCHER = SmartFetch(
-    'http://' + env.get('INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
-    )
+EVE_FETCHER = SmartFetch(EVE_URL)
 
 # Mock Trial
 HELLO_TRIAL = {
@@ -92,6 +91,13 @@ UPLOAD_PAYLOAD = {
     },
     'files': create_payload_objects(UPLOAD_GUIDE, HELLO_TRIAL, HELLO_ASSAY)
 }
+
+print(UPLOAD_PAYLOAD)
+
+RES = requests.post(EVE_URL + "/test", json={"message": "hello"})
+print(RES.reason)
+print(RES.status_code)
+print(RES.json())
 
 try:
     RESPONSE_UPLOAD = EVE_FETCHER.post(
