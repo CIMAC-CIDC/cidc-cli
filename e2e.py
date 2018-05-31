@@ -94,7 +94,7 @@ UPLOAD_PAYLOAD = {
 }
 
 RESPONSE_UPLOAD = EVE_FETCHER.post(
-    token=EVE_TOKEN, endpoint='ingestion/', json=UPLOAD_PAYLOAD, code=201
+    token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
 )
 
 JOB_ID = upload_files(
@@ -108,7 +108,7 @@ JOB_ID = upload_files(
 DONE = False
 COUNTER = 0
 while not DONE and COUNTER < 200:
-    STATUS_RESPONSE = EVE_FETCHER.get(token=EVE_TOKEN, endpoint='ingestion/' + JOB_ID, code=200)
+    STATUS_RESPONSE = EVE_FETCHER.get(token=EVE_TOKEN, endpoint='ingestion' + JOB_ID, code=200)
     PROGRESS = STATUS_RESPONSE.json()['status']['PROGRESS']
     if PROGRESS == 'In PROGRESS':
         print('Job is still in PROGRESS, check back later')
