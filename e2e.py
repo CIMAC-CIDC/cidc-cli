@@ -67,7 +67,7 @@ HELLO_TRIAL = {
 
 # Mock Assay
 HELLO_ASSAY = {
-    "_id": "5ac674d81e478003ad494cd1",
+    "assay_id": "5ac674d81e478003ad494cd1",
     "assay_name": "hello.wdl",
     "non_static_inputs": ["wf_hello.hello.addressee"],
     "static_inputs": [
