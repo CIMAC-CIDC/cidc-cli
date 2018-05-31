@@ -80,7 +80,7 @@ UPLOAD_DIR = 'cidc-cli/sample_data/test'
 UPLOAD_GUIDE = {
     "FOO123.txt": {
         "sample_id": "FOO",
-        "mapped_input": "wf_hello.hello.addressee"
+        "mapping": "wf_hello.hello.addressee"
     }
 }
 
