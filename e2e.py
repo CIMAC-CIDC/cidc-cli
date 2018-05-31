@@ -2,12 +2,11 @@
 """
 A script that mocks the CLI to run an end-to-end workflow test.
 """
-import subprocess
 import time
-from os import environ as env, listdir, path
+from os import environ as env
 import requests
 from cidc_utils.requests import SmartFetch
-from utilities.cli_utilities import validate_and_extract, create_payload_objects
+from utilities.cli_utilities import create_payload_objects
 from upload.upload import upload_files
 
 DOMAIN = env.get('DOMAIN')
@@ -16,7 +15,7 @@ CLIENT_ID = env.get('CLIENT_ID')
 AUDIENCE = env.get('AUDIENCE')
 
 
-def get_token() -> None:
+def get_token() -> dict:
     """
     Fetches a token from the auth server.
 
@@ -42,7 +41,7 @@ def get_token() -> None:
         'time_fetched': time.time()
     }
 
-# Get token from ENV
+# Get token
 EVE_TOKEN = get_token()['access_token']
 
 # Set up connection to API
@@ -78,17 +77,12 @@ HELLO_ASSAY = {
 }
 
 UPLOAD_DIR = 'cidc-cli/sample_data/test'
-
-FILES_TO_UPLOAD = [
-    name for name in listdir(UPLOAD_DIR) if
-    path.isfile(path.join(UPLOAD_DIR, name))
-]
-
-UPLOAD_GUIDE = validate_and_extract(
-    FILES_TO_UPLOAD,
-    HELLO_TRIAL['samples'],
-    HELLO_ASSAY['non_static_inputs']
-)
+UPLOAD_GUIDE = {
+    "FOO123.txt": {
+        "sample_id": "FOO",
+        "mapped_input": "wf_hello.hello.addressee"
+    }
+}
 
 # Create upload payload
 UPLOAD_PAYLOAD = {
@@ -114,15 +108,15 @@ JOB_ID = upload_files(
 DONE = False
 COUNTER = 0
 while not DONE and COUNTER < 200:
-    STATUD_RESPONSE = EVE_FETCHER.get(token=EVE_TOKEN, endpoint='ingestion/' + JOB_ID, code=200)
-    PROGRESS = STATUD_RESPONSE.json()['status']['PROGRESS']
+    STATUS_RESPONSE = EVE_FETCHER.get(token=EVE_TOKEN, endpoint='ingestion/' + JOB_ID, code=200)
+    PROGRESS = STATUS_RESPONSE.json()['status']['PROGRESS']
     if PROGRESS == 'In PROGRESS':
         print('Job is still in PROGRESS, check back later')
     elif PROGRESS == 'Completed':
         print('Job is completed.')
         DONE = True
     elif PROGRESS == 'Aborted':
-        print('Job was aborted: ' + STATUD_RESPONSE.json()['status']['message'])
+        print('Job was aborted: ' + STATUS_RESPONSE.json()['status']['message'])
         DONE = True
     time.sleep(30)
     COUNTER += 1
