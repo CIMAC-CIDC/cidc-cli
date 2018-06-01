@@ -44,7 +44,8 @@ def get_token() -> dict:
 # Get token
 EVE_TOKEN = get_token()['access_token']
 
-EVE_URL = 'http://' + env.get('INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
+EVE_URL = 'http://' + env.get(
+    'INGESTION_API_SERVICE_HOST') + ':' + env.get('INGESTION_API_SERVICE_PORT')
 # Set up connection to API
 EVE_FETCHER = SmartFetch(EVE_URL)
 
@@ -92,21 +93,12 @@ UPLOAD_PAYLOAD = {
     'files': create_payload_objects(UPLOAD_GUIDE, HELLO_TRIAL, HELLO_ASSAY)
 }
 
-print(UPLOAD_PAYLOAD)
-
-
-RES = requests.post(EVE_URL + "/test", json={"message": "hello"})
-if RES.status_code == 500:
-    print('error')
-    time.sleep(100)
-
 try:
     RESPONSE_UPLOAD = EVE_FETCHER.post(
         token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
     )
 except RuntimeError:
     print("Eve error")
-    time.sleep(300)
 
 
 JOB_ID = upload_files(
@@ -120,7 +112,9 @@ JOB_ID = upload_files(
 DONE = False
 COUNTER = 0
 while not DONE and COUNTER < 200:
-    STATUS_RESPONSE = EVE_FETCHER.get(token=EVE_TOKEN, endpoint='ingestion' + JOB_ID, code=200)
+    STATUS_RESPONSE = EVE_FETCHER.get(
+        token=EVE_TOKEN, endpoint='ingestion' + '/' + JOB_ID, code=200
+        )
     PROGRESS = STATUS_RESPONSE.json()['status']['PROGRESS']
     if PROGRESS == 'In PROGRESS':
         print('Job is still in PROGRESS, check back later')
