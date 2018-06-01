@@ -1,15 +1,16 @@
-podTemplate(label: 'docker',
-  containers: [containerTemplate(name: 'docker', image: 'docker:1.11', ttyEnabled: true, command: 'cat')],
-  volumes: [hostPathVolume(hostPath: '/var/run/docker.sock', mountPath: '/var/run/docker.sock')],
-  namespace: 'jenkins'
-  ) {
+def label = "worker-${UUID.randomUUID().toString()}"
 
-  def image = "jenkins/jnlp-slave"
-  node('docker') {
-    stage('Build Docker image') {
-      git 'https://github.com/jenkinsci/docker-jnlp-slave.git'
-      container('docker') {
-        sh "docker build -t ${image} ."
+podTemplate(label: label, namespace: "jenkins", containers: [
+  containerTemplate(name: 'python', image: 'python:3.6.5', command: 'cat', ttyEnabled: true)
+]) {
+  node(label) {
+    stage('Run unit tests') {
+      container('python') {
+        checkout scm
+        sh 'python --version'
+        sh 'ls'
+        sh 'pip3 install -r requirements.txt'
+        sh 'nose2'
       }
     }
   }

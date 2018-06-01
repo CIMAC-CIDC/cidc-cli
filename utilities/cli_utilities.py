@@ -270,7 +270,7 @@ def validate_and_extract(
         {
             file_name: {
                 sample_id: "sample_id",
-                mapped_input: "mapping"
+                mapping: "mapping"
             }
         }
     """
