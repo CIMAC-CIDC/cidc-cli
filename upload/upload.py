@@ -33,6 +33,7 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
         else:
             url = EVE_URL
 
+        print(url)
         res = requests.post(
             url + "/ingestion/" + mongo_data["_id"],
             json={
