@@ -4,6 +4,7 @@ This is a simple command-line tool that allows users to upload data to our googl
 """
 import subprocess
 import datetime
+from os import environ as env
 from typing import List
 from simplejson.errors import JSONDecodeError
 import requests
@@ -23,8 +24,17 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
         message {str} -- If upload failed, contains error.
     """
     if status:
+        url = None
+        if env.get("JENKINS"):
+            url = 'http://' + env.get(
+                'INGESTION_API_SERVICE_HOST'
+                ) + ':' + env.get(
+                    'INGESTION_API_SERVICE_PORT')
+        else:
+            url = EVE_URL
+
         res = requests.post(
-            EVE_URL + "/ingestion/" + mongo_data["_id"],
+            url + "/ingestion/" + mongo_data["_id"],
             json={
                 "status": {
                     "progress": "Completed",
