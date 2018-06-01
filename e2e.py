@@ -120,8 +120,8 @@ while not DONE and COUNTER < 200:
         print("Error")
         time.sleep(200)
 
-    PROGRESS = STATUS_RESPONSE.json()['status']['PROGRESS']
-    if PROGRESS == 'In PROGRESS':
+    PROGRESS = STATUS_RESPONSE.json()['status']['progress']
+    if PROGRESS == 'In Progress':
         print('Job is still in PROGRESS, check back later')
     elif PROGRESS == 'Completed':
         print('Job is completed.')
