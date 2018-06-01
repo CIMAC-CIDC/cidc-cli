@@ -97,6 +97,7 @@ try:
     RESPONSE_UPLOAD = EVE_FETCHER.post(
         token=EVE_TOKEN, endpoint='ingestion', json=UPLOAD_PAYLOAD, code=201
     )
+    print(RESPONSE_UPLOAD.json())
 except RuntimeError:
     print("Eve error")
 
@@ -115,6 +116,10 @@ while not DONE and COUNTER < 200:
     STATUS_RESPONSE = EVE_FETCHER.get(
         token=EVE_TOKEN, endpoint='ingestion' + '/' + JOB_ID, code=200
         )
+    if not STATUS_RESPONSE.status_code == 200:
+        print("Error")
+        time.sleep(200)
+
     PROGRESS = STATUS_RESPONSE.json()['status']['PROGRESS']
     if PROGRESS == 'In PROGRESS':
         print('Job is still in PROGRESS, check back later')
