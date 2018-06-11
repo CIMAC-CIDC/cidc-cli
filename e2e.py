@@ -71,7 +71,8 @@ HELLO_ASSAY = {
     "assay_name": "hello.wdl",
     "non_static_inputs": ["wf_hello.hello.addressee"],
     "static_inputs": [
-        {"key_name": "foo", "key_value": "bar"}
+        {"key_name": "foo", "key_value": "bar"},
+        {"key_name": "prefix", "key_value": ""}
     ],
     "wdl_location": "wdl/wes/hello.wdl"
 }
@@ -122,12 +123,37 @@ while not DONE and COUNTER < 200:
 
     PROGRESS = STATUS_RESPONSE.json()['status']['progress']
     if PROGRESS == 'In Progress':
-        print('Job is still in PROGRESS, check back later')
+        print('Upload is still in PROGRESS, check back later')
     elif PROGRESS == 'Completed':
-        print('Job is completed.')
+        print('Upload is completed.')
         DONE = True
     elif PROGRESS == 'Aborted':
-        print('Job was aborted: ' + STATUS_RESPONSE.json()['status']['message'])
-        DONE = True
+        print('Upload was aborted: ' + STATUS_RESPONSE.json()['status']['message'])
+        raise RuntimeError
     time.sleep(30)
     COUNTER += 1
+
+print("Job uploaded")
+
+# Check if job is running.
+PIPELINE_STATUS = EVE_FETCHER.get(token=EVE_TOKEN, endpoing="status").json()
+
+PIPELINEDONE = False
+P_COUNTER = 0
+while not PIPELINEDONE and P_COUNTER < 200:
+    if PIPELINE_STATUS['_items']:
+        STATUS = PIPELINE_STATUS['_items'][0]['status']['progress']
+        if STATUS == 'In Progress':
+            print('Job is still in progress, check back later')
+        elif STATUS == 'Completed':
+            print('Job is completed.')
+            PIPELINEDONE = True
+        elif STATUS == 'Aborted':
+            print('Job was aborted: ')
+            print(PIPELINE_STATUS)
+            raise RuntimeError
+        time.sleep(30)
+        P_COUNTER += 1
+    else:
+        print("No jobs found")
+        raise RuntimeError
