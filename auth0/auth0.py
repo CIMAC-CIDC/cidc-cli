@@ -194,8 +194,8 @@ def run_auth_proc() -> str:
                 # When response received, take value, send response, then close.
                 response = buf
                 response_str = response.decode('utf-8')
-                if re.search(r'get_code\?code=(\w+)', response_str).group(1):
-                    code = re.search(r'get_code\?code=(\w+)', response_str).group(1)
+                if re.search(r'\?code=(\w+)', response_str).group(1):
+                    code = re.search(r'\?code=(\w+)', response_str).group(1)
                     try:
                         token = exchange_code_for_token(code, verifier)
                         send_response_html(connection, True)
