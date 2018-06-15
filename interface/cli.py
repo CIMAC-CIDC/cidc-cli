@@ -33,8 +33,8 @@ def run_download_process() -> None:
         return
 
     trial_query = {
-        'trial': selections.selected_assay['_id'],
-        'assay': selections.selected_trial['assay_id']
+        'trial': selections.selected_trial['_id'],
+        'assay': selections.selected_assay['assay_id']
     }
 
     query_string = "data?where=%s" % (json.dumps(trial_query))
@@ -134,7 +134,6 @@ def run_job_query() -> None:
     """
     Allows user to check on the status of running jobs.
     """
-
     eve_token = None
     progress = None
     status = None
@@ -168,7 +167,6 @@ class ShellCmd(cmd.Cmd, object):
     """
     Class to impart shell functionality to CMD
     """
-
     def do_shell(self, s):
         """
         Instantiates shell environment
@@ -189,7 +187,6 @@ class ExitCmd(cmd.Cmd, object):
     """
     Class put together to generate more graceful exit functionality for CMD.
     """
-
     def cmdloop(self, intro=None):
         """
         Overrides default method to catch ctrl-c and exit gracefully.
