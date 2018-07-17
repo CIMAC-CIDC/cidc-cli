@@ -12,7 +12,8 @@ from auth0.constants import EVE_URL
 
 
 def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: str=None) -> None:
-    """Updates the status of the job in MongoDB, either with the URIs if the upload
+    """
+    Updates the status of the job in MongoDB, either with the URIs if the upload
     was succesfull, or with the error message if it failed.
 
     Arguments:
@@ -78,7 +79,8 @@ def update_job_status(status: bool, mongo_data: dict, eve_token: str, message: s
 def upload_files(
         directory: str, files_uploaded: List[str], mongo_data: dict, eve_token: str, headers: dict
 ) -> str:
-    """Launches the gsutil command using subprocess and uploads files to the
+    """
+    Launches the gsutil command using subprocess and uploads files to the
     google bucket.
 
     Arguments:
@@ -111,6 +113,6 @@ def upload_files(
         update_job_status(True, mongo_data, eve_token)
         return mongo_data['_id']
     except subprocess.CalledProcessError as error:
-        print("Error: Upload to Google failed: " + error)
+        print("Error: Upload to Google failed: " + str(error))
         update_job_status(False, mongo_data, eve_token, error)
         return None

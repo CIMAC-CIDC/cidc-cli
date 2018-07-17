@@ -2,7 +2,6 @@
 """
 Class defining the behavior of the interactive command line interface
 """
-
 import cmd
 import os
 import subprocess
@@ -15,7 +14,8 @@ from utilities.cli_utilities import (
     get_files,
     create_payload_objects,
     select_assay_trial,
-    ensure_logged_in
+    ensure_logged_in,
+    user_prompt_yn
 )
 from auth0.constants import EVE_URL
 
@@ -192,9 +192,11 @@ class ExitCmd(cmd.Cmd, object):
         Overrides default method to catch ctrl-c and exit gracefully.
         """
         print(self.intro)
+        if not user_prompt_yn('Do you agree to the above terms and conditions? '):
+            return True
         while True:
             try:
-                super(ExitCmd, self).cmdloop(intro="")
+                super(ExitCmd, self).cmdloop(intro="")    
                 self.postloop()
                 return False
             except KeyboardInterrupt:
@@ -251,7 +253,12 @@ class CIDCCLI(ExitCmd, ShellCmd):
     """
     Defines the CLI interface
     """
-    intro = "Welcome to the CIDC CLI Tool"
+    intro = """Welcome to the CIDC CLI Tool,
+    you are about to access a system which contains private medical data protected by
+    federal law. Information on system usage may be monitored and recorded, and subject to 
+    audit. Unauthorized use of this system is strictly prohibited and subject to criminal 
+    and civil penalties. By using this tool you consent to the monitoring and 
+    recording of your actions on this system."""
 
     def do_upload_data(self, rest=None) -> None:
         """
@@ -270,6 +277,19 @@ class CIDCCLI(ExitCmd, ShellCmd):
         Allows user to check if their job is done
         """
         run_job_query()
+
+    def get_user_consent(self, rest=None) -> None:
+        """
+        Ensures the user reads and agrees to TOS.
+
+        Keyword Arguments:
+            rest {[type]} -- [description] (default: {None})
+
+        Returns:
+            None -- [description]
+        """
+        if not user_prompt_yn('Do you agree to the above terms and conditions?'):
+            return True
 
 
 def main():
