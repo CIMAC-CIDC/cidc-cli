@@ -136,7 +136,7 @@ while not DONE and COUNTER < 200:
 print("Job uploaded")
 
 # Check if job is running.
-PIPELINE_STATUS = EVE_FETCHER.get(token=EVE_TOKEN, endpoing="status").json()
+PIPELINE_STATUS = EVE_FETCHER.get(token=EVE_TOKEN, endpoint="status").json()
 
 PIPELINEDONE = False
 P_COUNTER = 0
