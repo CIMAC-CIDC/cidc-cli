@@ -15,11 +15,13 @@ from utilities.cli_utilities import (
     create_payload_objects,
     select_assay_trial,
     ensure_logged_in,
-    user_prompt_yn
+    user_prompt_yn,
+    cache_token
 )
 from auth0.constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
+
 EVE_FETCHER = SmartFetch(EVE_URL)
 
 
@@ -290,6 +292,17 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         if not user_prompt_yn('Do you agree to the above terms and conditions?'):
             return True
+
+    def do_jwt_login(self, token=None) -> None:
+        """
+        Stores the users Auth Token to be used for calls to the Eve server.
+        :param rest:
+        :return:
+        """
+        if not token:
+            print("Please paste your JWT token obtained from the CIDC Portal to log in.")
+        else:
+            cache_token(token)
 
 
 def main():

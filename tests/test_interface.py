@@ -8,6 +8,9 @@ from unittest.mock import patch, MagicMock
 from utilities.cli_utilities import generate_options_list, force_valid_menu_selection, \
     user_prompt_yn, get_files, create_payload_objects
 
+from utilities.cli_utilities import cache_token
+from utilities.cli_utilities import USER_CACHE
+
 
 def test_generate_options_list():
     """
@@ -61,3 +64,12 @@ def test_create_payload_objects():
         'sample_id': '1234',
         'mapping': 'map'
     }]
+
+
+def test_store_token():
+    """
+    Test for storing/retrieving a token in Cache.
+    """
+    cache_token("test")
+
+    assert USER_CACHE.get_key() == "test"

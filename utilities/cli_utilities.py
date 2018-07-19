@@ -111,6 +111,15 @@ def ensure_logged_in() -> str:
     return eve_token
 
 
+def cache_token(token: str) -> None:
+    """
+    Stashes a token in the cli_utilities instantiated USER_CACHE
+    :param token: Identity Token (usually a JWT)
+    :return: None
+    """
+    USER_CACHE.cache_key(token)
+
+
 def user_prompt_yn(prompt: str) -> bool:
     """
     Prompts the user to pick in a yes or no scenario
