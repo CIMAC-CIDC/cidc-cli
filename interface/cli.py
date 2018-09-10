@@ -165,6 +165,119 @@ def run_job_query() -> None:
         print('Job was aborted: ' + status['status']['message'])
 
 
+def run_upload_np() -> None:
+    """
+    Allows a user to upload data that is not marked for pipeline use.
+    """
+    selections = select_assay_trial(
+        "This is the non-pipeline upload function\n"
+    )
+    if not selections:
+        return
+
+    # Have user make their selections
+    eve_token = selections.eve_token
+    selected_trial = selections.selected_trial
+    selected_assay = selections.selected_assay
+
+    files_to_upload = None
+    confirm_upload = None
+    upload_dir = None
+
+    while not confirm_upload:
+        upload_dir = input("Enter the path to the files you wish to upload:\n")
+        try:
+            files_to_upload = [
+                name for name in os.listdir(upload_dir) if
+                os.path.isfile(os.path.join(upload_dir, name))
+            ]
+
+            if not len(files_to_upload) == len(set(files_to_upload)):
+                print("Error, duplicate names in file list, aborting")
+                return None
+
+            # Sanity check number of files per ID
+            if not len(files_to_upload) % 2 == 0:
+                print(
+                    "Odd number of files being uploaded. \
+                    Each file must have an associated metadata file.")
+                return None
+
+        except FileNotFoundError as error:
+            print("Error: " + error)
+
+        for file_name in files_to_upload:
+            print(file_name)
+
+        if files_to_upload:
+            confirm_upload = user_prompt_yn(
+                "These are the files found in the provided directory, proceed? [Y/N]"
+            )
+        else:
+            print("Directory contained no files")
+
+        print(
+            "You are uploading a data format which requires a \
+            metadata file. For each file being uploaded, first select the data file, then its \
+            associated metadata"
+        )
+        # Copy list by value for manipualtion.
+        file_list = files_to_upload[:]
+        payload_list = []
+
+        while file_list:
+            # Select the data file.
+            selection = option_select_framework(file_list, "Please select a data file")
+            # Save a reference.
+            selected_file = file_list[selection - 1]
+            # Add it to the ingestion manifest.
+            payload_list.append({
+                'assay': selected_assay['assay_id'],
+                'trial': selected_trial['_id'],
+                'file_name': selected_file,
+                'mapping': 'olink-data'
+            })
+
+            # Delete from the list.
+            del file_list[selection - 1]
+            # Select the metadata.
+            meta_selection = option_select_framework(
+                file_list,
+                "Select the corresponding metadata"
+            )
+            # Add to ingestion manifest, with the mapping being a reference to the associated file.
+            payload_list.append({
+                'assay': selected_assay['assay_id'],
+                'trial': selected_trial['_id'],
+                'file_name': file_list[meta_selection - 1],
+                'mapping': selected_file
+            })
+            del file_list[meta_selection - 1]
+
+        payload = {
+            'number_of_files': len(files_to_upload),
+            'status': {
+                'progress': 'In Progress',
+            },
+            'files': payload_list
+        }
+
+        response_upload = EVE_FETCHER.post(
+            token=eve_token, endpoint='ingestion', json=payload, code=201
+        )
+
+        # Execute uploads
+        job_id = upload_files(
+            upload_dir,
+            files_to_upload,
+            response_upload.json(),
+            eve_token,
+            response_upload.headers,
+        )
+
+        print("Uploaded, your ID is: " + job_id)
+
+
 class ShellCmd(cmd.Cmd, object):
     """
     Class to impart shell functionality to CMD
@@ -198,7 +311,7 @@ class ExitCmd(cmd.Cmd, object):
             return True
         while True:
             try:
-                super(ExitCmd, self).cmdloop(intro="")    
+                super(ExitCmd, self).cmdloop(intro="")
                 self.postloop()
                 return False
             except KeyboardInterrupt:
@@ -255,18 +368,32 @@ class CIDCCLI(ExitCmd, ShellCmd):
     """
     Defines the CLI interface
     """
-    intro = """Welcome to the CIDC CLI Tool,
-    you are about to access a system which contains private medical data protected by
-    federal law. Information on system usage may be monitored and recorded, and subject to 
-    audit. Unauthorized use of this system is strictly prohibited and subject to criminal 
-    and civil penalties. By using this tool you consent to the monitoring and 
-    recording of your actions on this system."""
+    intro = ("Welcome to the CIDC CLI Tool, you are about to access a system which contains "
+             "private medical data protected by federal law. Information on system usage may be "
+             "monitored and recorded, and subject to audit. Unauthorized use of this system is "
+             "strictly prohibited and subject to criminal and civil penalties. By using this tool "
+             "you consent to the monitoring and recording of your actions on this system. By "
+             "downloading any data from the CIDC information system, you are agreeing to take "
+             "responsibility for the security of said data. You may not copy, transmit, print out "
+             ", or in any way cause the information to leave a secured computing environment "
+             "where it may be seen or accessed by unauthorized individuals")
 
     def do_upload_data(self, rest=None) -> None:
         """
         Starts the upload process
         """
         run_upload_process()
+
+    def do_upload_no_pipeline(self, rest=None) -> None:
+        """[summary]
+
+        Keyword Arguments:
+            rest {[type]} -- [description] (default: {None})
+
+        Returns:
+            None -- [description]
+        """
+        run_upload_np()
 
     def do_download_data(self, rest=None) -> None:
         """
