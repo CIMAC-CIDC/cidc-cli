@@ -1,5 +1,5 @@
 """
-Function for doing downloads.
+Module for doing downloads and related functions.
 """
 import os
 import math

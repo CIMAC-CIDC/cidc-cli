@@ -1,14 +1,23 @@
-#!/usr/bin/env python3
 """
 This is a simple command-line tool that allows users to upload data to our google storage
 """
-import subprocess
 import datetime
+import subprocess
 from os import environ as env
 from typing import List, NamedTuple
-from simplejson.errors import JSONDecodeError
+
 import requests
+from cidc_utils.requests import SmartFetch
+from simplejson.errors import JSONDecodeError
+
 from auth0.constants import EVE_URL
+from utilities.cli_utilities import (
+    get_valid_dir,
+    select_assay_trial,
+    option_select_framework,
+)
+
+EVE_FETCHER = SmartFetch(EVE_URL)
 
 
 class RequestInfo(NamedTuple):
@@ -18,6 +27,7 @@ class RequestInfo(NamedTuple):
     Arguments:
         NamedTuple {NamedTuple} -- [description]
     """
+
     mongo_data: dict
     eve_token: str
     headers: dict
@@ -119,3 +129,171 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         print("Error: Upload to Google failed: " + str(error))
         update_job_status(False, request_info.mongo_data, request_info.eve_token, error)
         return None
+
+
+# def run_upload_np() -> None:
+#     """
+#     Allows a user to upload data that is not marked for pipeline use.
+#     """
+#     selections = select_assay_trial("This is the non-pipeline upload function\n")
+#     if not selections:
+#         return
+
+#     # Have user make their selections
+#     eve_token = selections.eve_token
+#     selected_trial = selections.selected_trial
+#     selected_assay = selections.selected_assay
+#     upload_dir, files_to_upload = get_valid_dir(is_download=False)
+
+#     if not len(files_to_upload) == len(set(files_to_upload)):
+#         print("Error, duplicate names in file list, aborting")
+#         return None
+
+#     # Sanity check number of files per ID
+#     if not len(files_to_upload) % 2 == 0:
+#         print(
+#             "Odd number of files being uploaded. \
+#             Each file must have an associated metadata file."
+#         )
+#         return None
+
+#     print(
+#         "You are uploading a data format which requires a \
+#         metadata file. For each file being uploaded, first select the data file, then its \
+#         associated metadata"
+#     )
+
+#     # Copy list by value for manipualtion.
+#     file_list = files_to_upload[:]
+#     payload_list = []
+
+#     while file_list:
+#         # Select the data file.
+#         selection = option_select_framework(file_list, "Please select a data file")
+
+#         # Save a reference.
+#         selected_file = file_list[selection - 1]
+
+#         # Add it to the ingestion manifest.
+#         payload_list.append(
+#             {
+#                 "assay": selected_assay["assay_id"],
+#                 "trial": selected_trial["_id"],
+#                 "file_name": selected_file,
+#                 "mapping": "olink-data",
+#             }
+#         )
+
+#         # Delete from the list.
+#         del file_list[selection - 1]
+
+#         # Select the metadata.
+#         meta_selection = option_select_framework(
+#             file_list, "Select the corresponding metadata"
+#         )
+
+#         # Add to ingestion manifest, with the mapping being a reference to the associated file.
+#         payload_list.append(
+#             {
+#                 "assay": selected_assay["assay_id"],
+#                 "trial": selected_trial["_id"],
+#                 "file_name": file_list[meta_selection - 1],
+#                 "mapping": selected_file,
+#             }
+#         )
+#         del file_list[meta_selection - 1]
+
+#         payload = {
+#             "number_of_files": len(files_to_upload),
+#             "status": {"progress": "In Progress"},
+#             "files": payload_list,
+#         }
+
+#         response_upload = EVE_FETCHER.post(
+#             token=eve_token, endpoint="ingestion", json=payload, code=201
+#         )
+
+#         req_info = RequestInfo(
+#             files_to_upload, response_upload.json(), eve_token, response_upload.headers
+#         )
+
+#         # Execute uploads
+#         job_id = upload_files(upload_dir, req_info)
+#         print("Uploaded, your ID is: " + job_id)
+
+
+def run_upload_np() -> None:
+    """
+    Function responsible for guiding the user through the upload process
+    """
+
+    selections = select_assay_trial("This is the upload function\n")
+
+    if not selections:
+        return
+
+    # Have user make their selections
+    selected_trial = selections.selected_trial
+    selected_assay = selections.selected_assay
+
+    # Query the selected assay ID to get the inputs.
+    assay_r = EVE_FETCHER.get(
+        token=selections.eve_token, endpoint="assays/" + selected_assay["assay_id"]
+    ).json()
+
+    non_static_inputs = assay_r["non_static_inputs"]
+    upload_dir, files_to_upload = get_valid_dir(is_download=False)
+
+    if not len(files_to_upload) % len(non_static_inputs) == 0:
+        print(
+            "Not enough files detected for this upload operation. This upload requires %s files \
+            per upload"
+            % len(non_static_inputs)
+        )
+        return
+
+    print(
+        "You are uploading a data format which required %s files per upload. Follow the prompts \
+        and select the corresponding files."
+        % len(non_static_inputs)
+    )
+
+    file_copy = files_to_upload[:]
+    upload_list = []
+
+    while file_copy:
+        for inp in non_static_inputs:
+            selection = option_select_framework(
+                file_copy, "Please choose the file which corresponds to: %s" % inp
+            )
+            # save selection, then delete from list.
+            upload_list.append(
+                {
+                    "assay": selected_assay["assay_id"],
+                    "trial": selected_trial["_id"],
+                    "file_name": file_copy[selection - 1],
+                    "mapping": inp,
+                }
+            )
+            del file_copy[selection - 1]
+
+    payload = {
+        "number_of_files": len(upload_list),
+        "status": {"progress": "In Progress"},
+        "files": upload_list,
+    }
+
+    response_upload = EVE_FETCHER.post(
+        token=selections.eve_token, endpoint="ingestion", json=payload, code=201
+    )
+
+    req_info = RequestInfo(
+        response_upload.json(),
+        selections.eve_token,
+        response_upload.headers,
+        files_to_upload,
+    )
+
+    # Execute uploads
+    job_id = upload_files(upload_dir, req_info)
+    print("Uploaded, your ID is: " + job_id)

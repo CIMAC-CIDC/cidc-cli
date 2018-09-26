@@ -63,6 +63,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
         directory = input(
             "Please enter the path where %s :\n" % (dl_msg if is_download else ul_msg)
         )
+        print(directory)
         try:
             # Check that the directory path exists.
             if not os.path.isdir(directory):
@@ -70,7 +71,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
                 directory = None
 
             # If upload operation, check that there are files at the path.
-            if not is_download:
+            if not is_download and directory:
                 files_to_upload = [
                     name
                     for name in os.listdir(directory)

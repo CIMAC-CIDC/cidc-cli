@@ -1,15 +1,13 @@
-#!/usr/bin/env python3
 """
 Class defining the behavior of the interactive command line interface
 """
 import cmd
 import os
-import subprocess
 import json
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
-from upload.upload import upload_files, RequestInfo
-from interface.download import run_selective_download
+from upload.upload import upload_files, RequestInfo, run_upload_np
+from interface.download import run_selective_download, gsutil_copy_data
 from utilities.cli_utilities import (
     option_select_framework,
     get_files,
@@ -23,7 +21,6 @@ from utilities.cli_utilities import (
 from auth0.constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
-
 EVE_FETCHER = SmartFetch(EVE_URL)
 
 
@@ -55,18 +52,7 @@ def run_download_process() -> None:
     for ret in records["_items"]:
         print(ret["file_name"])
 
-    download_directory = get_valid_dir()
-
-    for record in records["_items"]:
-        gs_uri = record["gs_uri"]
-        gs_args = ["gsutil", "cp", gs_uri, download_directory]
-        try:
-            subprocess.run(gs_args)
-        except subprocess.CalledProcessError as error:
-            error_string = "Shell command generated error" + str(error.output)
-            print(error_string)
-
-    print("Download of files complete")
+    gsutil_copy_data(records["_items"], get_valid_dir())
 
 
 def run_upload_process() -> None:
@@ -148,95 +134,6 @@ def run_job_query() -> None:
         print("Job was aborted: " + status["status"]["message"])
 
 
-def run_upload_np() -> None:
-    """
-    Allows a user to upload data that is not marked for pipeline use.
-    """
-    selections = select_assay_trial("This is the non-pipeline upload function\n")
-    if not selections:
-        return
-
-    # Have user make their selections
-    eve_token = selections.eve_token
-    selected_trial = selections.selected_trial
-    selected_assay = selections.selected_assay
-    upload_dir, files_to_upload = get_valid_dir(is_download=False)
-
-    if not len(files_to_upload) == len(set(files_to_upload)):
-        print("Error, duplicate names in file list, aborting")
-        return None
-
-    # Sanity check number of files per ID
-    if not len(files_to_upload) % 2 == 0:
-        print(
-            "Odd number of files being uploaded. \
-            Each file must have an associated metadata file."
-        )
-        return None
-
-    print(
-        "You are uploading a data format which requires a \
-        metadata file. For each file being uploaded, first select the data file, then its \
-        associated metadata"
-    )
-    # Copy list by value for manipualtion.
-    file_list = files_to_upload[:]
-    payload_list = []
-
-    while file_list:
-        # Select the data file.
-        selection = option_select_framework(file_list, "Please select a data file")
-        # Save a reference.
-        selected_file = file_list[selection - 1]
-        # Add it to the ingestion manifest.
-        payload_list.append(
-            {
-                "assay": selected_assay["assay_id"],
-                "trial": selected_trial["_id"],
-                "file_name": selected_file,
-                "mapping": "olink-data",
-            }
-        )
-
-        # Delete from the list.
-        del file_list[selection - 1]
-
-        # Select the metadata.
-        meta_selection = option_select_framework(
-            file_list, "Select the corresponding metadata"
-        )
-
-        # Add to ingestion manifest, with the mapping being a reference to the associated file.
-        payload_list.append(
-            {
-                "assay": selected_assay["assay_id"],
-                "trial": selected_trial["_id"],
-                "file_name": file_list[meta_selection - 1],
-                "mapping": selected_file,
-            }
-        )
-        del file_list[meta_selection - 1]
-
-        payload = {
-            "number_of_files": len(files_to_upload),
-            "status": {"progress": "In Progress"},
-            "files": payload_list,
-        }
-
-        response_upload = EVE_FETCHER.post(
-            token=eve_token, endpoint="ingestion", json=payload, code=201
-        )
-
-        req_info = RequestInfo(
-            files_to_upload, response_upload.json(), eve_token, response_upload.headers
-        )
-
-        # Execute uploads
-        job_id = upload_files(upload_dir, req_info)
-
-        print("Uploaded, your ID is: " + job_id)
-
-
 class ShellCmd(cmd.Cmd, object):
     """
     Class to impart shell functionality to CMD
@@ -302,12 +199,12 @@ class ExitCmd(cmd.Cmd, object):
             return True
         return False
 
-    def do_exit(self, s) -> bool:
+    def do_exit(self, ess) -> bool: #pylint: disable=W0613
         """
         Exit the command line tool.
 
         Arguments:
-            s {[type]} -- [description]
+            ess {[type]} -- [description]
 
         Returns:
             bool -- [description]
@@ -328,7 +225,7 @@ class ExitCmd(cmd.Cmd, object):
 
 class CIDCCLI(ExitCmd, ShellCmd):
     """
-    Defines the CLI interface
+    Defines the CLI
     """
 
     intro = (
@@ -351,13 +248,13 @@ class CIDCCLI(ExitCmd, ShellCmd):
         "are required to immediately notify the CIDC"
     )
 
-    def do_upload_data(self, rest=None) -> None:
+    def do_upload_data(self, rest=None) -> None: #pylint: disable=W0613
         """
         Starts the upload process
         """
         run_upload_process()
 
-    def do_upload_no_pipeline(self, rest=None) -> None:
+    def do_upload_no_pipeline(self, rest=None) -> None: #pylint: disable=W0613
         """[summary]
 
         Keyword Arguments:
@@ -368,13 +265,13 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         run_upload_np()
 
-    def do_download_data(self, rest=None) -> None:
+    def do_download_data(self, rest=None) -> None: #pylint: disable=W0613
         """
         Starts the download process
         """
         run_download_process()
 
-    def do_selective_download(self, rest=None) -> None:
+    def do_selective_download(self, rest=None) -> None: #pylint: disable=W0613
         """
         Download individual data items.
 
@@ -386,15 +283,15 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         run_selective_download()
 
-    def do_query_job(self, rest=None) -> None:
+    def do_query_job(self, rest=None) -> None: #pylint: disable=W0613
         """
         Allows user to check if their job is done
         """
         run_job_query()
 
-    def get_user_consent(self, rest=None) -> None:
+    def get_user_consent(self, rest=None) -> None: #pylint: disable=W0613
         """
-        Ensures the user reads and agrees to TOS.
+        Ensures the user reads and agrees to TOS. 
 
         Keyword Arguments:
             rest {[type]} -- [description] (default: {None})
