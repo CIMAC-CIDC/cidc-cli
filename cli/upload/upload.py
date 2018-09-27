@@ -10,11 +10,13 @@ import requests
 from cidc_utils.requests import SmartFetch
 from simplejson.errors import JSONDecodeError
 
-from auth0.constants import EVE_URL
+from constants import EVE_URL
 from utilities.cli_utilities import (
     get_valid_dir,
     select_assay_trial,
     option_select_framework,
+    get_files,
+    create_payload_objects
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -25,7 +27,7 @@ class RequestInfo(NamedTuple):
     Data class to hold information for upload operation.
 
     Arguments:
-        NamedTuple {NamedTuple} -- [description]
+        NamedTuple {NamedTuple} -- NamedTuple class.
     """
 
     mongo_data: dict
@@ -131,95 +133,53 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         return None
 
 
-# def run_upload_np() -> None:
-#     """
-#     Allows a user to upload data that is not marked for pipeline use.
-#     """
-#     selections = select_assay_trial("This is the non-pipeline upload function\n")
-#     if not selections:
-#         return
+def run_upload_process() -> None:
+    """
+    Function responsible for guiding the user through the upload process
+    """
 
-#     # Have user make their selections
-#     eve_token = selections.eve_token
-#     selected_trial = selections.selected_trial
-#     selected_assay = selections.selected_assay
-#     upload_dir, files_to_upload = get_valid_dir(is_download=False)
+    selections = select_assay_trial("This is the upload function\n")
 
-#     if not len(files_to_upload) == len(set(files_to_upload)):
-#         print("Error, duplicate names in file list, aborting")
-#         return None
+    if not selections:
+        return
 
-#     # Sanity check number of files per ID
-#     if not len(files_to_upload) % 2 == 0:
-#         print(
-#             "Odd number of files being uploaded. \
-#             Each file must have an associated metadata file."
-#         )
-#         return None
+    # Have user make their selections
+    eve_token = selections.eve_token
+    selected_trial = selections.selected_trial
+    selected_assay = selections.selected_assay
 
-#     print(
-#         "You are uploading a data format which requires a \
-#         metadata file. For each file being uploaded, first select the data file, then its \
-#         associated metadata"
-#     )
+    # Query the selected assay ID to get the inputs.
+    assay_r = EVE_FETCHER.get(
+        token=eve_token, endpoint="assays/" + selected_assay["assay_id"]
+    ).json()
 
-#     # Copy list by value for manipualtion.
-#     file_list = files_to_upload[:]
-#     payload_list = []
+    non_static_inputs = assay_r["non_static_inputs"]
+    sample_ids = selected_trial["samples"]
+    file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
 
-#     while file_list:
-#         # Select the data file.
-#         selection = option_select_framework(file_list, "Please select a data file")
+    payload = {
+        "number_of_files": len(file_upload_dict),
+        "status": {"progress": "In Progress"},
+        "files": create_payload_objects(
+            file_upload_dict, selected_trial, selected_assay
+        ),
+    }
 
-#         # Save a reference.
-#         selected_file = file_list[selection - 1]
+    response_upload = EVE_FETCHER.post(
+        token=eve_token, endpoint="ingestion", json=payload, code=201
+    )
 
-#         # Add it to the ingestion manifest.
-#         payload_list.append(
-#             {
-#                 "assay": selected_assay["assay_id"],
-#                 "trial": selected_trial["_id"],
-#                 "file_name": selected_file,
-#                 "mapping": "olink-data",
-#             }
-#         )
+    req_info = RequestInfo(
+        [file_upload_dict[key] for key in file_upload_dict],
+        response_upload.json(),
+        eve_token,
+        response_upload.header,
+    )
 
-#         # Delete from the list.
-#         del file_list[selection - 1]
+    # Execute uploads
+    job_id = upload_files(upload_dir, req_info)
 
-#         # Select the metadata.
-#         meta_selection = option_select_framework(
-#             file_list, "Select the corresponding metadata"
-#         )
-
-#         # Add to ingestion manifest, with the mapping being a reference to the associated file.
-#         payload_list.append(
-#             {
-#                 "assay": selected_assay["assay_id"],
-#                 "trial": selected_trial["_id"],
-#                 "file_name": file_list[meta_selection - 1],
-#                 "mapping": selected_file,
-#             }
-#         )
-#         del file_list[meta_selection - 1]
-
-#         payload = {
-#             "number_of_files": len(files_to_upload),
-#             "status": {"progress": "In Progress"},
-#             "files": payload_list,
-#         }
-
-#         response_upload = EVE_FETCHER.post(
-#             token=eve_token, endpoint="ingestion", json=payload, code=201
-#         )
-
-#         req_info = RequestInfo(
-#             files_to_upload, response_upload.json(), eve_token, response_upload.headers
-#         )
-
-#         # Execute uploads
-#         job_id = upload_files(upload_dir, req_info)
-#         print("Uploaded, your ID is: " + job_id)
+    print("Uploaded, your ID is: " + job_id)
 
 
 def run_upload_np() -> None:

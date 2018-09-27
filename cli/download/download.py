@@ -1,18 +1,20 @@
 """
 Module for doing downloads and related functions.
 """
-import os
-import math
-import subprocess
 import json
+import math
+import os
+import subprocess
 from typing import List
+
 from cidc_utils.requests import SmartFetch
+
+from constants import EVE_URL
 from utilities.cli_utilities import (
-    select_assay_trial,
     generate_options_list,
     get_valid_dir,
+    select_assay_trial,
 )
-from auth0.constants import EVE_URL
 
 EVE_FETCHER = SmartFetch(EVE_URL)
 
@@ -109,6 +111,37 @@ def force_valid_menu_selection(
         if int(selection) not in range(1, number_options + 1):
             print(err_msg)
     return int(selection)
+
+
+def run_download_process() -> None:
+    """
+    Function for users to download data.
+    """
+    selections = select_assay_trial("This is the download function\n")
+
+    if not selections:
+        return
+
+    trial_query = {
+        "trial": selections.selected_trial["_id"],
+        "assay": selections.selected_assay["assay_id"],
+    }
+
+    query_string = "data?where=%s" % (json.dumps(trial_query))
+    records = EVE_FETCHER.get(
+        token=selections.eve_token, endpoint=query_string, code=200
+    ).json()
+    retreived = records["_items"]
+
+    if not retreived:
+        print("No data records found matching that criteria")
+        return
+
+    print("Files to be downloaded: ")
+    for ret in records["_items"]:
+        print(ret["file_name"])
+
+    gsutil_copy_data(records, get_valid_dir())
 
 
 VALID_COMMANDS = ["n", "p", "e", "a"]
