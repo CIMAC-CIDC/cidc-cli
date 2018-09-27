@@ -7,8 +7,8 @@ import re
 from typing import List, Tuple, NamedTuple
 from cidc_utils.requests import SmartFetch
 from cidc_utils.caching import CredentialCache
-from auth0.auth0 import run_auth_proc
-from auth0.constants import EVE_URL
+from auth0 import run_auth_proc
+from constants import EVE_URL
 
 USER_CACHE = CredentialCache(100, 600)
 EVE_FETCHER = SmartFetch(EVE_URL)
