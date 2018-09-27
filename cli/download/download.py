@@ -141,7 +141,7 @@ def run_download_process() -> None:
     for ret in records["_items"]:
         print(ret["file_name"])
 
-    gsutil_copy_data(records, get_valid_dir())
+    gsutil_copy_data(records, get_valid_dir()[0])
 
 
 VALID_COMMANDS = ["n", "p", "e", "a"]
