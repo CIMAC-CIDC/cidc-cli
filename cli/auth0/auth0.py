@@ -12,7 +12,7 @@ import time
 from typing import Tuple
 from base64 import urlsafe_b64encode
 import requests
-from auth0.constants import (
+from constants import (
     DOMAIN,
     AUDIENCE,
     CLIENT_ID,
@@ -168,6 +168,29 @@ def send_response_html(connection, status: bool) -> None:
         )
 
 
+def parse_response(response_str: str, connection, verifier) -> str:
+    """[summary]
+
+    Arguments:
+        response_str {str} -- [description]
+
+    Raises:
+        RuntimeError. -- [description]
+
+    Returns:
+        str -- [description]
+    """
+    code = re.search(r"\?code=(\w+)", response_str).group(1)
+    try:
+        token = exchange_code_for_token(code, verifier)
+        send_response_html(connection, True)
+        return token
+    except RuntimeError as error:
+        # If exchange fails, 401 will raise RuntimeError.
+        print(error)
+        send_response_html(connection, False)
+
+
 def run_auth_proc() -> str:
     """
     Function in charge of running the authorization
@@ -206,7 +229,7 @@ def run_auth_proc() -> str:
 
     # Keep connection alive until response.
     while True:
-        connection, address = serversocket.accept()
+        connection = serversocket.accept()[0]
         buf = connection.recv(1024)
         try:
             if len(buf) > 0:
@@ -214,16 +237,7 @@ def run_auth_proc() -> str:
                 response = buf
                 response_str = response.decode("utf-8")
                 if re.search(r"\?code=(\w+)", response_str).group(1):
-                    code = re.search(r"\?code=(\w+)", response_str).group(1)
-                    try:
-                        token = exchange_code_for_token(code, verifier)
-                        send_response_html(connection, True)
-                        return token
-                    except RuntimeError as error:
-                        # If exchange fails, 401 will raise RuntimeError.
-                        print(error)
-                        send_response_html(connection, False)
-                        break
+                    return parse_response(response_str, connection, verifier)
             else:
                 print("nothing....")
                 break

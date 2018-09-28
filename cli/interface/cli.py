@@ -51,7 +51,7 @@ def run_job_query() -> None:
         print("Job was aborted: " + status["status"]["message"])
 
 
-class ShellCmd(cmd.Cmd, object):
+class ShellCmd(cmd.Cmd):
     """
     Class to impart shell functionality to CMD
     """
@@ -72,7 +72,7 @@ class ShellCmd(cmd.Cmd, object):
         print("Execute shell commands")
 
 
-class ExitCmd(cmd.Cmd, object):
+class ExitCmd(cmd.Cmd):
     """
     Class put together to generate more graceful exit functionality for CMD.
     """
@@ -208,7 +208,7 @@ class CIDCCLI(ExitCmd, ShellCmd):
 
     def get_user_consent(self, rest=None) -> None:  # pylint: disable=W0613
         """
-        Ensures the user reads and agrees to TOS. 
+        Ensures the user reads and agrees to TOS.
 
         Keyword Arguments:
             rest {[type]} -- [description] (default: {None})

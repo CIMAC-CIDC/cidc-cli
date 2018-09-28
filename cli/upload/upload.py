@@ -206,15 +206,15 @@ def run_upload_np() -> None:
 
     if not len(files_to_upload) % len(non_static_inputs) == 0:
         print(
-            "Not enough files detected for this upload operation. This upload requires %s files \
-            per upload"
+            "Not enough files detected for this upload operation. This upload requires %s files "
+            "per upload"
             % len(non_static_inputs)
         )
         return
 
     print(
-        "You are uploading a data format which required %s files per upload. Follow the prompts \
-        and select the corresponding files."
+        "You are uploading a data format which required %s files per upload. Follow the prompts "
+        "and select the corresponding files."
         % len(non_static_inputs)
     )
 

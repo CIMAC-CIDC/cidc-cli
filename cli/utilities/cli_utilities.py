@@ -278,7 +278,7 @@ def select_assay_trial(prompt: str) -> Selections:
         return None
 
     USER_CACHE.cache_key(eve_token)
-    trial_names = [x["trial_name"] for x in trials]
+    trial_names = [trial["trial_name"] for trial in trials]
     trial_selection = option_select_framework(
         trial_names, "=====| Available Trials |====="
     )
