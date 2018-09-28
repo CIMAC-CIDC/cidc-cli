@@ -27,7 +27,7 @@ def gsutil_copy_data(records: List[str], download_directory: str) -> None:
         records {List[str]} -- List of google bucket URIs.
         download_directory {str} -- Path where the user wants the files to go.
     """
-    for record in records["_items"]:
+    for record in records:
         gs_uri = record["gs_uri"]
         gs_args = ["gsutil", "cp", gs_uri, download_directory]
         try:
@@ -48,7 +48,7 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
        List[List[dict]] -- A list of list of dicts, with each sublist
        being made to fit in the user's terminal.
     """
-    rows, columns = os.popen("stty size", "r").read().split()
+    rows = int(os.popen("stty size", "r").read().split()[0])
 
     # If someone has a super tall terminal, don't give them a giant list.
     if rows > 50:
@@ -77,40 +77,11 @@ def elegant_options(
     """
     # Split the items into pages.
     # Create the text for each page
-    formatted_list = [generate_options_list(page, prompt) for page in paginated_list]
+    str_pag_list = [[x['file_name'] for x in page] for page in paginated_list]
+    formatted_list = [generate_options_list(page, prompt) for page in str_pag_list]
     # List available commands
     with_commands = [sublist + "\n" + ", ".join(commands) for sublist in formatted_list]
     return with_commands
-
-
-def force_valid_menu_selection(
-    number_options: int, prompt: str, err_msg: str = "Invalid selection"
-) -> int:
-    """
-    Script that forces a user to choose a valid option based on the number of options.
-
-    Arguments:
-        number_options {int} -- number of valid options
-        prompt {str} -- Message you want displayed to user
-        err_msg {str} -- Message to be printed when a bad selection is made
-
-    Returns:
-        int -- The user's selection
-    """
-    selection = -1
-    user_input = None
-
-    # Force user to make valid selection
-    while int(selection) not in range(1, number_options + 1):
-        user_input = input(prompt)
-        try:
-            int(user_input)
-            selection = user_input
-        except ValueError:
-            print("Please enter an integer")
-        if int(selection) not in range(1, number_options + 1):
-            print(err_msg)
-    return int(selection)
 
 
 def run_download_process() -> None:
@@ -172,9 +143,9 @@ def run_selective_download() -> None:
         print("No data records found matching that criteria")
         return
 
-    commands = ["[N]ext", "[P]revious", "[E]xit", "Download [A]ll"]
+    commands = ["[N]ext", "[P]revious", "[E]xit", "Download [A]ll: "]
     paginated_list = paginate_selections(retrieved)
-    pages = elegant_options(paginated_list, commands, "====== Files to Download =====.")
+    pages = elegant_options(paginated_list, commands, "=====| Files to Download |=====")
     page_index = 0
     end_dl = False
 
@@ -191,7 +162,7 @@ def run_selective_download() -> None:
                 print("Data download successful")
 
             # Next page.
-            if sel_str == "n" and page_index + 1 <= len(pages):
+            if sel_str == "n" and page_index + 1 < len(pages):
                 page_index += 1
             elif sel_str == "n":
                 print("You are on the last page already.")
@@ -214,6 +185,7 @@ def run_selective_download() -> None:
                 end_dl = True
 
         except ValueError:
+            selection = None
             print("Please enter either an integer or a command")
         except IndexError:
             print("Selection out of range. Choose only from the files shown.")
