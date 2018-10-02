@@ -7,6 +7,12 @@ Command line tool for interfacing with the CIDC workflow pipeline
 
 ### Installation
 
+You need to install the [google cloud SDK](https://cloud.google.com/sdk/install) and then log in to the google account that you used to register with our portal using the
+following command:
+
+`gcloud auth application-default login`
+
+
 Install pipenv if you do not have it installed `pip install pipenv`
 
 Run `pipenv install` or `pipenv run upload-script.py`
