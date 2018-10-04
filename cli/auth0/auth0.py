@@ -12,7 +12,14 @@ import time
 from typing import Tuple
 from base64 import urlsafe_b64encode
 import requests
-from auth0.constants import DOMAIN, AUDIENCE, CLIENT_ID, CODE_CHALLENGE_METHOD, SCOPE, REDIRECT_URI
+from constants import (
+    DOMAIN,
+    AUDIENCE,
+    CLIENT_ID,
+    CODE_CHALLENGE_METHOD,
+    SCOPE,
+    REDIRECT_URI,
+)
 
 CRYPTOPAIR = Tuple[bytes, str]
 
@@ -56,7 +63,9 @@ def create_crypto_pair() -> CRYPTOPAIR:
         verifier = base_64_urlencode(secrets.token_bytes(32))
         challenge = base_64_urlencode(sha256(verifier))
         code = challenge.decode()
-        challenge_str = code.replace('+', '-').replace('/', '-').replace('=', '').encode('utf-8')
+        challenge_str = (
+            code.replace("+", "-").replace("/", "-").replace("=", "").encode("utf-8")
+        )
         return verifier, challenge_str
     except TypeError as tye:
         print(tye)
@@ -70,13 +79,13 @@ def authorize_user(challenge_str) -> None:
         challenge_str {str} -- String representation of the challenge.
     """
     params = {
-        'audience': AUDIENCE,
-        'scope': SCOPE,
-        'response_type': 'code',
-        'client_id': CLIENT_ID,
-        'code_challenge': challenge_str,
-        'code_challenge_method': CODE_CHALLENGE_METHOD,
-        'redirect_uri': REDIRECT_URI
+        "audience": AUDIENCE,
+        "scope": SCOPE,
+        "response_type": "code",
+        "client_id": CLIENT_ID,
+        "code_challenge": challenge_str,
+        "code_challenge_method": CODE_CHALLENGE_METHOD,
+        "redirect_uri": REDIRECT_URI,
     }
     try:
         url = DOMAIN + urllib.parse.urlencode(params)
@@ -98,11 +107,11 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
         str -- Access token for use with the API.
     """
     payload = {
-        'grant_type': 'authorization_code',
-        'client_id': CLIENT_ID,
-        'code_verifier': verifier,
-        'code': code,
-        'redirect_uri': REDIRECT_URI
+        "grant_type": "authorization_code",
+        "client_id": CLIENT_ID,
+        "code_verifier": verifier,
+        "code": code,
+        "redirect_uri": REDIRECT_URI,
     }
 
     res = requests.post("https://cidc-test.auth0.com/oauth/token", json=payload)
@@ -114,7 +123,7 @@ def exchange_code_for_token(code: str, verifier: bytes) -> str:
 
     res_json = res.json()
 
-    return res_json['access_token']
+    return res_json["access_token"]
 
 
 def send_response_html(connection, status: bool) -> None:
@@ -126,27 +135,60 @@ def send_response_html(connection, status: bool) -> None:
         status {bool} -- True if auth worked, else false.
     """
     if status:
-        connection.send(bytes('HTTP/1.1 200 OK\n', 'utf-8'))
-        connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
-        connection.send(bytes('\n', 'utf-8'))
-        connection.send(bytes("""
+        connection.send(bytes("HTTP/1.1 200 OK\n", "utf-8"))
+        connection.send(bytes("Content-Type: text/html\n", "utf-8"))
+        connection.send(bytes("\n", "utf-8"))
+        connection.send(
+            bytes(
+                """
             <html>
             <body>
             <h1>Authentication Succeeded! Return to CLI.</h1>
             </body>
             </html>
-        """, 'utf-8'))
+        """,
+                "utf-8",
+            )
+        )
     else:
-        connection.send(bytes('HTTP/1.1 401 UNAUTHORIZED\n', 'utf-8'))
-        connection.send(bytes('Content-Type: text/html\n', 'utf-8'))
-        connection.send(bytes('\n', 'utf-8'))
-        connection.send(bytes("""
+        connection.send(bytes("HTTP/1.1 401 UNAUTHORIZED\n", "utf-8"))
+        connection.send(bytes("Content-Type: text/html\n", "utf-8"))
+        connection.send(bytes("\n", "utf-8"))
+        connection.send(
+            bytes(
+                """
             <html>
             <body>
             <h1>Authentication Failed: </h1>
             </body>
             </html>
-        """, 'utf-8'))
+        """,
+                "utf-8",
+            )
+        )
+
+
+def parse_response(response_str: str, connection, verifier) -> str:
+    """[summary]
+
+    Arguments:
+        response_str {str} -- [description]
+
+    Raises:
+        RuntimeError. -- [description]
+
+    Returns:
+        str -- [description]
+    """
+    code = re.search(r"\?code=(\w+)", response_str).group(1)
+    try:
+        token = exchange_code_for_token(code, verifier)
+        send_response_html(connection, True)
+        return token
+    except RuntimeError as error:
+        # If exchange fails, 401 will raise RuntimeError.
+        print(error)
+        send_response_html(connection, False)
 
 
 def run_auth_proc() -> str:
@@ -169,15 +211,15 @@ def run_auth_proc() -> str:
     sleep = 0
     while True and sleep < 4:
         try:
-            serversocket.bind(('localhost', 5001))
+            serversocket.bind(("localhost", 5001))
             break
         except OSError:
-            print('Socket in use... waiting')
+            print("Socket in use... waiting")
             time.sleep(1)
             sleep += 1
 
     if sleep == 10:
-        print('Failed to connect, exiting!')
+        print("Failed to connect, exiting!")
         serversocket.close()
         return None
 
@@ -187,30 +229,21 @@ def run_auth_proc() -> str:
 
     # Keep connection alive until response.
     while True:
-        connection, address = serversocket.accept()
+        connection = serversocket.accept()[0]
         buf = connection.recv(1024)
         try:
             if len(buf) > 0:
                 # When response received, take value, send response, then close.
                 response = buf
-                response_str = response.decode('utf-8')
-                if re.search(r'\?code=(\w+)', response_str).group(1):
-                    code = re.search(r'\?code=(\w+)', response_str).group(1)
-                    try:
-                        token = exchange_code_for_token(code, verifier)
-                        send_response_html(connection, True)
-                        return token
-                    except RuntimeError as error:
-                        # If exchange fails, 401 will raise RuntimeError.
-                        print(error)
-                        send_response_html(connection, False)
-                        break
+                response_str = response.decode("utf-8")
+                if re.search(r"\?code=(\w+)", response_str).group(1):
+                    return parse_response(response_str, connection, verifier)
             else:
-                print('nothing....')
+                print("nothing....")
                 break
         except OSError as error:
-            print('OS ERROR: ' + error)
-            exchange_code_for_token('failed_exchange', verifier)
+            print("OS ERROR: " + error)
+            exchange_code_for_token("failed_exchange", verifier)
             send_response_html(connection, False)
         finally:
             serversocket.close()
