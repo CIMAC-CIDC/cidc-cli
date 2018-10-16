@@ -80,8 +80,8 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
 
                 # Get confirmation of upload.
                 if files_to_upload:
-                    for x in files_to_upload:
-                        print(x)
+                    for item in files_to_upload:
+                        print(item)
                     confirm_upload = user_prompt_yn(
                         "These are the files found in the provided directory, proceed? [Y/N]"
                     )
@@ -134,7 +134,7 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
     and returning the selection
 
     Arguments:
-        options {[str]} -- List of options for user to choose from
+        options {List[str]} -- List of options for user to choose from
         prompt_header {str} -- Banner message to display above options
 
     Returns:
@@ -172,8 +172,12 @@ def ensure_logged_in() -> str:
 def cache_token(token: str) -> None:
     """
     Stashes a token in the cli_utilities instantiated USER_CACHE
-    :param token: Identity Token (usually a JWT)
-    :return: None
+
+    Arguments:
+        token {str} -- JWT Token
+
+    Returns:
+        None -- [description]
     """
     USER_CACHE.cache_key(token)
 
@@ -267,8 +271,14 @@ def select_assay_trial(prompt: str) -> Selections:
         return None
 
     # Fetch list of trials
-    response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
+    response = None
 
+    try:
+        response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
+    except RuntimeError:
+        if response.status_code == 401:
+            print("Error: You have not yet registered on our portal website!")
+ 
     # Select Trial
     response_data = response.json()
     trials = response_data["_items"]
@@ -308,17 +318,17 @@ def validate_and_extract(
     If all names are valid, returns a mapping of filename to sample id.
 
     Arguments:
-        file_names {[str]} -- list of file names
-        sample_ids {[str]} -- list of valid ids
-        non_static_inputs {[str]} -- list of non static inputs for selected assay.
+        file_names {List[str]} -- list of file names
+        sample_ids {List[str]} -- list of valid ids
+        non_static_inputs {List[str]} -- list of non static inputs for selected assay.
     Returns:
         dict -- Dictionary mapping file name to sample id. Format:
-        {
-            file_name: {
-                sample_id: "sample_id",
-                mapping: "mapping"
+            {
+                file_name: {
+                    sample_id: "sample_id",
+                    mapping: "mapping"
+                }
             }
-        }
     """
     # Create RE object based on valid samples
     search_string = re.compile(str.join("|", sample_ids))

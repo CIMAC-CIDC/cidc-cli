@@ -169,7 +169,8 @@ def send_response_html(connection, status: bool) -> None:
 
 
 def parse_response(response_str: str, connection, verifier) -> str:
-    """[summary]
+    """
+    Reads the byte stream and looks for the verification code.
 
     Arguments:
         response_str {str} -- [description]
