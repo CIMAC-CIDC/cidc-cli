@@ -1,9 +1,0 @@
-DOMAIN=http://cidc-test.auth0.com/authorize?
-AUDIENCE=http://localhost:5000
-CLIENT_ID=w0PxQ5deugPZSnP0kWbtXyw5olaEAOMy
-CODE_CHALLENGE_METHOD=S256
-REDIRECT_URI=http://localhost:5001
-SCOPE=openid profile email
-EVE_URL=https://35.196.156.61/api/
-IDP=0oafgzjdieWA4Ljk70h7
-PYTHONPATH=./cli
