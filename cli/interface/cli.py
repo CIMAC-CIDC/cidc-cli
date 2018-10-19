@@ -9,7 +9,7 @@ from cidc_utils.requests import SmartFetch
 
 from constants import EVE_URL
 from download import run_selective_download, run_download_process
-from upload import run_upload_np, run_upload_process
+from upload import run_upload_process
 from utilities.cli_utilities import (
     cache_token,
     ensure_logged_in,
@@ -170,17 +170,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
         Starts the upload process
         """
         run_upload_process()
-
-    def do_upload_no_pipeline(self, rest=None) -> None:  # pylint: disable=W0613
-        """[summary]
-
-        Keyword Arguments:
-            rest {[type]} -- [description] (default: {None})
-
-        Returns:
-            None -- [description]
-        """
-        run_upload_np()
 
     def do_download_data(self, rest=None) -> None:  # pylint: disable=W0613
         """
