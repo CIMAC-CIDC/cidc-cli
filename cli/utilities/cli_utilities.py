@@ -278,7 +278,7 @@ def select_assay_trial(prompt: str) -> Selections:
     except RuntimeError:
         if response.status_code == 401:
             print("Error: You have not yet registered on our portal website!")
- 
+
     # Select Trial
     response_data = response.json()
     trials = response_data["_items"]

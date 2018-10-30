@@ -56,16 +56,13 @@ def update_job_status(
     if status:
         url = None
         if env.get("JENKINS"):
-            url = (
-                "http://"
-                + env.get("INGESTION_API_SERVICE_HOST")
-                + ":"
-                + env.get("INGESTION_API_SERVICE_PORT")
+            url = "http://%s:%s" % (
+                env.get("INGESTION_API_SERVICE_HOST"),
+                env.get("INGESTION_API_SERVICE_PORT"),
             )
         else:
             url = EVE_URL
 
-        print(url)
         res = requests.post(
             url + "/ingestion/" + mongo_data["_id"],
             json={
