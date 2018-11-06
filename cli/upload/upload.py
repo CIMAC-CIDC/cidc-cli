@@ -4,7 +4,7 @@ This is a simple command-line tool that allows users to upload data to our googl
 import datetime
 import subprocess
 from os import environ as env
-from typing import List, NamedTuple
+from typing import List, NamedTuple, Tuple
 
 import requests
 from cidc_utils.requests import SmartFetch
@@ -16,7 +16,9 @@ from utilities.cli_utilities import (
     select_assay_trial,
     option_select_framework,
     get_files,
-    create_payload_objects
+    create_payload_objects,
+    user_prompt_yn,
+    Selections,
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -37,7 +39,7 @@ class RequestInfo(NamedTuple):
 
 
 def update_job_status(
-    status: bool, mongo_data: dict, eve_token: str, message: str = None
+    status: bool, mongo_data: List[dict], eve_token: str, message: str = None
 ) -> None:
     """
     Updates the status of the job in MongoDB, either with the URIs if the upload
@@ -47,23 +49,20 @@ def update_job_status(
         status {bool} -- True if upload succeeds, false otherwise.
         mongo_data {dict} -- The response object from the mongo insert.
         eve_token {str} -- Token for accessing EVE API.
-        google_data {[dict]} -- If successfull, list of dicts of the file
+        google_data {List[dict]} -- If successfull, list of dicts of the file
         names and their associated uris.
         message {str} -- If upload failed, contains error.
     """
     if status:
         url = None
         if env.get("JENKINS"):
-            url = (
-                "http://"
-                + env.get("INGESTION_API_SERVICE_HOST")
-                + ":"
-                + env.get("INGESTION_API_SERVICE_PORT")
+            url = "http://%s:%s" % (
+                env.get("INGESTION_API_SERVICE_HOST"),
+                env.get("INGESTION_API_SERVICE_PORT"),
             )
         else:
             url = EVE_URL
 
-        print(url)
         res = requests.post(
             url + "/ingestion/" + mongo_data["_id"],
             json={
@@ -133,89 +132,61 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         return None
 
 
-def run_upload_process() -> None:
+def upload_pipeline(
+    assay_response: dict, selections: Selections
+) -> Tuple[str, dict, List[str]]:
     """
-    Function responsible for guiding the user through the upload process
+    Upload for files going to a WDL pipeline
+
+    Arguments:
+        assay_response {dict} -- Response to the chosen assay being queried
+        selections {Selections} -- User selections for assay/trial.
+
+    Returns:
+        Tuple[str, dict, List[str]] -- Directory path, upload payload, file names.
     """
-
-    selections = select_assay_trial("This is the upload function\n")
-
-    if not selections:
-        return
-
-    # Have user make their selections
-    eve_token = selections.eve_token
-    selected_trial = selections.selected_trial
-    selected_assay = selections.selected_assay
-
-    # Query the selected assay ID to get the inputs.
-    assay_r = EVE_FETCHER.get(
-        token=eve_token, endpoint="assays/" + selected_assay["assay_id"]
-    ).json()
-
-    non_static_inputs = assay_r["non_static_inputs"]
-    sample_ids = selected_trial["samples"]
+    non_static_inputs = assay_response["non_static_inputs"]
+    sample_ids = selections.selected_trial["samples"]
     file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
 
     payload = {
         "number_of_files": len(file_upload_dict),
         "status": {"progress": "In Progress"},
         "files": create_payload_objects(
-            file_upload_dict, selected_trial, selected_assay
+            file_upload_dict, selections.selected_trial, selections.selected_assay
         ),
     }
 
-    response_upload = EVE_FETCHER.post(
-        token=eve_token, endpoint="ingestion", json=payload, code=201
-    )
-
-    req_info = RequestInfo(
-        [file_upload_dict[key] for key in file_upload_dict],
-        response_upload.json(),
-        eve_token,
-        response_upload.header,
-    )
-
-    # Execute uploads
-    job_id = upload_files(upload_dir, req_info)
-
-    print("Uploaded, your ID is: " + job_id)
+    return upload_dir, payload, [file_upload_dict[key] for key in file_upload_dict]
 
 
-def run_upload_np() -> None:
+def upload_np(
+    assay_response: dict, selections: Selections
+) -> Tuple[str, dict, List[str]]:
     """
-    Function responsible for guiding the user through the upload process
+    Upload for non-pipeline files.
+
+    Arguments:
+        assay_response {dict} -- API response to assay endpoint query.
+        selections {Selections} -- User selections.
+
+    Returns:
+        Tuple[str, dict, List[str]] -- Directory path, upload payload, file names.
     """
 
-    selections = select_assay_trial("This is the upload function\n")
-
-    if not selections:
-        return
-
-    # Have user make their selections
-    selected_trial = selections.selected_trial
-    selected_assay = selections.selected_assay
-
-    # Query the selected assay ID to get the inputs.
-    assay_r = EVE_FETCHER.get(
-        token=selections.eve_token, endpoint="assays/" + selected_assay["assay_id"]
-    ).json()
-
-    non_static_inputs = assay_r["non_static_inputs"]
+    non_static_inputs = assay_response["non_static_inputs"]
     upload_dir, files_to_upload = get_valid_dir(is_download=False)
 
     if not len(files_to_upload) % len(non_static_inputs) == 0:
         print(
             "Not enough files detected for this upload operation. This upload requires %s files "
-            "per upload"
-            % len(non_static_inputs)
+            "per upload" % len(non_static_inputs)
         )
         return
 
     print(
         "You are uploading a data format which required %s files per upload. Follow the prompts "
-        "and select the corresponding files."
-        % len(non_static_inputs)
+        "and select the corresponding files." % len(non_static_inputs)
     )
 
     file_copy = files_to_upload[:]
@@ -229,8 +200,8 @@ def run_upload_np() -> None:
             # save selection, then delete from list.
             upload_list.append(
                 {
-                    "assay": selected_assay["assay_id"],
-                    "trial": selected_trial["_id"],
+                    "assay": selections.selected_assay["assay_id"],
+                    "trial": selections.selected_trial["_id"],
                     "file_name": file_copy[selection - 1],
                     "mapping": inp,
                 }
@@ -243,17 +214,44 @@ def run_upload_np() -> None:
         "files": upload_list,
     }
 
+    return upload_dir, payload, files_to_upload
+
+
+def run_upload_process() -> None:
+    """
+    Function responsible for guiding the user through the upload process
+    """
+
+    selections = select_assay_trial("This is the upload function\n")
+
+    if not selections:
+        return
+
+    # Have user make their selections
+    eve_token = selections.eve_token
+    selected_assay = selections.selected_assay
+
+    # Query the selected assay ID to get the inputs.
+    assay_r = EVE_FETCHER.get(
+        token=eve_token, endpoint="assays/" + selected_assay["assay_id"]
+    ).json()
+
+    upload_dir = None
+    payload = None
+    file_list = None
+
+    if user_prompt_yn("Is this data the input to a WDL pipeline?"):
+        upload_dir, payload, file_list = upload_pipeline(assay_r, selections)
+    else:
+        upload_dir, payload, file_list = upload_np(assay_r, selections)
+
     response_upload = EVE_FETCHER.post(
         token=selections.eve_token, endpoint="ingestion", json=payload, code=201
     )
 
     req_info = RequestInfo(
-        response_upload.json(),
-        selections.eve_token,
-        response_upload.headers,
-        files_to_upload,
+        response_upload.json(), selections.eve_token, response_upload.headers, file_list
     )
 
-    # Execute uploads
     job_id = upload_files(upload_dir, req_info)
     print("Uploaded, your ID is: " + job_id)
