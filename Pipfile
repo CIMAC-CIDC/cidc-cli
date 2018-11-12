@@ -10,6 +10,7 @@ cachetools = "*"
 attrs = "*"
 "nose2" = "*"
 requests = "*"
+bson = "*"
 
 [dev-packages]
 pylint = "*"
@@ -18,3 +19,6 @@ black = "*"
 
 [requires]
 python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true

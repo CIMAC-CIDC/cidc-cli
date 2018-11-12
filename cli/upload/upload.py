@@ -3,12 +3,9 @@ This is a simple command-line tool that allows users to upload data to our googl
 """
 import datetime
 import subprocess
-from os import environ as env
 from typing import List, NamedTuple, Tuple
 
-import requests
 from cidc_utils.requests import SmartFetch
-from simplejson.errors import JSONDecodeError
 
 from constants import EVE_URL
 from utilities.cli_utilities import (
@@ -49,51 +46,27 @@ def update_job_status(
         status {bool} -- True if upload succeeds, false otherwise.
         mongo_data {dict} -- The response object from the mongo insert.
         eve_token {str} -- Token for accessing EVE API.
-        google_data {List[dict]} -- If successfull, list of dicts of the file
-        names and their associated uris.
         message {str} -- If upload failed, contains error.
     """
+    payload = None
     if status:
-        url = None
-        if env.get("JENKINS"):
-            url = "http://%s:%s" % (
-                env.get("INGESTION_API_SERVICE_HOST"),
-                env.get("INGESTION_API_SERVICE_PORT"),
-            )
-        else:
-            url = EVE_URL
-
-        res = requests.post(
-            url + "/ingestion/" + mongo_data["_id"],
-            json={
-                "status": {"progress": "Completed", "message": ""},
-                "end_time": datetime.datetime.now().isoformat(),
-            },
-            headers={
-                "If-Match": mongo_data["_etag"],
-                "Authorization": "Bearer {}".format(eve_token),
-                "X-HTTP-Method-Override": "PATCH",
-            },
-        )
-
-        if not res.status_code == 200:
-            print("Error! Patching unsuccesful")
-            print(res.reason)
-            try:
-                print(res.json())
-            except JSONDecodeError:
-                print("No valid JSON response")
-
+        payload = {
+            "status": {"progress": "Completed", "message": ""},
+            "end_time": datetime.datetime.now().isoformat(),
+        }
     else:
-        requests.post(
-            EVE_URL + "/ingestion/" + mongo_data["_id"],
-            json={"status": {"progress": "Aborted", "message": message}},
-            headers={
-                "If-Match": mongo_data["_etag"],
-                "Authorization": "Bearer {}".format(eve_token),
-                "X-HTTP-Method-Override": "PATCH",
-            },
+        payload = {"status": {"progress": "Aborted", "message": message}}
+
+    try:
+        EVE_FETCHER.patch(
+            endpoint="ingestion",
+            item_id=mongo_data["_id"],
+            _etag=mongo_data["_etag"],
+            token=eve_token,
+            json=payload,
         )
+    except RuntimeError as error:
+        print("Status update failed: %s" % error)
 
 
 def upload_files(directory: str, request_info: RequestInfo) -> str:
@@ -182,7 +155,7 @@ def upload_np(
             "Not enough files detected for this upload operation. This upload requires %s files "
             "per upload" % len(non_static_inputs)
         )
-        return
+        return None, None
 
     print(
         "You are uploading a data format which required %s files per upload. Follow the prompts "

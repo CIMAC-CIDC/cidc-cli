@@ -1,12 +1,14 @@
 attrs==18.2.0
-cachetools==2.1.0
+bson==0.5.7
+cachetools==3.0.0
 certifi==2018.10.15
 chardet==3.0.4
 coverage==5.0a3
 git+https://github.com/dfci/cidc-utils#egg=cidc-utils
 idna==2.7
 nose2==0.8.0
+python-dateutil==2.7.5
 python-dotenv==0.9.1
 requests==2.20.0
 six==1.11.0
-urllib3==1.24
+urllib3==1.24.1

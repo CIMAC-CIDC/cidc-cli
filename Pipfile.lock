@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "dea5ac228afa8b4545a287a12e728126ffb61882b6281650b0a8dd771f33d5fe"
+            "sha256": "f651064ad6b4c914f0e2949942765541544b6b0df8c2521240e1e837e7aa9168"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -24,13 +24,20 @@
             "index": "pypi",
             "version": "==18.2.0"
         },
-        "cachetools": {
+        "bson": {
             "hashes": [
-                "sha256:90f1d559512fc073483fe573ef5ceb39bf6ad3d39edc98dc55178a2b2b176fa3",
-                "sha256:d1c398969c478d336f767ba02040fa22617333293fb0b8968e79b16028dfee35"
+                "sha256:19396624cbd30b7d74fff7bcc1a8db1c3d92b6469fce8a5bdab175dd0129a710"
             ],
             "index": "pypi",
-            "version": "==2.1.0"
+            "version": "==0.5.7"
+        },
+        "cachetools": {
+            "hashes": [
+                "sha256:0a258d82933a1dd18cb540aca4ac5d5690731e24d1239a08577b814998f49785",
+                "sha256:4621965b0d9d4c82a79a29edbad19946f5e7702df4afae7d1ed2df951559a8cc"
+            ],
+            "index": "pypi",
+            "version": "==3.0.0"
         },
         "certifi": {
             "hashes": [
@@ -103,6 +110,13 @@
             "index": "pypi",
             "version": "==0.8.0"
         },
+        "python-dateutil": {
+            "hashes": [
+                "sha256:063df5763652e21de43de7d9e00ccf239f953a832941e37be541614732cdfc93",
+                "sha256:88f9287c0174266bb0d8cedd395cfba9c58e87e5ad86b2ce58859bc11be3cf02"
+            ],
+            "version": "==2.7.5"
+        },
         "python-dotenv": {
             "hashes": [
                 "sha256:122290a38ece9fe4f162dc7c95cae3357b983505830a154d3c98ef7f6c6cea77",
@@ -128,10 +142,10 @@
         },
         "urllib3": {
             "hashes": [
-                "sha256:41c3db2fc01e5b907288010dec72f9d0a74e37d6994e6eb56849f59fea2265ae",
-                "sha256:8819bba37a02d143296a4d032373c4dd4aca11f6d4c9973335ca75f9c8475f59"
+                "sha256:61bf29cada3fc2fbefad4fdf059ea4bd1b4a86d2b6d15e1c7c0b582b9752fe39",
+                "sha256:de9529817c93f27c8ccbfead6985011db27bd0ddfcdb2d86f3f663385c6a9c22"
             ],
-            "version": "==1.24"
+            "version": "==1.24.1"
         }
     },
     "develop": {

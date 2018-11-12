@@ -65,15 +65,17 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
 def elegant_options(
     paginated_list: List[List[dict]], commands: List[str], prompt: str
 ) -> List[str]:
-    """[summary]
+    """
+    Function that persents users with a list of choices, along with management functions
+    letting them browse pages.
 
     Arguments:
-        items {List[List[dict]]} -- [description]
-        commands {List[str]} -- [description]
-        prompt {str} -- [description]
+        items {List[List[dict]]} -- Options to be displayed.
+        commands {List[str]} -- Commands for navigating the menu.
+        prompt {str} -- Message to be displayed.
 
     Returns:
-        List[str] -- [description]
+        List[str] -- Formatted options list.
     """
     # Split the items into pages.
     # Create the text for each page
@@ -155,8 +157,7 @@ def run_selective_download() -> None:
             sel_str = selection.lower()
 
             if not sel_str in VALID_COMMANDS:
-                int_selection = int(selection)
-                selected_item = paginated_list[page_index][int_selection]
+                selected_item = paginated_list[page_index][int(selection)]
                 download_dir = get_valid_dir()[0]
                 gsutil_copy_data([selected_item], download_dir)
                 print("Data download successful")
