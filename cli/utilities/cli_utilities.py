@@ -2,6 +2,7 @@
 """
 Utility methods for the CIDC-CLI Interface
 """
+# pylint: disable=R0903
 import os
 import re
 from typing import List, Tuple, NamedTuple
@@ -84,7 +85,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
                     for item in files_to_upload:
                         print(item)
                     confirm_upload = user_prompt_yn(
-                        "These are the files found in the provided directory, proceed? [Y/N]"
+                        "These are the files found in the provided directory, proceed? [Y/N] "
                     )
                     directory = directory if confirm_upload else None
                 else:
@@ -203,7 +204,7 @@ def user_prompt_yn(prompt: str) -> bool:
     return False
 
 
-def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
+def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> Tuple[dict, str]:
     """
     Asks for user to input a directory, then fetches all files from it.
 
@@ -212,7 +213,7 @@ def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
         non_static_inputs {[str]} -- Variable inputs from selected assay.
 
     Returns:
-        [str] -- List of filenames
+        Tuple[dict, str] -- Upload dictionary, and upload directory.
     """
     valid_sample_ids = False
     files_to_upload = None
@@ -275,7 +276,7 @@ def select_assay_trial(prompt: str) -> Selections:
 
     try:
         response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
-    except RuntimeError:
+    except RuntimeError: # Won't work as response obj is not created.
         if response.status_code == 401:
             print("Error: You have not yet registered on our portal website!")
             print("Please go to our website to register.")

@@ -1,6 +1,7 @@
 """
 Class defining the behavior of the interactive command line interface
 """
+# pylint: disable=R0201
 import cmd
 import os
 
@@ -56,14 +57,14 @@ class ShellCmd(cmd.Cmd):
     Class to impart shell functionality to CMD
     """
 
-    def do_shell(self, s):
+    def do_shell(self, something):
         """
         Instantiates shell environment
 
         Arguments:
             s {[type]} -- [description]
         """
-        os.system(s)
+        os.system(something)
 
     def help_shell(self):
         """
@@ -207,6 +208,7 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         if not user_prompt_yn("Do you agree to the above terms and conditions?"):
             return True
+        return False
 
     def do_jwt_login(self, token=None) -> None:
         """

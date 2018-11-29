@@ -1,6 +1,7 @@
 """
 This is a simple command-line tool that allows users to upload data to our google storage
 """
+# pylint: disable=R0903
 import datetime
 import subprocess
 from typing import List, NamedTuple, Tuple
@@ -36,7 +37,7 @@ class RequestInfo(NamedTuple):
 
 
 def update_job_status(
-    status: bool, mongo_data: List[dict], eve_token: str, message: str = None
+    status: bool, request_info: RequestInfo, message: str = None
 ) -> None:
     """
     Updates the status of the job in MongoDB, either with the URIs if the upload
@@ -44,8 +45,7 @@ def update_job_status(
 
     Arguments:
         status {bool} -- True if upload succeeds, false otherwise.
-        mongo_data {dict} -- The response object from the mongo insert.
-        eve_token {str} -- Token for accessing EVE API.
+        request_info {RequestInfo} -- Dict containing information about the request
         message {str} -- If upload failed, contains error.
     """
     payload = None
@@ -60,9 +60,9 @@ def update_job_status(
     try:
         EVE_FETCHER.patch(
             endpoint="ingestion",
-            item_id=mongo_data["_id"],
-            _etag=mongo_data["_etag"],
-            token=eve_token,
+            item_id=request_info.mongo_data["_id"],
+            _etag=request_info.mongo_data["_etag"],
+            token=request_info.eve_token,
             json=payload,
         )
     except RuntimeError as error:
@@ -82,7 +82,6 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
     """
     try:
         gsutil_args = ["gsutil"]
-        google_url = request_info.headers["google_url"]
         google_path = request_info.headers["google_folder_path"]
         if len(request_info.files_uploaded) > 3:
             gsutil_args.append("-m")
@@ -93,15 +92,15 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
                 "cp",
                 "-r",
                 directory,
-                google_url + google_path + "staging/" + request_info.mongo_data["_id"],
+                "gs://" + google_path + "/" + request_info.mongo_data["_id"],
             ]
         )
         subprocess.check_output(gsutil_args)
-        update_job_status(True, request_info.mongo_data, request_info.eve_token)
+        update_job_status(True, request_info)
         return request_info.mongo_data["_id"]
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: " + str(error))
-        update_job_status(False, request_info.mongo_data, request_info.eve_token, error)
+        update_job_status(False, request_info, error)
         return None
 
 
@@ -149,19 +148,6 @@ def upload_np(
 
     non_static_inputs = assay_response["non_static_inputs"]
     upload_dir, files_to_upload = get_valid_dir(is_download=False)
-
-    if not len(files_to_upload) % len(non_static_inputs) == 0:
-        print(
-            "Not enough files detected for this upload operation. This upload requires %s files "
-            "per upload" % len(non_static_inputs)
-        )
-        return None, None
-
-    print(
-        "You are uploading a data format which required %s files per upload. Follow the prompts "
-        "and select the corresponding files." % len(non_static_inputs)
-    )
-
     file_copy = files_to_upload[:]
     upload_list = []
 
@@ -213,7 +199,7 @@ def run_upload_process() -> None:
     payload = None
     file_list = None
 
-    if user_prompt_yn("Is this data the input to a WDL pipeline?"):
+    if user_prompt_yn("Is this data the input to a WDL pipeline? [Y/N] "):
         upload_dir, payload, file_list = upload_pipeline(assay_r, selections)
     else:
         upload_dir, payload, file_list = upload_np(assay_r, selections)
