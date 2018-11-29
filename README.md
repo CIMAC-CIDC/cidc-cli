@@ -1,4 +1,4 @@
-![codecov](https://codecov.io/gh/dfci/cidc-cli/branch/master/graph/badge.svg])
+[![codecov](https://codecov.io/gh/dfci/cidc-cli/branch/master/graph/badge.svg)
 ## CIDC-CLI
 
 Command line tool for interfacing with the CIDC workflow pipeline
