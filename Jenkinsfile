@@ -39,15 +39,14 @@ spec:
         container('python') {
           sh 'pip3 install -r requirements.txt'
           sh 'pytest --html=command_line_tests.html'
-          sh 'cat command_line_tests.html'
-          sh 'curl -s https://codecov.io/bash | bash -s -t ${CODECOV_TOKEN}'
+          sh 'curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN}'
         }
       }
     }
     stage('Upload report') {
       steps {
         container('gcloud') {
-          sh 'gsutil cp command_line_tests.html gs://cidc-test-reports/cidc-/cli'
+          sh 'gsutil cp command_line_tests.html gs://cidc-test-reports/cidc-cli/cli'
         }
       }
     }
