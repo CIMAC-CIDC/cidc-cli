@@ -17,13 +17,14 @@ spec:
   - name: python
     image: python:3.6.5
     command:
-    -cat
+    - cat
     tty: true
 """
     }
   }
   environment {
       GOOGLE_APPLICATION_CREDENTIALS = credentials('google-service-account')
+      CODECOV_TOKEN = credentials('cidc-cli-codecov-token')
   }
   stages {
     stage('Checkout SCM') {
@@ -37,15 +38,16 @@ spec:
       steps {
         container('python') {
           sh 'pip3 install -r requirements.txt'
-          sh 'pytest --html=jenkins_report.html'
+          sh 'pytest --html=command_line_tests.html'
           sh 'cat command_line_tests.html'
+          sh 'curl -s https://codecov.io/bash | bash -s -t ${CODECOV_TOKEN}'
         }
       }
     }
     stage('Upload report') {
       steps {
         container('gcloud') {
-          sh 'gsutil cp command_line_tests.html gs://cidc-test-reports/'
+          sh 'gsutil cp command_line_tests.html gs://cidc-test-reports/cidc-/cli'
         }
       }
     }
