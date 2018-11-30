@@ -39,6 +39,7 @@ spec:
         container('python') {
           sh 'pip3 install -r requirements.txt'
           sh 'pytest --html=command_line_tests.html'
+          sh 'pytest --cov-report xml:coverage.xml --cov ./'
           sh 'curl -s https://codecov.io/bash | bash -s - -t ${CODECOV_TOKEN}'
         }
       }
