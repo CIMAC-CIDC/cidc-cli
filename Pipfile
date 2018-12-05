@@ -10,11 +10,19 @@ cachetools = "*"
 attrs = "*"
 "nose2" = "*"
 requests = "*"
+bson = "*"
+pytest = "*"
+pytest-cov = "*"
 
 [dev-packages]
 pylint = "*"
 "pep8" = "*"
 black = "*"
+"nose2" = {extras = ["coverage-plugin"]}
+pytest-html = "*"
 
 [requires]
 python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true

@@ -233,7 +233,7 @@ def run_auth_proc() -> str:
         connection = serversocket.accept()[0]
         buf = connection.recv(1024)
         try:
-            if len(buf) > 0:
+            if len(buf) > 0: # pylint: disable=C1801
                 # When response received, take value, send response, then close.
                 response = buf
                 response_str = response.decode("utf-8")

@@ -2,6 +2,7 @@
 """
 Utility methods for the CIDC-CLI Interface
 """
+# pylint: disable=R0903
 import os
 import re
 from typing import List, Tuple, NamedTuple
@@ -18,6 +19,7 @@ class Selections(NamedTuple):
     """
     Simple class for storing user selections
     """
+
     eve_token: str
     selected_trial: dict
     selected_assay: dict
@@ -28,7 +30,7 @@ def generate_options_list(options: List[str], header: str) -> str:
     Generates a list of user options
 
     Arguments:
-        options {[str]} -- List of options
+        options {List[str]} -- List of options
         header {str} -- Text you want displayed above the list.
 
     Returns:
@@ -50,7 +52,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
     Arguments:
         is_download {bool} -- True if used in a download function, else false.
     Returns:
-        str -- Download directory.
+        Tuple[str, List[str]] -- Download directory.
     """
 
     directory = None
@@ -83,7 +85,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
                     for item in files_to_upload:
                         print(item)
                     confirm_upload = user_prompt_yn(
-                        "These are the files found in the provided directory, proceed? [Y/N]"
+                        "These are the files found in the provided directory, proceed? [Y/N] "
                     )
                     directory = directory if confirm_upload else None
                 else:
@@ -193,17 +195,16 @@ def user_prompt_yn(prompt: str) -> bool:
         bool -- True if yes, false if no
     """
     selection = -1
-    while selection not in ["y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"]:
+    while selection not in {"y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"}:
         selection = input(prompt)
-        if selection not in ["y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"]:
+        if selection not in {"y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"}:
             print("Please select either yes or no")
-    if selection in ["y", "yes", "Y", "Yes", "YES"]:
+    if selection in {"y", "yes", "Y", "Yes", "YES"}:
         return True
-
     return False
 
 
-def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
+def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> Tuple[dict, str]:
     """
     Asks for user to input a directory, then fetches all files from it.
 
@@ -212,7 +213,7 @@ def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> List[str]:
         non_static_inputs {[str]} -- Variable inputs from selected assay.
 
     Returns:
-        [str] -- List of filenames
+        Tuple[dict, str] -- Upload dictionary, and upload directory.
     """
     valid_sample_ids = False
     files_to_upload = None
@@ -235,12 +236,12 @@ def create_payload_objects(
     Returns objects formatted for inserting into the API
 
     Arguments:
-        file_dict {[dict]} -- List of file objects.
+        file_dict {List[dict]} -- List of file objects.
         trial {dict} -- Trial ID dictionary
         assay {dict} -- Assay ID dictionary
 
     Returns:
-        [dict] -- List of records in payload format.
+        List[dict] -- List of records in payload format.
     """
     return [
         {
@@ -275,9 +276,10 @@ def select_assay_trial(prompt: str) -> Selections:
 
     try:
         response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
-    except RuntimeError:
+    except RuntimeError: # Won't work as response obj is not created.
         if response.status_code == 401:
             print("Error: You have not yet registered on our portal website!")
+            print("Please go to our website to register.")
 
     # Select Trial
     response_data = response.json()
@@ -343,8 +345,6 @@ def validate_and_extract(
     mapped_names = dict(
         (name, name_dictionary[name].group()) for name in name_dictionary
     )
-
-    # Create dictionary of involved sampleIDS
     sample_id_dict = {}
 
     # Group filenames under associated sampleIDs.
@@ -366,10 +366,8 @@ def validate_and_extract(
         nsi = non_static_inputs[:]
 
         print(
-            "These files are associated with SampleID: "
-            + sample_id
-            + ", please map them to the "
-            + "assay inputs"
+            "These files are associated with SampleID: %s, please map them to the assay inputs"
+            % sample_id
         )
         files_to_map = sample_id_dict[sample_id]
 
@@ -381,7 +379,7 @@ def validate_and_extract(
         # Loop over files and make the user map them.
         for filename in files_to_map:
             selection = option_select_framework(
-                nsi, "Please choose which input " + filename + " maps to."
+                nsi, "Please choose which input %s maps to." % filename
             )
             # save selection, then delete from list.
             upload_guide[filename]["mapping"] = nsi[selection - 1]

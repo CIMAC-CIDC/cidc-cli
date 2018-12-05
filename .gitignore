@@ -7,3 +7,6 @@ token.token
 .coverage
 .vscode/settings.json
 *.env
+.cache/*
+lcov.xml
+report.html
