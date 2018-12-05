@@ -1,3 +1,5 @@
+[![Build Status](http://35.196.130.201/jenk/buildStatus/icon?job=sample-test/master)](http://35.196.130.201/jenk/job/sample-test/job/master/)
+
 ## CIDC-CLI
 
 Command line tool for interfacing with the CIDC workflow pipeline
