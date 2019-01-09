@@ -1,4 +1,3 @@
-#!/usr/bin/env python3.6
 """
 Utility methods for the CIDC-CLI Interface
 """
@@ -65,7 +64,6 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
         directory = input(
             "Please enter the path where %s :\n" % (dl_msg if is_download else ul_msg)
         )
-        print(directory)
         try:
             # Check that the directory path exists.
             if not os.path.isdir(directory):
@@ -153,22 +151,18 @@ def ensure_logged_in() -> str:
     Returns:
         str -- API access token
     """
-    eve_token = None
     creds = USER_CACHE.get_key()
-
     if not creds:
         print(
             "You are not currently authenticated. Launching a page to sign in with google"
         )
-        eve_token = run_auth_proc()
-        if not eve_token:
+        creds = run_auth_proc()
+        if not creds:
             print("Authentication failed!")
             return None
-        USER_CACHE.cache_key(eve_token)
-    else:
-        eve_token = creds
+        USER_CACHE.cache_key(creds)
 
-    return eve_token
+    return creds
 
 
 def cache_token(token: str) -> None:
@@ -216,7 +210,6 @@ def get_files(sample_ids: List[str], non_static_inputs: List[str]) -> Tuple[dict
         Tuple[dict, str] -- Upload dictionary, and upload directory.
     """
     valid_sample_ids = False
-    files_to_upload = None
 
     while not valid_sample_ids:
         upload_dir, files_to_upload = get_valid_dir(is_download=False)
@@ -276,40 +269,38 @@ def select_assay_trial(prompt: str) -> Selections:
 
     try:
         response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
-    except RuntimeError: # Won't work as response obj is not created.
-        if response.status_code == 401:
+    except RuntimeError as rte:
+        if "401" in str(rte):
             print("Error: You have not yet registered on our portal website!")
             print("Please go to our website to register.")
 
     # Select Trial
-    response_data = response.json()
-    trials = response_data["_items"]
+    trials = response.json()["_items"]
 
     if not trials:
         print("No trials were found for your id, your credentials will not be saved")
         return None
 
-    USER_CACHE.cache_key(eve_token)
-    trial_names = [trial["trial_name"] for trial in trials]
-    trial_selection = option_select_framework(
-        trial_names, "=====| Available Trials |====="
-    )
-    selected_trial = trials[trial_selection - 1]
+    selected_trial = trials[
+        option_select_framework(
+            [trial["trial_name"] for trial in trials], "=====| Available Trials |====="
+        )
+        - 1
+    ]
 
     # Select Assay
-    assays = selected_trial["assays"]
-
-    if not assays:
+    if not selected_trial["assays"]:
         print("No assays are registered for the selected trial.")
         return None
 
-    assay_names = [x["assay_name"] for x in assays]
     assay_selection = option_select_framework(
-        assay_names, "=====| Available Assays |====="
+        [x["assay_name"] for x in selected_trial["assays"]],
+        "=====| Available Assays |=====",
     )
-    selected_assay = assays[assay_selection - 1]
 
-    return Selections(eve_token, selected_trial, selected_assay)
+    return Selections(
+        eve_token, selected_trial, selected_trial["assays"][assay_selection - 1]
+    )
 
 
 def validate_and_extract(
