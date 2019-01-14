@@ -13,6 +13,7 @@ requests = "*"
 bson = "*"
 pytest = "*"
 pytest-cov = "*"
+pytest-html = "*"
 
 [dev-packages]
 pylint = "*"
