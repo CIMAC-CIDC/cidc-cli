@@ -197,7 +197,7 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
         elif len(first_line.split("\t")) == 13:
             separator = "\t"
         else:
-            raise TypeError("Unable to recognize manifest format")
+            raise TypeError("Unable to recognize metadata format")
 
         # Get the column headers.
         headers = first_line.split(separator)
@@ -252,7 +252,7 @@ def find_manifest_path() -> str:
     """
     file_path = None
     while not file_path:
-        file_path = input("Please enter the file path to your manifest file: ")
+        file_path = input("Please enter the file path to your metadata file: ")
         if not isfile(file_path):
             print("The given path is not valid, please enter a new one.")
             file_path = None
@@ -364,7 +364,7 @@ def upload_manifest(
     file_path = find_manifest_path()
 
     tumor_normal_pairs = parse_upload_manifest(file_path)
-    print("Manifest analyzed. Found %s entries." % len(tumor_normal_pairs))
+    print("Metadata analyzed. Found %s entries." % len(tumor_normal_pairs))
 
     file_names = []
     payload = []
@@ -424,7 +424,7 @@ def run_upload_process() -> None:
 
     method = option_select_framework(
         [
-            "Upload using a manifest file.",
+            "Upload using a metadata file.",
             "Upload inputs for a WDL pipeline",
             "Upload data.",
         ],
