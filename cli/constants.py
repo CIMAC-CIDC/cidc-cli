@@ -19,3 +19,9 @@ OKTA_DOMAIN = env.get('OKTA_DOMAIN')
 IDP = env.get('IDP')
 OKTA_CLIENT_ID = env.get('OKTA_CLIENT_ID')
 OKTA_REDIRECT_URI = env.get('OKTA_REDIRECT_URI')
+
+FILE_EXTENSION_DICT = {
+    "fa": "FASTQ",
+    "fa.gz": "FASTQ",
+    "fq.gz": "FASTQ"
+}

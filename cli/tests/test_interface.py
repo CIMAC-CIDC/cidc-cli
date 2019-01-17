@@ -166,7 +166,7 @@ def test_validate_and_extract():
 class TestValidateThrow(TestCase):
     """
     Simple test to confirm correct error is raised.
-    
+
     Arguments:
         TestCase {unittest.TestCase} -- unittest testcase class.
     """

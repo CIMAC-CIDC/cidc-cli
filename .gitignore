@@ -9,4 +9,5 @@ token.token
 *.env
 .cache/*
 lcov.xml
+cov.xml
 report.html
