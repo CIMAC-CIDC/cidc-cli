@@ -4,14 +4,13 @@ This is a simple command-line tool that allows users to upload data to our googl
 # pylint: disable=R0903
 import collections
 import datetime
-from os.path import isfile, dirname
+from os.path import isfile, dirname, getsize
 import subprocess
-from abc import ABC, abstractmethod
 from typing import List, NamedTuple, Tuple
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL
+from constants import EVE_URL, FILE_EXTENSION_DICT
 from utilities.cli_utilities import (
     get_valid_dir,
     select_assay_trial,
@@ -36,31 +35,6 @@ class RequestInfo(NamedTuple):
     eve_token: str
     headers: dict
     files_uploaded: List[dict]
-
-
-class UploadMethod(ABC):
-    """
-    Abstract class that defines the interface for an upload method.
-
-    Arguments:
-        ABC {[type]} -- [description]
-    """
-
-    @abstractmethod
-    def do_upload_method(
-        self, assay_response: dict, selections: Selections
-    ) -> Tuple[str, dict, List[str]]:
-        """
-        Function signature for a method of uploading data to our buckets.
-
-        Arguments:
-            assay_response {dict} -- Information from queried assay.
-            selections {Selections} -- User selections
-
-        Returns:
-            Tuple[str, dict, List[str]] -- File path, payload, file names.
-        """
-        pass
 
 
 def update_job_status(
@@ -90,10 +64,10 @@ def update_job_status(
             item_id=request_info.mongo_data["_id"],
             _etag=request_info.mongo_data["_etag"],
             token=request_info.eve_token,
-            json=payload,
+            json=payload
         )
     except RuntimeError as error:
-        print("Status update failed: %s" % error)
+        print("Status update failed: %s" % str(error))
 
 
 def upload_files(directory: str, request_info: RequestInfo) -> str:
@@ -175,6 +149,7 @@ def upload_np(
     upload_dir, files_to_upload = get_valid_dir(is_download=False)
     file_copy = files_to_upload[:]
     upload_list = []
+    append_to_upload_list = upload_list.append
 
     while file_copy:
         for inp in non_static_inputs:
@@ -182,7 +157,7 @@ def upload_np(
                 file_copy, "Please choose the file which corresponds to: %s" % inp
             )
             # save selection, then delete from list.
-            upload_list.append(
+            append_to_upload_list(
                 {
                     "assay": selections.selected_assay["assay_id"],
                     "trial": selections.selected_trial["_id"],
@@ -258,7 +233,7 @@ def confirm_manifest_files(directory: str, file_names: List[str]) -> bool:
     """
     all_found = True
     for name in file_names:
-        if not isfile(directory + name):
+        if not isfile(directory + "/" + name):
             print("Error: File %s not found" % name)
             all_found = False
 
@@ -277,15 +252,99 @@ def find_manifest_path() -> str:
     """
     file_path = None
     while not file_path:
-        path = input("Please enter the file path to your download manifest: ")
-        if not isfile(path):
+        file_path = input("Please enter the file path to your manifest file: ")
+        if not isfile(file_path):
             print("The given path is not valid, please enter a new one.")
-            path = None
+            file_path = None
 
-    if not path:
+    if not file_path:
         raise ValueError("Path undefined")
 
     return file_path
+
+
+def check_id_present(sample_id: str, list_of_ids: List[str]) -> bool:
+    """
+    Checks if sampleID is in the list of sample IDs, if not, error.
+
+    Arguments:
+        sample_id {str} -- [description]
+        list_of_ids {List[str]} -- [description]
+
+    Returns:
+        bool -- [description]
+    """
+    if not sample_id in list_of_ids:
+        print("Error: SampleID %s is not a valid sample ID for this trial" % sample_id)
+        return False
+    return True
+
+
+def guess_file_ext(file_name) -> str:
+    """
+    Guesses a file extension from the file name.
+
+    Arguments:
+        file_name {[type]} -- [description
+
+    Returns:
+        str -- [description]
+    """
+    split_name = file_name.split(".")
+    try:
+        file_type = FILE_EXTENSION_DICT[split_name[-1]]
+        return file_type
+    except KeyError:
+        try:
+            ext = "%s.%s" % (split_name[-2], split_name[-1])
+            return FILE_EXTENSION_DICT[ext]
+        except KeyError:
+            print("Error processing file %s. Extension not recognized" % (file_name))
+
+
+def create_manifest_payload(
+    entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
+) -> Tuple[List[dict], List[str]]:
+    """[summary]
+
+    Arguments:
+        entry {dict} -- [description]
+        non_static_inputs {List[str]} -- [description]
+        selections {Selections} -- [description]
+        directory {str} -- Root directory holding files.
+
+    Returns:
+        List[dict] -- [description]
+    """
+    payload = []
+    file_names = []
+    append_to_payload = payload.append
+    append_to_file_names = file_names.append
+    selected_assay = selections.selected_assay
+    selected_assay_name = selected_assay["assay_name"]
+    trial_id = selections.selected_trial["_id"]
+    trial_name = selections.selected_trial["trial_name"]
+
+    for key in entry:
+        if key in non_static_inputs:
+            file_name = entry[key]
+            append_to_payload(
+                {
+                    "assay": selected_assay["assay_id"],
+                    "experimental_strategy": selected_assay_name,
+                    "data_format": guess_file_ext(file_name),
+                    "file_name": file_name,
+                    "file_size": getsize(directory + "/" + file_name),
+                    "mapping": key,
+                    "number_of_samples": 1,
+                    "sample_ids": [entry["#SAMPLE_ID"]],
+                    "trial": trial_id,
+                    "trial_name": trial_name,
+                }
+            )
+            append_to_file_names(entry[key])
+
+    return payload, file_names
 
 
 def upload_manifest(
@@ -310,30 +369,20 @@ def upload_manifest(
     file_names = []
     payload = []
     bad_sample_id = False
+    file_dir = dirname(file_path)
 
-    # Loop over the list and do all processing operations needed.
     for entry in tumor_normal_pairs:
-        if not entry["SAMPLE_ID"] in sample_ids:
-            print(
-                "Error: SampleID %s is not a valid sample ID for this trial"
-                % entry["SAMPLE_ID"]
-            )
+        if not check_id_present(entry["#SAMPLE_ID"], sample_ids):
             bad_sample_id = True
 
         # Map to inputs. If this works correctly it should add all the file names to the list.
         # will depend on the non static inputs exactly matching the keys that contain the filenames.
         if not bad_sample_id:
-            for key in entry:
-                if key in non_static_inputs:
-                    payload.append(
-                        {
-                            "assay": selections.selected_assay["assay_id"],
-                            "trial": selections.selected_trial["trial_id"],
-                            "file_name": entry[key],
-                            "mapping": key,
-                        }
-                    )
-                    file_names.append(entry[key])
+            next_payload, next_file_names = create_manifest_payload(
+                entry, non_static_inputs, selections, file_dir
+            )
+            file_names = file_names + next_file_names
+            payload = payload + next_payload
 
     if not len(file_names) == (len(non_static_inputs) * len(tumor_normal_pairs)):
         raise RuntimeError(
@@ -345,11 +394,16 @@ def upload_manifest(
             "One or more SampleIDs were not recognized as valid IDs for this trial"
         )
 
-    file_dir = dirname(file_path)
     if not confirm_manifest_files(file_dir, file_names):
         raise FileNotFoundError("Some files were not able to be found.")
 
-    return file_dir, payload, file_names
+    ingestion_payload = {
+        "number_of_files": len(payload),
+        "status": {"progress": "In Progress"},
+        "files": payload,
+    }
+
+    return file_dir, ingestion_payload, file_names
 
 
 def run_upload_process() -> None:
@@ -364,8 +418,6 @@ def run_upload_process() -> None:
 
     eve_token = selections.eve_token
     selected_assay = selections.selected_assay
-
-    # Query the selected assay ID to get the inputs.
     assay_r = EVE_FETCHER.get(
         token=eve_token, endpoint="assays/" + selected_assay["assay_id"]
     ).json()
@@ -381,8 +433,10 @@ def run_upload_process() -> None:
 
     try:
         upload_dir, payload, file_list = [upload_manifest, upload_pipeline, upload_np][
-            method
+            method - 1
         ](assay_r["non_static_inputs"], selections)
+
+        print(payload)
 
         response_upload = EVE_FETCHER.post(
             token=eve_token, endpoint="ingestion", json=payload, code=201

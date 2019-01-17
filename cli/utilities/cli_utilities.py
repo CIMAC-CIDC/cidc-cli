@@ -41,7 +41,7 @@ def generate_options_list(options: List[str], header: str) -> str:
             for idx, option in enumerate(options)
         ]
     )
-    return header + "\n" + opts
+    return "%s\n%s" % (header, opts)
 
 
 def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
@@ -239,9 +239,10 @@ def create_payload_objects(
     return [
         {
             "assay": assay["assay_id"],
+            "experimental_strategy": assay["assay_name"],
             "trial": trial["_id"],
             "file_name": key,
-            "sample_id": file_dict[key]["sample_id"],
+            "sample_ids": [file_dict[key]["sample_id"]],
             "mapping": file_dict[key]["mapping"],
         }
         for key in file_dict
@@ -273,6 +274,8 @@ def select_assay_trial(prompt: str) -> Selections:
         if "401" in str(rte):
             print("Error: You have not yet registered on our portal website!")
             print("Please go to our website to register.")
+        else:
+            print("ERROR: %s" % rte)
 
     # Select Trial
     trials = response.json()["_items"]
@@ -288,7 +291,6 @@ def select_assay_trial(prompt: str) -> Selections:
         - 1
     ]
 
-    # Select Assay
     if not selected_trial["assays"]:
         print("No assays are registered for the selected trial.")
         return None
