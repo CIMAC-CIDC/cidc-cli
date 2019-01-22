@@ -95,7 +95,7 @@ class ExitCmd(cmd.Cmd):
 
         while not USER_CACHE.get_key():
             token = input(
-                "Please your token here: "
+                "Please enter your token here: "
             )
             run_jwt_login(token)
 
