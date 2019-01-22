@@ -16,7 +16,7 @@ Make sure that the commands `gcloud` and `gsutils` are added to your path so tha
 
 ### Ensure pip is installed
 
-The easiest way to install the application is by using [pip](https://pypi.org/project/pip/). This project does not support Pyhon 2, so be sure to use the Python 3 linked version of pip.
+The easiest way to install the application is by using [pip](https://pypi.org/project/pip/). This project does not support Python 2, so be sure to use the Python 3 linked version of pip.
 
 ### Pip install
 
@@ -50,11 +50,3 @@ If you installed the dependencies, navigate to the `cli` directory and run:
 ~~~
 bash cli.sh
 ~~~
-
-To log in, use the `jwt-login` command to enter the token you got from our website.
-
-~~~
-jwt-login MyTokenHere...
-~~~
-
-
