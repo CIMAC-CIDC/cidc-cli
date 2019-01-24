@@ -28,7 +28,7 @@ pip3 install . --user
 Or install directly from the repo with:
 
 ~~~
-pip3 install git+https://github.com/dfci/cidc-cli#egg=cidc-cli
+pip3 install git+https://github.com/CIMAC-CIDC/cidc-cli#egg=cidc-cli
 ~~~
 
 ### Install dependencies from requirements.txt
@@ -45,7 +45,7 @@ pip3 install -r requirements.txt --user
 
 If you installed the package using pip, the cli should be runnable with the command `cidc-cli`.
 
-If you installed the dependencies, navigate to the `cli` directory and run:
+If you installed the dependencies, navigate to the `cli` directory (which is located in the root directory) and run:
 
 ~~~
 bash cli.sh
