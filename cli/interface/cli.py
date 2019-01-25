@@ -4,7 +4,7 @@ Class defining the behavior of the interactive command line interface
 # pylint: disable=R0201
 import cmd
 import os
-
+import platform
 
 from cidc_utils.requests import SmartFetch
 
@@ -20,6 +20,9 @@ from utilities.cli_utilities import (
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
+
+if platform.system() == "Darwin":
+    import readline
 
 
 def run_job_query() -> None:
