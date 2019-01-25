@@ -12,11 +12,8 @@ from cidc_utils.requests import SmartFetch
 
 from constants import EVE_URL, FILE_EXTENSION_DICT
 from utilities.cli_utilities import (
-    get_valid_dir,
     select_assay_trial,
     option_select_framework,
-    get_files,
-    create_payload_objects,
     Selections,
 )
 
@@ -103,77 +100,6 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         print("Error: Upload to Google failed: " + str(error))
         update_job_status(False, request_info, error)
         return None
-
-
-def upload_pipeline(
-    non_static_inputs: List[str], selections: Selections
-) -> Tuple[str, dict, List[str]]:
-    """
-    Upload for files going to a WDL pipeline
-
-    Arguments:
-        non_static_inputs {List[str]} -- List of non static inputs to pipeline
-        selections {Selections} -- User selections for assay/trial.
-
-    Returns:
-        Tuple[str, dict, List[str]] -- Directory path, upload payload, file names.
-    """
-    sample_ids = selections.selected_trial["samples"]
-    file_upload_dict, upload_dir = get_files(sample_ids, non_static_inputs)
-
-    payload = {
-        "number_of_files": len(file_upload_dict),
-        "status": {"progress": "In Progress"},
-        "files": create_payload_objects(
-            file_upload_dict, selections.selected_trial, selections.selected_assay
-        ),
-    }
-
-    return upload_dir, payload, [file_upload_dict[key] for key in file_upload_dict]
-
-
-def upload_np(
-    non_static_inputs: List[str], selections: Selections
-) -> Tuple[str, dict, List[str]]:
-    """
-    Upload for non-pipeline files.
-
-    Arguments:
-        non_static_inputs {List[str]} -- List of required files.
-        selections {Selections} -- User selections.
-
-    Returns:
-        Tuple[str, dict, List[str]] -- Directory path, upload payload, file names.
-    """
-
-    upload_dir, files_to_upload = get_valid_dir(is_download=False)
-    file_copy = files_to_upload[:]
-    upload_list = []
-    append_to_upload_list = upload_list.append
-
-    while file_copy:
-        for inp in non_static_inputs:
-            selection = option_select_framework(
-                file_copy, "Please choose the file which corresponds to: %s" % inp
-            )
-            # save selection, then delete from list.
-            append_to_upload_list(
-                {
-                    "assay": selections.selected_assay["assay_id"],
-                    "trial": selections.selected_trial["_id"],
-                    "file_name": file_copy[selection - 1],
-                    "mapping": inp,
-                }
-            )
-            del file_copy[selection - 1]
-
-    payload = {
-        "number_of_files": len(upload_list),
-        "status": {"progress": "In Progress"},
-        "files": upload_list,
-    }
-
-    return upload_dir, payload, files_to_upload
 
 
 def parse_upload_manifest(file_path: str) -> List[dict]:
@@ -425,18 +351,14 @@ def run_upload_process() -> None:
     method = option_select_framework(
         [
             "Upload using a metadata file.",
-            "Upload inputs for a WDL pipeline",
-            "Upload data.",
         ],
         "Pick an upload method:",
     )
 
     try:
-        upload_dir, payload, file_list = [upload_manifest, upload_pipeline, upload_np][
+        upload_dir, payload, file_list = [upload_manifest][
             method - 1
         ](assay_r["non_static_inputs"], selections)
-
-        print(payload)
 
         response_upload = EVE_FETCHER.post(
             token=eve_token, endpoint="ingestion", json=payload, code=201

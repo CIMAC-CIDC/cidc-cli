@@ -4,22 +4,25 @@ Class defining the behavior of the interactive command line interface
 # pylint: disable=R0201
 import cmd
 import os
+import platform
 
-from cidc_utils.caching import CredentialCache
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL
+from constants import EVE_URL, BANNER, USER_CACHE
 from download import run_selective_download, run_download_process
 from upload import run_upload_process
 from utilities.cli_utilities import (
-    cache_token,
     ensure_logged_in,
     option_select_framework,
     user_prompt_yn,
+    run_jwt_login,
+    terminal_sensitive_print
 )
 
-USER_CACHE = CredentialCache(100, 600)
 EVE_FETCHER = SmartFetch(EVE_URL)
+
+if platform.system() == "Darwin":
+    import readline
 
 
 def run_job_query() -> None:
@@ -62,7 +65,7 @@ class ShellCmd(cmd.Cmd):
         Instantiates shell environment
 
         Arguments:
-            s {[type]} -- [description]
+            something {[type]} -- [description]
         """
         os.system(something)
 
@@ -85,6 +88,20 @@ class ExitCmd(cmd.Cmd):
         print(self.intro)
         if not user_prompt_yn("Do you agree to the above terms and conditions? (Y/N)"):
             return True
+
+        print(BANNER)
+        login_message = (
+            "Welcome to the CIDC CLI! Before doing anything else, log in to our "
+            + "system using the JWT you received from the web portal."
+        )
+        terminal_sensitive_print(login_message) 
+
+        while not USER_CACHE.get_key():
+            token = input(
+                "Please enter your token here: "
+            )
+            run_jwt_login(token)
+
         while True:
             try:
                 super(ExitCmd, self).cmdloop(intro="")
@@ -136,9 +153,6 @@ class ExitCmd(cmd.Cmd):
         """
         print("Exit the interpreter.")
         print("You can also use the Ctrl-D shortcut.")
-
-    do_EOF = do_exit
-    help_EOF = help_exit
 
 
 class CIDCCLI(ExitCmd, ShellCmd):
@@ -229,18 +243,22 @@ class CIDCCLI(ExitCmd, ShellCmd):
             return True
         return False
 
-    def do_jwt_login(self, token=None) -> None:
+    def do_jwt_login(self, token: str = None) -> None:
         """
-        Stores the users Auth Token to be used for calls to the Eve server.
-        :param rest:
-        :return:
+        Function for handling a user's login.
+
+        Keyword Arguments:
+            token {str} -- User's JWT (default: {None})
+
+        Returns:
+            None -- [description]
         """
         if not token:
             print(
                 "Please paste your JWT token obtained from the CIDC Portal to log in."
             )
         else:
-            cache_token(token)
+            run_jwt_login(token)
 
 
 def main():
