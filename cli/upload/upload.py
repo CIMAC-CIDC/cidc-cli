@@ -263,7 +263,7 @@ def create_manifest_payload(
                     "file_size": getsize(directory + "/" + file_name),
                     "mapping": key,
                     "number_of_samples": 1,
-                    "sample_ids": [entry["#SAMPLE_ID"]],
+                    "sample_ids": [entry["#CIMAC_SAMPLE_ID"]],
                     "trial": trial_id,
                     "trial_name": trial_name,
                 }

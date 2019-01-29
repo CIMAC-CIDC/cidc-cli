@@ -4,7 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
-cidc_utils = {git = "https://github.com/dfci/cidc-utils"}
+cidc_utils = {git = "https://github.com/CIMAC-CIDC/cidc-utils"}
 python-dotenv = "*"
 cachetools = "*"
 attrs = "*"
