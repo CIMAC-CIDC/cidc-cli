@@ -1,7 +1,7 @@
 | Branch | Coverage |
 | --- | --- |
-| Master | [![codecov](https://codecov.io/gh/dfci/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/dfci/cidc-cli/branch/master/) |
-| Staging | [![codecov](https://codecov.io/gh/dfci/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/dfci/cidc-cli/branch/staging/) |
+| Master | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/) |
+| Staging | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/) |
 ## CIDC-CLI
 
 Command line tool for interfacing with the CIDC workflow pipeline
