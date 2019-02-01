@@ -133,7 +133,7 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
             columns = as_deque.popleft().strip().split(separator)
             tumor_normal_pairs.append(
                 dict(
-                    (header_value, column_value)
+                    (header_value.strip(), column_value)
                     for column_value, header_value in zip(columns, headers)
                 )
             )
@@ -254,6 +254,13 @@ def create_manifest_payload(
     for key in entry:
         if key in non_static_inputs:
             file_name = entry[key]
+            tumor_normal = "TUMOR"
+            pair_label = "PAIR 1"
+            if key == "FASTQ_NORMAL_1" or key == "FASTQ_NORMAL_2":
+                tumor_normal = "NORMAL"
+            if key == "FASTQ_NORMAL_2" or key == "FASTQ_TUMOR_2":
+                pair_label = "PAIR 2"
+            
             append_to_payload(
                 {
                     "assay": selected_assay["assay_id"],
@@ -266,6 +273,18 @@ def create_manifest_payload(
                     "sample_ids": [entry["#CIMAC_SAMPLE_ID"]],
                     "trial": trial_id,
                     "trial_name": trial_name,
+                    "fastq_properties": {
+                        "patient_id": entry["CIMAC_PATIENT_ID"],
+                        "timepoint": entry["TIMEPOINT"],
+                        "timepoint_unit": entry["TIMEPOINT_UNIT"],
+                        "batch_id": entry["BATCH_ID"],
+                        "instrument_model": entry["INSTRUMENT_MODEL"],
+                        "read_length": entry["READ_LENGTH"],
+                        "avg_insert_size": entry["AVG_INSERT_SIZE"],
+                        "sample_id": entry["#CIMAC_SAMPLE_ID"],
+                        "sample_type": tumor_normal,
+                        "pair_label": pair_label
+                    }
                 }
             )
             append_to_file_names(entry[key])
@@ -298,7 +317,7 @@ def upload_manifest(
     file_dir = dirname(file_path)
 
     for entry in tumor_normal_pairs:
-        if not check_id_present(entry["#SAMPLE_ID"], sample_ids):
+        if not check_id_present(entry["#CIMAC_SAMPLE_ID"], sample_ids):
             bad_sample_id = True
 
         # Map to inputs. If this works correctly it should add all the file names to the list.
