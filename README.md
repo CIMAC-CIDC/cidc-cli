@@ -15,12 +15,12 @@ Follow the instructions [here](https://cloud.google.com/sdk/docs/downloads-inter
 Make sure that the commands `gcloud` and `gsutils` are added to your path so that they can be invoked by name from the terminal you are running the CLI in.
 
 ### Step 2:  Clone the CIDC-CLI GitHub Repository
-
 Run:
 
 ~~~
 git clone https://github.com/CIMAC-CIDC/cidc-cli
 ~~~
+
 
 ### Step 3:  Install dependencies from requirements.txt
 
