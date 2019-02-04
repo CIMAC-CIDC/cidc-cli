@@ -3,7 +3,6 @@
 token.token
 **/__pycache__/
 **.pyc
-/sample_data
 .coverage
 .vscode/settings.json
 *.env

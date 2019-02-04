@@ -223,6 +223,7 @@ def guess_file_ext(file_name) -> str:
             return FILE_EXTENSION_DICT[ext]
         except KeyError:
             print("Error processing file %s. Extension not recognized" % (file_name))
+            return None
 
 
 def create_manifest_payload(
