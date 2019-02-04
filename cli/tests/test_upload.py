@@ -94,7 +94,7 @@ class TestUploadFunctions(unittest.TestCase):
         with self.subTest():
             self.assertEqual(guess_file_ext("something.fa.gz"), "FASTQ")
         with self.subTest():
-            self.assertRaises(KeyError, guess_file_ext("something.foo.bar"))
+            self.assertIsNone(guess_file_ext("something.foo.bar"))
 
 
 def test_confirm_manifest_files():
