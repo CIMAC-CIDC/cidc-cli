@@ -8,19 +8,21 @@ Command line tool for interfacing with the CIDC workflow pipeline
 
 ## Installation
 
-###  Download the Google Cloud SDK
+###  Step 1:  Download the Google Cloud SDK
 
-Follow the instructions [here](https://cloud.google.com/sdk/docs/downloads-interactive) to install the SDK for your particular operating system. When running `gcloud init` be sure to use the same google account you registered on our portal with.
+Follow the instructions [here](https://cloud.google.com/sdk/docs/downloads-interactive) to install the Google Cloud SDK for your particular operating system. When running `gcloud init`, be sure to use the same google account you registered on our portal with.
 
 Make sure that the commands `gcloud` and `gsutils` are added to your path so that they can be invoked by name from the terminal you are running the CLI in.
 
-### Ensure pip is installed
+### Step 2:  Clone the CIDC-CLI GitHub Repository
+Run:
 
-The easiest way to install the application is by using [pip](https://pypi.org/project/pip/) to install the requirements from the `requirements.txt` file. This project does not support Python 2, so be sure to use the Python 3 linked version of pip.
+~~~
+git clone https://github.com/CIMAC-CIDC/cidc-cli
+~~~
 
-### Install dependencies from requirements.txt
 
-If you don't want to install the package as a named command, you can simply download the dependencies and run the command line as a script.
+### Step 3:  Install dependencies from requirements.txt
 
 In the root of the cloned repository run:
 
@@ -28,8 +30,9 @@ In the root of the cloned repository run:
 pip3 install -r requirements.txt --user
 ~~~
 
-### Running command line tool
-Navigate to the `cli` directory (which is located in the root directory) and run:
+### Step 4:  Run the CIDC-CLI
+
+Navigate to the `cli` sub-directory (which is located in the root directory) and run:
 
 ~~~
 bash cli.sh
