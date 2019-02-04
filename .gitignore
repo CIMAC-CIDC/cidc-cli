@@ -1,5 +1,3 @@
-/TESTWDL
-/TESTWDL/*
 token.token
 **/__pycache__/
 **.pyc
@@ -9,4 +7,13 @@ token.token
 .cache/*
 lcov.xml
 cov.xml
-report.html
+sample_data/alignment/*
+sample_data/rna_seq/*
+sample_data/olink/*
+sample_data/fake_manifest_wes/*
+sample_data/fake*
+sample_data/EX*
+sample_data/ex*
+sample_data/oli*
+sample_data/manifest_wes/*
+coverage.xml
