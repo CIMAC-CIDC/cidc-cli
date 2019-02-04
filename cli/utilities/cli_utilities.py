@@ -33,8 +33,8 @@ def terminal_sensitive_print(message: str, width: int = 80) -> None:
         None -- [description]
     """
     for _ in range(0, len(message), width):
-        blank = False
-        chars = width + 1
+        blank: bool = False
+        chars: int = width + 1
         while not blank:
             chars -= 1
             if message[_ : _ + chars] == " ":
@@ -162,7 +162,7 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
     Returns:
         int - index of user selection
     """
-    prompt = generate_options_list(options, prompt_header)
+    prompt: str = generate_options_list(options, prompt_header)
     return force_valid_menu_selection(len(options), prompt)
 
 

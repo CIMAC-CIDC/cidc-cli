@@ -16,20 +16,7 @@ Make sure that the commands `gcloud` and `gsutils` are added to your path so tha
 
 ### Ensure pip is installed
 
-The easiest way to install the application is by using [pip](https://pypi.org/project/pip/). This project does not support Python 2, so be sure to use the Python 3 linked version of pip.
-
-### Pip install
-
-You can either install locally from the cloned repo using:
-~~~
-pip3 install . --user
-~~~
-
-Or install directly from the repo with:
-
-~~~
-pip3 install git+https://github.com/CIMAC-CIDC/cidc-cli#egg=cidc-cli
-~~~
+The easiest way to install the application is by using [pip](https://pypi.org/project/pip/) to install the requirements from the `requirements.txt` file. This project does not support Python 2, so be sure to use the Python 3 linked version of pip.
 
 ### Install dependencies from requirements.txt
 
@@ -42,10 +29,7 @@ pip3 install -r requirements.txt --user
 ~~~
 
 ### Running command line tool
-
-If you installed the package using pip, the cli should be runnable with the command `cidc-cli`.
-
-If you installed the dependencies, navigate to the `cli` directory (which is located in the root directory) and run:
+Navigate to the `cli` directory (which is located in the root directory) and run:
 
 ~~~
 bash cli.sh

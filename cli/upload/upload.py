@@ -36,7 +36,7 @@ class RequestInfo(NamedTuple):
 
 def update_job_status(
     status: bool, request_info: RequestInfo, message: str = None
-) -> None:
+) -> bool:
     """
     Updates the status of the job in MongoDB, either with the URIs if the upload
     was succesful, or with the error message if it failed.
@@ -45,6 +45,9 @@ def update_job_status(
         status {bool} -- True if upload succeeds, false otherwise.
         request_info {RequestInfo} -- Dict containing information about the request.
         message {str} -- If upload failed, contains error.
+
+    Returns:
+        bool -- True if succesful, else false.
     """
     payload = None
     if status:
@@ -61,10 +64,12 @@ def update_job_status(
             item_id=request_info.mongo_data["_id"],
             _etag=request_info.mongo_data["_etag"],
             token=request_info.eve_token,
-            json=payload
+            json=payload,
         )
+        return True
     except RuntimeError as error:
         print("Status update failed: %s" % str(error))
+        return False
 
 
 def upload_files(directory: str, request_info: RequestInfo) -> str:
@@ -79,25 +84,21 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         str -- Returns the google URIs of the newly uploaded files.
     """
     try:
-        gsutil_args = ["gsutil"]
-        google_path = request_info.headers["google_folder_path"]
+        gsutil_args: List[str] = ["gsutil"]
+        google_path: str = request_info.headers["google_folder_path"]
+        insert_id: str = request_info.mongo_data["_id"]
         if len(request_info.files_uploaded) > 3:
             gsutil_args.append("-m")
 
         # Insert records into a staging area for later processing
         gsutil_args.extend(
-            [
-                "cp",
-                "-r",
-                directory,
-                "gs://" + google_path + "/" + request_info.mongo_data["_id"],
-            ]
+            ["cp", "-r", directory, "gs://%s/%s" % (google_path, insert_id)]
         )
         subprocess.check_output(gsutil_args)
         update_job_status(True, request_info)
-        return request_info.mongo_data["_id"]
+        return insert_id
     except subprocess.CalledProcessError as error:
-        print("Error: Upload to Google failed: " + str(error))
+        print("Error: Upload to Google failed: %s" % str(error))
         update_job_status(False, request_info, error)
         return None
 
@@ -112,7 +113,7 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
     Returns:
         List[dict] -- List of dictionaries of patientIDs + Timepoints.
     """
-    tumor_normal_pairs = []
+    tumor_normal_pairs: list = []
 
     with open(file_path, "r") as manifest:
         separator = None
@@ -125,25 +126,21 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
         else:
             raise TypeError("Unable to recognize metadata format")
 
-        # Get the column headers.
         headers = first_line.split(separator)
 
         while as_deque:
-            # split line into chunks.
             columns = as_deque.popleft().strip().split(separator)
+            if not len(columns) == len(headers):
+                raise IndexError(
+                    "Line %s has the wrong number of columns"
+                    % str(len(tumor_normal_pairs) + 1)
+                )
             tumor_normal_pairs.append(
                 dict(
                     (header_value.strip(), column_value)
                     for column_value, header_value in zip(columns, headers)
                 )
             )
-
-            if not len(tumor_normal_pairs[-1]) == len(headers):
-                raise IndexError(
-                    "Line %s has the wrong number of columns" % len(tumor_normal_pairs)
-                    + 1
-                )
-
     return tumor_normal_pairs
 
 
@@ -211,10 +208,10 @@ def guess_file_ext(file_name) -> str:
     Guesses a file extension from the file name.
 
     Arguments:
-        file_name {[type]} -- [description
+        file_name {str} -- Name of the file.
 
     Returns:
-        str -- [description]
+        str -- Data type corresponding to file extension.
     """
     split_name = file_name.split(".")
     try:
@@ -231,21 +228,20 @@ def guess_file_ext(file_name) -> str:
 def create_manifest_payload(
     entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
 ) -> Tuple[List[dict], List[str]]:
-    """[summary]
+    """
+    Turns the files
 
     Arguments:
-        entry {dict} -- [description]
-        non_static_inputs {List[str]} -- [description]
-        selections {Selections} -- [description]
+        entry {dict} -- Row from the manifest file.
+        non_static_inputs {List[str]} -- Names of inputs from the trial.
+        selections {Selections} -- User selection of trial/assay.
         directory {str} -- Root directory holding files.
 
     Returns:
-        List[dict] -- [description]
+        List[dict] -- List of dictionaries formatted to be sent to the API.
     """
     payload = []
     file_names = []
-    append_to_payload = payload.append
-    append_to_file_names = file_names.append
     selected_assay = selections.selected_assay
     selected_assay_name = selected_assay["assay_name"]
     trial_id = selections.selected_trial["_id"]
@@ -256,12 +252,12 @@ def create_manifest_payload(
             file_name = entry[key]
             tumor_normal = "TUMOR"
             pair_label = "PAIR 1"
-            if key == "FASTQ_NORMAL_1" or key == "FASTQ_NORMAL_2":
+            if key in {"FASTQ_NORMAL_1", "FASTQ_NORMAL_2"}:
                 tumor_normal = "NORMAL"
-            if key == "FASTQ_NORMAL_2" or key == "FASTQ_TUMOR_2":
+            if key in {"FASTQ_NORMAL_2", "FASTQ_TUMOR_2"}:
                 pair_label = "PAIR 2"
-            
-            append_to_payload(
+
+            payload.append(
                 {
                     "assay": selected_assay["assay_id"],
                     "experimental_strategy": selected_assay_name,
@@ -283,11 +279,11 @@ def create_manifest_payload(
                         "avg_insert_size": entry["AVG_INSERT_SIZE"],
                         "sample_id": entry["#CIMAC_SAMPLE_ID"],
                         "sample_type": tumor_normal,
-                        "pair_label": pair_label
-                    }
+                        "pair_label": pair_label,
+                    },
                 }
             )
-            append_to_file_names(entry[key])
+            file_names.append(entry[key])
 
     return payload, file_names
 
@@ -368,16 +364,13 @@ def run_upload_process() -> None:
     ).json()
 
     method = option_select_framework(
-        [
-            "Upload using a metadata file.",
-        ],
-        "Pick an upload method:",
+        ["Upload using a metadata file."], "Pick an upload method:"
     )
 
     try:
-        upload_dir, payload, file_list = [upload_manifest][
-            method - 1
-        ](assay_r["non_static_inputs"], selections)
+        upload_dir, payload, file_list = [upload_manifest][method - 1](
+            assay_r["non_static_inputs"], selections
+        )
 
         response_upload = EVE_FETCHER.post(
             token=eve_token, endpoint="ingestion", json=payload, code=201
