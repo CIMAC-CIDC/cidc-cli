@@ -10,8 +10,6 @@ cov.xml
 sample_data/alignment/*
 sample_data/rna_seq/*
 sample_data/olink/*
-sample_data/fake_manifest_wes/*
-sample_data/fake*
 sample_data/EX*
 sample_data/ex*
 sample_data/oli*

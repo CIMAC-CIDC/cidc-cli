@@ -2,7 +2,6 @@
 """
 Tests for the command line interface
 """
-from typing import Callable, List
 from unittest.mock import patch
 
 from utilities.cli_utilities import (
