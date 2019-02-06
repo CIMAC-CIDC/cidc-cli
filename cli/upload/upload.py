@@ -15,6 +15,7 @@ from utilities.cli_utilities import (
     select_assay_trial,
     option_select_framework,
     Selections,
+    terminal_sensitive_print,
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -144,25 +145,6 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
     return tumor_normal_pairs
 
 
-def confirm_manifest_files(directory: str, file_names: List[str]) -> bool:
-    """
-    Loops over file paths to confirm that all files exist.
-
-    Arguments:
-        file_names {List[str]} -- List of file paths.
-
-    Returns:
-        bool -- True if all found, else false.
-    """
-    all_found = True
-    for name in file_names:
-        if not isfile(directory + "/" + name):
-            print("Error: File %s not found" % name)
-            all_found = False
-
-    return all_found
-
-
 def find_manifest_path() -> str:
     """
     Prompts the user to enter a valid path.
@@ -179,9 +161,6 @@ def find_manifest_path() -> str:
         if not isfile(file_path):
             print("The given path is not valid, please enter a new one.")
             file_path = None
-
-    if not file_path:
-        raise ValueError("Path undefined")
 
     return file_path
 
@@ -244,13 +223,19 @@ def create_manifest_payload(
     payload = []
     file_names = []
     selected_assay = selections.selected_assay
-    selected_assay_name = selected_assay["assay_name"]
     trial_id = selections.selected_trial["_id"]
     trial_name = selections.selected_trial["trial_name"]
 
     for key in entry:
         if key in non_static_inputs:
             file_name = entry[key]
+            file_size = None
+
+            try:
+                file_size = getsize(directory + "/" + file_name)
+            except FileNotFoundError:
+                print("File: %s was not found" % (directory + "/" + file_name))
+
             tumor_normal = "TUMOR"
             pair_label = "PAIR 1"
             if key in {"FASTQ_NORMAL_1", "FASTQ_NORMAL_2"}:
@@ -261,10 +246,10 @@ def create_manifest_payload(
             payload.append(
                 {
                     "assay": selected_assay["assay_id"],
-                    "experimental_strategy": selected_assay_name,
+                    "experimental_strategy": selected_assay["assay_name"],
                     "data_format": guess_file_ext(file_name),
                     "file_name": file_name,
-                    "file_size": getsize(directory + "/" + file_name),
+                    "file_size": file_size,
                     "mapping": key,
                     "number_of_samples": 1,
                     "sample_ids": [entry["#CIMAC_SAMPLE_ID"]],
@@ -326,18 +311,14 @@ def upload_manifest(
             file_names = file_names + next_file_names
             payload = payload + next_payload
 
-    if not len(file_names) == (len(non_static_inputs) * len(tumor_normal_pairs)):
-        raise RuntimeError(
-            "Number of files does not correspond to the number of inputs."
-        )
-
     if bad_sample_id:
         raise RuntimeError(
             "One or more SampleIDs were not recognized as valid IDs for this trial"
         )
 
-    if not confirm_manifest_files(file_dir, file_names):
-        raise FileNotFoundError("Some files were not able to be found.")
+    for elem in payload:
+        if elem["file_size"] is None:
+            raise FileNotFoundError("One or more files could not be found")
 
     ingestion_payload = {
         "number_of_files": len(payload),
@@ -382,7 +363,13 @@ def run_upload_process() -> None:
         )
 
         job_id = upload_files(upload_dir, req_info)
-        print("Uploaded, your ID is: " + job_id)
+        if not job_id:
+            raise RuntimeError("File upload failed.")
+        upload_complete: str = (
+            "Upload completed. There will be a short delay "
+            + "while the files are processed before they will appear in your browser."
+        )
+        terminal_sensitive_print(upload_complete)
     except FileNotFoundError:
         print("There was a problem locating the files for upload.")
     except RuntimeError:
