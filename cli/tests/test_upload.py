@@ -1,19 +1,47 @@
 """
 Tets for functions in upload.py
 """
+import os
 import unittest
 from unittest.mock import patch
 from subprocess import CalledProcessError
 
 from upload.upload import (
     RequestInfo,
-    confirm_manifest_files,
     parse_upload_manifest,
     update_job_status,
     upload_files,
     find_manifest_path,
     check_id_present,
     guess_file_ext,
+    create_manifest_payload,
+    upload_manifest,
+)
+from tests.helper_functions import mock_with_inputs
+from utilities.cli_utilities import Selections
+
+NON_STATIC_INPUTS = {
+    "FASTQ_NORMAL_1",
+    "FASTQ_NORMAL_2",
+    "FASTQ_TUMOR_1",
+    "FASTQ_TUMOR_2",
+}
+
+SELECTIONS = Selections(
+    "token",
+    {
+        "trial_name": "trial_1",
+        "_id": "abc123",
+        "samples": {
+            "CIMAC_P1_S1",
+            "CIMAC_P1_S2",
+            "CIMAC_P2_S1",
+            "CIMAC_P2_S2",
+            "CIMAC_P3_S1",
+            "CIMAC_P3_S2",
+        },
+    },
+    {"assay_name": "assay_1", "assay_id": "bca231"},
 )
 
 
@@ -87,6 +115,7 @@ class TestUploadFunctions(unittest.TestCase):
                 results = parse_upload_manifest(
                     "./sample_data/testing_manifests/manifest.extra_column.csv"
                 )
+
     def test_guess_file_ext(self):
         """
         Test guess_file_ext
@@ -94,23 +123,41 @@ class TestUploadFunctions(unittest.TestCase):
         with self.subTest():
             self.assertEqual(guess_file_ext("something.fa.gz"), "FASTQ")
         with self.subTest():
+            self.assertEqual(guess_file_ext("something.fa"), "FASTQ")
+        with self.subTest():
             self.assertIsNone(guess_file_ext("something.foo.bar"))
 
-
-def test_confirm_manifest_files():
-    """
-    Test confirm_manifest_files
-    """
-    directory = "sample_data/testing_manifests/"
-    file_names = ["dfci_9999_manifest.csv"]
-    assert confirm_manifest_files(directory, file_names)
-
-
-def test_bad_confirm_manifest_files():
-    """
-    Test fails when not found
-    """
-    assert not confirm_manifest_files("foo", ["bar"])
+    def test_upload_manifest(self):
+        """
+        Test upload_manifest.
+        """
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/fake_manifest_wes/manifest.csv",
+            ):
+                file_dir, ingestion_payload, file_names = upload_manifest(
+                    NON_STATIC_INPUTS, SELECTIONS
+                )
+                self.assertTrue(
+                    len(ingestion_payload["files"]) == 24
+                    and len(file_names) == 24
+                    and file_dir == "./sample_data/fake_manifest_wes"
+                )
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.bad.sample_id",
+            ):
+                with self.assertRaises(RuntimeError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.csv",
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
 
 
 def test_find_manifest_path():
@@ -125,6 +172,12 @@ def test_find_manifest_path():
             find_manifest_path()
             == "./sample_data/testing_manifests/dfci_9999_manifest.csv"
         )
+    assert mock_with_inputs(
+        ["foo", "./sample_data/testing_manifests/dfci_9999_manifest.csv"],
+        find_manifest_path,
+        [],
+    )
+
 
 def test_check_id_present():
     """
@@ -132,3 +185,20 @@ def test_check_id_present():
     """
     assert check_id_present("A", ["A", "B", "C"])
     assert not check_id_present("D", ["A", "B", "C"])
+
+
+def test_create_manifest_payload():
+    """
+    Test create_manifest_payload
+    """
+    tumor_normal_pairs = parse_upload_manifest(
+        "./sample_data/fake_manifest_wes/manifest.csv"
+    )
+    entry = tumor_normal_pairs[0]
+    payload, file_names = create_manifest_payload(
+        entry,
+        NON_STATIC_INPUTS,
+        SELECTIONS,
+        os.path.dirname("./sample_data/fake_manifest_wes/"),
+    )
+    assert len(file_names) == 4 and len(payload) == 4

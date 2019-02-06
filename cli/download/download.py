@@ -48,7 +48,13 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
        List[List[dict]] -- A list of list of dicts, with each sublist
        being made to fit in the user's terminal.
     """
-    rows = int(os.popen("stty size", "r").read().split()[0])
+    rows = None
+    try:
+        rows = int(os.popen("stty size", "r").read().split()[0])
+    except OSError:
+        rows = 20
+    except IndexError:
+        rows = 20
 
     # If someone has a super tall terminal, don't give them a giant list.
     if rows > 50:
