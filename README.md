@@ -1,7 +1,7 @@
-| Branch | Coverage |
-| --- | --- |
-| Master | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/) |
-| Staging | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/) |
+| Branch | Coverage | Code Quality |
+| --- | --- | --- |
+| Master | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/) | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/lemccarthy/cidc-cli?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=CIMAC-CIDC/cidc-cli&amp;utm_campaign=Badge_Grade?branch=master)
+| Staging | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/) | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/lemccarthy/cidc-cli?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=CIMAC-CIDC/cidc-cli&amp;utm_campaign=Badge_Grade?branch=staging)
 ## CIDC-CLI
 
 Command line tool for interfacing with the CIDC workflow pipeline
