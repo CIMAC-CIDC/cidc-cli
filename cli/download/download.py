@@ -17,6 +17,7 @@ from utilities.cli_utilities import (
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
+VALID_COMMANDS = ["n", "p", "e", "a"]
 
 
 def gsutil_copy_data(records: List[str], download_directory: str) -> None:
@@ -83,8 +84,6 @@ def elegant_options(
     Returns:
         List[str] -- Formatted options list.
     """
-    # Split the items into pages.
-    # Create the text for each page
     str_pag_list = [[x['file_name'] for x in page] for page in paginated_list]
     formatted_list = [generate_options_list(page, prompt) for page in str_pag_list]
     # List available commands
@@ -92,20 +91,22 @@ def elegant_options(
     return with_commands
 
 
-def run_download_process() -> None:
+def get_files_for_dl() -> List[dict]:
     """
-    Function for users to download data.
+    Workflow for guiding users to download their files.
+
+    Returns:
+        List[dict] -- List of files. 
     """
     selections = select_assay_trial("This is the download function\n")
 
     if not selections:
-        return
+        return None
 
     trial_query = {
         "trial": selections.selected_trial["_id"],
         "assay": selections.selected_assay["assay_id"],
     }
-
     query_string = "data?where=%s" % (json.dumps(trial_query))
     records = EVE_FETCHER.get(
         token=selections.eve_token, endpoint=query_string, code=200
@@ -114,16 +115,20 @@ def run_download_process() -> None:
 
     if not retreived:
         print("No data records found matching that criteria")
-        return
+        return None
 
     print("Files to be downloaded: ")
     for ret in records["_items"]:
         print(ret["file_name"])
+    return records
 
+
+def run_download_process() -> None:
+    """
+    Function for users to download data.
+    """
+    records = get_files_for_dl()
     gsutil_copy_data(records, get_valid_dir()[0])
-
-
-VALID_COMMANDS = ["n", "p", "e", "a"]
 
 
 def run_selective_download() -> None:

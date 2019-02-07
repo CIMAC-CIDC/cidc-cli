@@ -37,7 +37,7 @@ def terminal_sensitive_print(message: str, width: int = 80) -> None:
         chars: int = width + 1
         while not blank:
             chars -= 1
-            if message[_ : _ + chars] == " ":
+            if message[_ : _ + chars][-1] == " ":
                 blank = True
             if chars <= 60:
                 blank = True
@@ -143,7 +143,7 @@ def force_valid_menu_selection(
         try:
             int(user_input)
             selection = user_input
-        except ValueError:
+        except TypeError:
             print("Please enter an integer")
         if int(selection) not in range(1, number_options + 1):
             print(err_msg)
@@ -197,7 +197,7 @@ def cache_token(token: str) -> None:
     USER_CACHE.cache_key(token)
 
 
-def run_jwt_login(token: str) -> None:
+def run_jwt_login(token: str) -> bool:
     """
     Takes a user's JWT and confirms its validity.
     If it is valid
@@ -206,19 +206,21 @@ def run_jwt_login(token: str) -> None:
         token {str} -- JWT
 
     Returns:
-        None -- [description]
+        bool -- True if login succeeds, else false.
     """
     if not token:
         print("Please enter a token when running this command")
-        return
+        return False
     try:
         EVE_FETCHER.get(token=token, endpoint="trials")
         cache_token(token)
         print("Token is valid, you are now logged in!")
+        return True
     except RuntimeError:
         print(
             "Your token is invalid. Please make sure your token was entered correctly"
         )
+        return False
 
 
 def user_prompt_yn(prompt: str) -> bool:
@@ -270,6 +272,7 @@ def select_assay_trial(prompt: str) -> Selections:
             )
         else:
             print("ERROR: %s" % rte)
+        return None
 
     # Select Trial
     trials = response.json()["_items"]
