@@ -32,3 +32,30 @@ def mock_with_inputs(inputs: List[object], function: Callable, arguments: List[o
 
     with patch("builtins.input", mock_input):
         return function(*arguments)
+
+
+class FakeFetcher(object):
+    """
+    Class to provide the .json() method for mocking http response calls.
+
+    Arguments:
+        object {[type]} -- [description]
+
+    Returns:
+        [type] -- [description]
+    """
+    def __init__(self, response):
+        """[summary]
+
+        Arguments:
+            response {[type]} -- [description]
+        """
+        self.response = response
+    def json(self):
+        """
+        Returns the json object passed to it on init.
+
+        Returns:
+            [type] -- [description]
+        """
+        return self.response

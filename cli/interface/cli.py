@@ -12,8 +12,6 @@ from constants import EVE_URL, BANNER, USER_CACHE
 from download import run_selective_download, run_download_process
 from upload import run_upload_process
 from utilities.cli_utilities import (
-    ensure_logged_in,
-    option_select_framework,
     user_prompt_yn,
     run_jwt_login,
     terminal_sensitive_print
@@ -23,36 +21,6 @@ EVE_FETCHER = SmartFetch(EVE_URL)
 
 if platform.system() == "Darwin":
     import readline
-
-
-def run_job_query() -> None:
-    """
-    Allows user to check on the status of running jobs.
-    """
-
-    eve_token = ensure_logged_in()
-    res = EVE_FETCHER.get(token=eve_token, endpoint="status").json()
-    jobs = res["_items"]
-
-    if not jobs:
-        print("No jobs found for this user.")
-        return
-
-    job_ids = [x["_id"] for x in jobs]
-
-    for job in job_ids:
-        print(job)
-
-    selection = option_select_framework(job_ids, "===Jobs===")
-    status = jobs[selection - 1]
-    progress = status["status"]["progress"]
-
-    if progress == "In Progress":
-        print("Job is still in progress, check back later")
-    elif progress == "Completed":
-        print("Job is completed.")
-    elif progress == "Aborted":
-        print("Job was aborted: " + status["status"]["message"])
 
 
 class ShellCmd(cmd.Cmd):
@@ -222,12 +190,6 @@ class CIDCCLI(ExitCmd, ShellCmd):
             None -- [description]
         """
         run_selective_download()
-
-    def do_query_job(self, rest=None) -> None:  # pylint: disable=W0613
-        """
-        Allows user to check if their job is done
-        """
-        run_job_query()
 
     def get_user_consent(self, rest=None) -> None:  # pylint: disable=W0613
         """
