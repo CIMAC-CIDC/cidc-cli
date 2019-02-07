@@ -366,7 +366,7 @@ def run_upload_process() -> None:
         if not job_id:
             raise RuntimeError("File upload failed.")
         upload_complete: str = (
-            "Upload completed. There will be a short delay "
+            "Upload completed. There will be a short delay"
             + "while the files are processed before they will appear in your browser."
         )
         terminal_sensitive_print(upload_complete)
