@@ -2,6 +2,7 @@
 """
 Tests for the command line interface
 """
+import os
 import unittest
 from unittest.mock import patch
 
@@ -74,6 +75,7 @@ class TestUploadFunctions(unittest.TestCase):
         """
         Test function for get_valid_dir
         """
+        os.mkdir("cli/tests/empty_dir")
         with self.subTest():
             inputs = ["cli/tests/test_directory", "y"]
             self.assertEqual(
