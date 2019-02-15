@@ -1,10 +1,9 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 """
 Tests for the command line interface
 """
 import unittest
 from unittest.mock import patch
-from cidc_utils.caching import CredentialCache
 
 from utilities.cli_utilities import (
     generate_options_list,
@@ -16,8 +15,7 @@ from utilities.cli_utilities import (
     get_valid_dir,
     terminal_sensitive_print,
     run_jwt_login,
-    select_assay_trial,
-    Selections,
+    select_assay_trial
 )
 from tests.helper_functions import mock_with_inputs, FakeFetcher
 from constants import USER_CACHE
@@ -30,7 +28,8 @@ def test_generate_options_list():
     menu_items = ["A", "B", "C"]
     header = "test"
     menu = generate_options_list(menu_items, header)
-    assert len(menu.split("\n")) == 5
+    if not len(menu.split("\n")) == 5:
+        raise AssertionError("test_generate_options_list: Assertion Failed")
 
 
 def test_force_valid_menu_selection():
@@ -42,10 +41,11 @@ def test_force_valid_menu_selection():
     with patch("builtins.input", return_value="2"):
         assert force_valid_menu_selection(number_options, prompt) == 2
     inputs = [4, unittest, 2]
-    assert (
+    if (
         mock_with_inputs(inputs, force_valid_menu_selection, [number_options, prompt])
-        == 2
-    )
+        != 2
+    ):
+        raise AssertionError("test_force_valid_menu_selection: Assertion Failed")
 
 
 def test_user_prompt_yn():
@@ -53,11 +53,14 @@ def test_user_prompt_yn():
     Test for the function user_prompt_yn
     """
     with patch("builtins.input", return_value="y"):
-        assert user_prompt_yn("")
+        if not user_prompt_yn(""):
+            raise AssertionError("test_user_prompt_yn: Assertion Failed")
     with patch("builtins.input", return_value="n"):
-        assert not user_prompt_yn("")
+        if user_prompt_yn(""):
+            raise AssertionError("test_user_prompt_yn: Assertion Failed")
     inputs = ["z", "n"]
-    assert not mock_with_inputs(inputs, user_prompt_yn, [""])
+    if mock_with_inputs(inputs, user_prompt_yn, [""]):
+        raise AssertionError("test_user_prompt_yn: Assertion Failed")
 
 
 class TestUploadFunctions(unittest.TestCase):
@@ -95,16 +98,19 @@ def test_option_select_framework():
     options = ["one", "two", "three"]
     prompt = "foo"
     with patch("builtins.input", return_value="1"):
-        assert option_select_framework(options, prompt)
+        if not option_select_framework(options, prompt):
+            raise AssertionError("test_option_select_framework: Assertion Failed")
 
 
 def test_ensure_logged_in():
     """
     Test function for ensure_logged_in
     """
-    assert not ensure_logged_in()
+    if ensure_logged_in():
+        raise AssertionError("test_ensure_logged_in: Assertion Failed")
     USER_CACHE.cache_key("foo")
-    assert ensure_logged_in()
+    if not ensure_logged_in():
+        AssertionError("test_ensure_logged_in: Assertion Failed")
 
 
 def test_run_jwt_login():
@@ -112,12 +118,15 @@ def test_run_jwt_login():
     Test run_jwt_login.
     """
     token = "token"
-    assert not run_jwt_login(None)
+    if run_jwt_login(None):
+        raise AssertionError("test_run_jwt_login: Assertion Failed")
     with patch(
         "utilities.cli_utilities.EVE_FETCHER.get", return_value={"status_code": 200}
     ):
-        assert run_jwt_login(token)
-    assert not run_jwt_login(token)
+        if not run_jwt_login(token):
+            raise AssertionError("test_run_jwt_login: Assertion Failed")
+    if run_jwt_login(token):
+        raise AssertionError("test_run_jwt_login: Assertion Failed")
 
 
 def test_store_token():
@@ -125,7 +134,8 @@ def test_store_token():
     Test for storing/retrieving a token in Cache.
     """
     cache_token("test")
-    assert USER_CACHE.get_key() == "test"
+    if USER_CACHE.get_key() != "test":
+        raise AssertionError("test_store_token: Assertion Failed")
 
 
 def test_terminal_sensitive_print():
@@ -133,7 +143,6 @@ def test_terminal_sensitive_print():
     Test terminal_sensitive_print.
     """
     terminal_sensitive_print("hello hello", width=7)
-    assert True
 
 
 def test_select_assay_trial():
@@ -141,7 +150,8 @@ def test_select_assay_trial():
     Test select_assay_trial
     """
     with patch("constants.USER_CACHE.get_key", return_value=None):
-        assert not select_assay_trial("prompt")
+        if select_assay_trial("prompt"):
+            raise AssertionError("test_select_assay_trial: Assertion Failed")
     inputs = [1, 1]
     USER_CACHE.cache_key("foo")
     response = {
@@ -162,16 +172,19 @@ def test_select_assay_trial():
     response_with_method = FakeFetcher(response)
     with patch("utilities.cli_utilities.EVE_FETCHER.get", return_value=response_with_method):
         selections = mock_with_inputs(inputs, select_assay_trial, ["Prompt"])
-        assert (
-            selections.eve_token == "foo"
-            and selections.selected_trial
-            == {
+        if (
+            selections.eve_token != "foo"
+            or selections.selected_trial
+            != {
                 "trial_name": "trial1",
                 "_id": "123",
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
             }
-            and selections.selected_assay == {"assay_name": "assay1", "assay_id": "245"}
-        )
-    assert not select_assay_trial("")
+            or selections.selected_assay != {"assay_name": "assay1", "assay_id": "245"}
+        ):
+            raise AssertionError("test_select_assay_trial: Assertion Failed")
+    if select_assay_trial(""):
+        raise AssertionError("test_select_assay_trial: Assertion Failed")
     with patch("utilities.cli_utilities.EVE_FETCHER.get", return_value=bad_response):
-        assert not select_assay_trial("")
+        if select_assay_trial(""):
+            raise AssertionError("test_select_assay_trial: Assertion Failed")
