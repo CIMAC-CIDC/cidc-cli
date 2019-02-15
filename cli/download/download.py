@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Module for doing downloads and related functions.
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 import json
 import math
 import os
@@ -96,7 +100,7 @@ def get_files_for_dl() -> List[dict]:
     Workflow for guiding users to download their files.
 
     Returns:
-        List[dict] -- List of files. 
+        List[dict] -- List of files.
     """
     selections = select_assay_trial("This is the download function\n")
 

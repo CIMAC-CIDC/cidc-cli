@@ -168,23 +168,27 @@ def test_find_manifest_path():
         "builtins.input",
         return_value="./sample_data/testing_manifests/dfci_9999_manifest.csv",
     ):
-        assert (
+        if (
             find_manifest_path()
-            == "./sample_data/testing_manifests/dfci_9999_manifest.csv"
-        )
-    assert mock_with_inputs(
+            != "./sample_data/testing_manifests/dfci_9999_manifest.csv"
+        ):
+            raise AssertionError("test_find_manifest_path: Assertion Failed")
+    if not mock_with_inputs(
         ["foo", "./sample_data/testing_manifests/dfci_9999_manifest.csv"],
         find_manifest_path,
         [],
-    )
+    ):
+        raise AssertionError("test_find_manifest_path: Assertion Failed")
 
 
 def test_check_id_present():
     """
     Test check_id_present
     """
-    assert check_id_present("A", ["A", "B", "C"])
-    assert not check_id_present("D", ["A", "B", "C"])
+    if not check_id_present("A", ["A", "B", "C"]):
+        raise AssertionError("test_check_id_present: Assertion Failed")
+    if check_id_present("D", ["A", "B", "C"]):
+        raise AssertionError("test_check_id_present: Assertion Failed")
 
 
 def test_create_manifest_payload():
@@ -201,4 +205,5 @@ def test_create_manifest_payload():
         SELECTIONS,
         os.path.dirname("./sample_data/fake_manifest_wes/"),
     )
-    assert len(file_names) == 4 and len(payload) == 4
+    if len(file_names) != 4 or len(payload) != 4:
+        raise AssertionError("test_create_manifest_payload: Assertion Failed")
