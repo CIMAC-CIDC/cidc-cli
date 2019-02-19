@@ -21,6 +21,8 @@ pylint = "*"
 black = "*"
 "nose2" = {extras = ["coverage-plugin"]}
 pytest-html = "*"
+"flake8" = "*"
+"flake8-mypy" = "*"
 
 [requires]
 python_version = "3.6"
