@@ -24,7 +24,7 @@ EVE_FETCHER = SmartFetch(EVE_URL)
 VALID_COMMANDS = ["n", "p", "e", "a"]
 
 
-def gsutil_copy_data(records: List[str], download_directory: str) -> None:
+def gsutil_copy_data(records: List[dict], download_directory: str) -> None:
     """
     Copies files from a google bucket to the user's local filesystem.
 
@@ -68,7 +68,7 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
     # Assume that some of the rows will be taken up with console print statements.
     available_rows = int(rows * 0.8)
     return [
-        list_items[available_rows * i : available_rows * i + available_rows]
+        list_items[available_rows * i: available_rows * i + available_rows]
         for i in range(0, math.ceil(len(list_items) / available_rows))
     ]
 
@@ -171,7 +171,7 @@ def run_selective_download() -> None:
             selection = input(pages[page_index])
             sel_str = selection.lower()
 
-            if not sel_str in VALID_COMMANDS:
+            if sel_str not in VALID_COMMANDS:
                 selected_item = paginated_list[page_index][int(selection)]
                 download_dir = get_valid_dir()[0]
                 gsutil_copy_data([selected_item], download_dir)
