@@ -36,7 +36,7 @@ def gsutil_copy_data(records: List[str], download_directory: str) -> None:
         gs_uri = record["gs_uri"]
         gs_args = ["gsutil", "cp", gs_uri, download_directory]
         try:
-            subprocess.run(gs_args)
+            subprocess.check_output(gs_args)
         except subprocess.CalledProcessError as error:
             error_string = "Shell command generated error" + str(error.output)
             print(error_string)

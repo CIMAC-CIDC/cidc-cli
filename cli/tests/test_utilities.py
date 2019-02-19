@@ -40,7 +40,8 @@ def test_force_valid_menu_selection():
     number_options = 3
     prompt = "a"
     with patch("builtins.input", return_value="2"):
-        assert force_valid_menu_selection(number_options, prompt) == 2
+        if force_valid_menu_selection(number_options, prompt) != 2:
+            raise AssertionError
     inputs = [4, unittest, 2]
     if (
         mock_with_inputs(inputs, force_valid_menu_selection, [number_options, prompt])
