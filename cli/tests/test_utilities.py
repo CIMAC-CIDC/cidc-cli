@@ -75,7 +75,10 @@ class TestUploadFunctions(unittest.TestCase):
         """
         Test function for get_valid_dir
         """
-        os.mkdir("cli/tests/empty_dir")
+        try:
+            os.mkdir("cli/tests/empty_dir")
+        except FileExistsError:
+            pass
         with self.subTest():
             inputs = ["cli/tests/test_directory", "y"]
             self.assertEqual(
