@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Class defining the behavior of the interactive command line interface
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 # pylint: disable=R0201
 import cmd
 import os
@@ -28,14 +32,14 @@ class ShellCmd(cmd.Cmd):
     Class to impart shell functionality to CMD
     """
 
-    def do_shell(self, something):
+    def do_shell(self, command):
         """
         Instantiates shell environment
 
         Arguments:
-            something {[type]} -- [description]
+            command {[type]} -- [description]
         """
-        os.system(something)
+        os.system(command)
 
     def help_shell(self):
         """
