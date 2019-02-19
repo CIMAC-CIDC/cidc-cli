@@ -4,7 +4,6 @@ Class defining the behavior of the interactive command line interface
 """
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
-
 # pylint: disable=R0201
 import cmd
 import os
@@ -24,7 +23,7 @@ from utilities.cli_utilities import (
 EVE_FETCHER = SmartFetch(EVE_URL)
 
 if platform.system() == "Darwin":
-    import readline
+    import readline  # noqa: F401
 
 
 class ShellCmd(cmd.Cmd):
