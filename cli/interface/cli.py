@@ -66,7 +66,7 @@ class ExitCmd(cmd.Cmd):
             "Welcome to the CIDC CLI! Before doing anything else, log in to our "
             + "system using the JWT you received from the web portal."
         )
-        terminal_sensitive_print(login_message) 
+        terminal_sensitive_print(login_message)
 
         while not USER_CACHE.get_key():
             token = input(
