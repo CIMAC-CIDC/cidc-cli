@@ -163,16 +163,20 @@ def run_selective_download() -> None:
     commands = ["[N]ext", "[P]revious", "[E]xit", "Download [A]ll: "]
     paginated_list = paginate_selections(retrieved)
     pages = elegant_options(paginated_list, commands, "=====| Files to Download |=====")
+    print(paginated_list)
     page_index = 0
     end_dl = False
 
-    while not end_dl:
+    mercy = 0
+    while not end_dl and mercy < 10:
+        mercy += 1
         try:
             selection = input(pages[page_index])
             sel_str = selection.lower()
 
             if sel_str not in VALID_COMMANDS:
-                selected_item = paginated_list[page_index][int(selection)]
+                selected_item = paginated_list[page_index][int(selection) - 1]
+                print(selected_item, "SELECTED_ITEM")
                 download_dir = get_valid_dir()[0]
                 gsutil_copy_data([selected_item], download_dir)
                 print("Data download successful")
