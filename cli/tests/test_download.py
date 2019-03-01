@@ -7,13 +7,43 @@ from download.download import (
     paginate_selections,
     elegant_options,
     get_files_for_dl,
+    run_selective_download,
 )
 from utilities.cli_utilities import Selections
-from tests.helper_functions import FakeFetcher
+from tests.helper_functions import FakeFetcher, mock_with_inputs
 
 
 LIST_ITEMS = [{"file_name": str(x)} for x in range(0, 100)]
 COMMANDS = ["[N]ext", "[P]revious", "[E]xit", "Download [A]ll: "]
+SEL = Selections(
+    "token",
+    {
+        "trial_name": "trial1",
+        "_id": "123",
+        "assays": [{"assay_name": "assay1", "assay_id": "245"}],
+    },
+    {"assay_name": "assay1", "assay_id": "245"},
+)
+
+
+def test_run_selective_download():
+    """
+    Test run_selective_download
+    """
+    response = FakeFetcher({"_items": [{"file_name": "a", "gs_uri": "gs://000"}]})
+    with patch("download.download.select_assay_trial", return_value=SEL), patch(\
+        "download.download.EVE_FETCHER.get", return_value=response\
+    ), patch("download.download.gsutil_copy_data", return_value=True), patch(\
+        "download.download.get_valid_dir", return_value=[True]\
+    ):
+        try:
+            mock_with_inputs(["1", "e"], run_selective_download, [])
+            mock_with_inputs(["2", "e"], run_selective_download, [])
+            mock_with_inputs(["a"], run_selective_download, [])
+        except ValueError:
+            raise AssertionError("ValueError raised")
+        except IndexError:
+            raise AssertionError("IndexError raised")
 
 
 def test_paginate_selections():
@@ -39,18 +69,9 @@ def test_get_files_for_dl():
     """
     Test run_download_process.
     """
-    sel = Selections(
-        "token",
-        {
-            "trial_name": "trial1",
-            "_id": "123",
-            "assays": [{"assay_name": "assay1", "assay_id": "245"}],
-        },
-        {"assay_name": "assay1", "assay_id": "245"},
-    )
     response = FakeFetcher({"_items": [{"file_name": "a", "gs_uri": "gs://000"}]})
 
-    with patch("download.download.select_assay_trial", return_value=sel):
+    with patch("download.download.select_assay_trial", return_value=SEL):
         with patch("download.download.EVE_FETCHER.get", return_value=response):
             if get_files_for_dl() != {
                 "_items": [{"file_name": "a", "gs_uri": "gs://000"}]
