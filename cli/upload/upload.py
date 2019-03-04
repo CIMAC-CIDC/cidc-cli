@@ -366,11 +366,11 @@ def run_upload_process() -> None:
         if not job_id:
             raise RuntimeError("File upload failed.")
         upload_complete: str = (
-            "Upload completed.  There will be a short delay while the files are processed."
+            "Upload completed. There will be a short delay while the files are processed."
             + " After processing is complete, you will be able to see the files within the"
             + " CIMAC-CIDC Data Portal."
         )
-        terminal_sensitive_print(upload_complete)
+        print(upload_complete)
     except FileNotFoundError:
         print("There was a problem locating the files for upload.")
     except RuntimeError:
