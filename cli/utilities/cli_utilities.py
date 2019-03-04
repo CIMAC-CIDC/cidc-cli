@@ -277,6 +277,11 @@ def select_assay_trial(prompt: str) -> Selections:
 
     # Select Trial
     trials = response.json()["_items"]
+
+    if not trials:
+        print("No trials were found for this user")
+        return None
+
     user_email = email["_items"][0]["email"]
 
     user_trials = list(filter(lambda x: user_email in x["collaborators"], trials))
