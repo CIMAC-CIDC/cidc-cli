@@ -7,7 +7,7 @@ __license__ = "MIT"
 
 import json
 import math
-import os
+import sys
 import subprocess
 from typing import List
 
@@ -36,7 +36,7 @@ def gsutil_copy_data(records: List[dict], download_directory: str) -> None:
         gs_uri = record["gs_uri"]
         gs_args = ["gsutil", "cp", gs_uri, download_directory]
         try:
-            subprocess.check_output(gs_args)
+            subprocess.check_output(gs_args, shell=False)
         except subprocess.CalledProcessError as error:
             error_string = "Shell command generated error" + str(error.output)
             print(error_string)
@@ -53,12 +53,16 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
        List[List[dict]] -- A list of list of dicts, with each sublist
        being made to fit in the user's terminal.
     """
-    rows = None
+    rows = 0
     try:
-        rows = int(os.popen("stty size", "r").read().split()[0])
+        if sys.stdout.isatty():
+            rows = int(subprocess.check_output(["stty", "size"], shell=False).split()[0])
     except OSError:
         rows = 20
     except IndexError:
+        rows = 20
+
+    if not rows or rows < 2:
         rows = 20
 
     # If someone has a super tall terminal, don't give them a giant list.
