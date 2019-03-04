@@ -264,6 +264,7 @@ def select_assay_trial(prompt: str) -> Selections:
 
     try:
         response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
+        email = EVE_FETCHER.get(endpoint="accounts_info", token=eve_token).json()
     except RuntimeError as rte:
         if "401" in str(rte):
             print(
@@ -276,14 +277,17 @@ def select_assay_trial(prompt: str) -> Selections:
 
     # Select Trial
     trials = response.json()["_items"]
+    user_email = email["_items"][0]["email"]
 
-    if not trials:
+    user_trials = list(filter(lambda x: user_email in x["collaborators"], trials))
+
+    if not user_trials:
         print("No trials were found for this user.")
         return None
 
-    selected_trial = trials[
+    selected_trial = user_trials[
         option_select_framework(
-            [trial["trial_name"] for trial in trials], "=====| Available Trials |====="
+            [trial["trial_name"] for trial in user_trials], "=====| Available Trials |====="
         )
         - 1
     ]
