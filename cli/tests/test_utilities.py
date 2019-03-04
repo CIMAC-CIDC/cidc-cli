@@ -166,6 +166,8 @@ def test_select_assay_trial():
                 "trial_name": "trial1",
                 "_id": "123",
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
+                "collaborators": ["test@test.com"],
+                "email": "test@test.com"
             }
         ],
         "status_code": 200,
@@ -185,6 +187,8 @@ def test_select_assay_trial():
                 "trial_name": "trial1",
                 "_id": "123",
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
+                "collaborators": ["test@test.com"],
+                "email": "test@test.com"
             }
             or selections.selected_assay != {"assay_name": "assay1", "assay_id": "245"}
         ):
