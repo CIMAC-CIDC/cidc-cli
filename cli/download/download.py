@@ -7,6 +7,7 @@ __license__ = "MIT"
 
 import json
 import math
+import os
 import sys
 import subprocess
 from typing import List
@@ -56,7 +57,7 @@ def paginate_selections(list_items: List[dict]) -> List[List[dict]]:
     rows = 0
     try:
         if sys.stdout.isatty():
-            rows = int(subprocess.check_output(["stty", "size"], shell=False).split()[0])
+            rows = os.get_terminal_size(0)[0]
     except OSError:
         rows = 20
     except IndexError:

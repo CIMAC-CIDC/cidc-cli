@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Some functions for running unit tests more easily.
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 from typing import Callable, List
 from unittest.mock import patch
 
