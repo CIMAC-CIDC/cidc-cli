@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Tets for functions in upload.py
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 import os
 import unittest
 from unittest.mock import patch

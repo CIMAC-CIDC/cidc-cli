@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Responsible for loading all of the environmental variables.
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 from os import environ as env
 from dotenv import find_dotenv, load_dotenv
 from cidc_utils.caching import CredentialCache

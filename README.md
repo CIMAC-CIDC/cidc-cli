@@ -1,7 +1,7 @@
-| Branch  | Coverage                                                                                                                                          | Codacy                                                                                                                                                                                                                                                           | Code Style                                                                                                        |
-| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Master  | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/)   | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/CIMAC-CIDC/cidc-cli?utm_source=github.com&utm_medium=referral&utm_content=CIMAC-CIDC/cidc-cli&utm_campaign=Badge_Grade?branch=master)  | [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) |
-| Staging | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/) | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/CIMAC-CIDC/cidc-cli?utm_source=github.com&utm_medium=referral&utm_content=CIMAC-CIDC/cidc-cli&utm_campaign=Badge_Grade?branch=staging) | [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) |
+| Branch  | Coverage                                                                                                                                          | Codacy                                                                                                                                                                                                                                                           | Code Style                                                                                                        | License                                                                                                     |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Master  | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/master/)   | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/CIMAC-CIDC/cidc-cli?utm_source=github.com&utm_medium=referral&utm_content=CIMAC-CIDC/cidc-cli&utm_campaign=Badge_Grade?branch=master)  | [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) |
+| Staging | [![codecov](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/graph/badge.svg)](https://codecov.io/gh/CIMAC-CIDC/cidc-cli/branch/staging/) | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/b705166077e84bd69000e63b7e2f0e7c)](https://www.codacy.com/app/CIMAC-CIDC/cidc-cli?utm_source=github.com&utm_medium=referral&utm_content=CIMAC-CIDC/cidc-cli&utm_campaign=Badge_Grade?branch=staging) | [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black) | [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) |
 
 ## CIDC-CLI
 
@@ -19,7 +19,7 @@ Make sure that the commands `gcloud` and `gsutils` are added to your path so tha
 
 Run:
 
-```
+```bash
 git clone https://github.com/CIMAC-CIDC/cidc-cli
 ```
 
@@ -27,7 +27,7 @@ git clone https://github.com/CIMAC-CIDC/cidc-cli
 
 In the root of the cloned repository run:
 
-```
+```bash
 pip3 install -r requirements.txt --user
 ```
 
@@ -35,6 +35,6 @@ pip3 install -r requirements.txt --user
 
 Navigate to the `cli` sub-directory (which is located in the root directory) and run:
 
-```
+```bash
 bash cli.sh
 ```

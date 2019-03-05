@@ -1,6 +1,9 @@
+#!/usr/bin/env python
 """
 This is a simple command-line tool that allows users to upload data to our google storage
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
 # pylint: disable=R0903
 import collections
 import datetime
@@ -15,7 +18,6 @@ from utilities.cli_utilities import (
     select_assay_trial,
     option_select_framework,
     Selections,
-    terminal_sensitive_print,
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -95,7 +97,7 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         gsutil_args.extend(
             ["cp", "-r", directory, "gs://%s/%s" % (google_path, insert_id)]
         )
-        subprocess.check_output(gsutil_args)
+        subprocess.check_output(gsutil_args, shell=False)
         update_job_status(True, request_info)
         return insert_id
     except subprocess.CalledProcessError as error:
