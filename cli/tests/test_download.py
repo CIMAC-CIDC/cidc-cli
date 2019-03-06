@@ -34,10 +34,10 @@ def test_run_selective_download():
     Test run_selective_download
     """
     response = FakeFetcher({"_items": [{"file_name": "a", "gs_uri": "gs://000"}]})
-    with patch("download.download.select_assay_trial", return_value=SEL), patch(\
-        "download.download.EVE_FETCHER.get", return_value=response\
-    ), patch("download.download.gsutil_copy_data", return_value=True), patch(\
-        "download.download.get_valid_dir", return_value=[True]\
+    with patch("download.download.select_assay_trial", return_value=SEL), patch(
+        "download.download.EVE_FETCHER.get", return_value=response
+    ), patch("download.download.gsutil_copy_data", return_value=True), patch(
+        "download.download.get_valid_dir", return_value=[True]
     ):
         mock_with_inputs(["1", "e"], run_selective_download, [])
         mock_with_inputs(["2", "e"], run_selective_download, [])
@@ -45,7 +45,10 @@ def test_run_selective_download():
     with patch("download.download.select_assay_trial", return_value=None):
         run_selective_download()
     with patch("download.download.select_assay_trial", return_value=SEL):
-        with patch("download.download.EVE_FETCHER.get", return_value={"_items": []}):
+        with patch(
+            "download.download.EVE_FETCHER.get",
+            return_value=FakeFetcher({"_items": []}),
+        ):
             run_selective_download()
 
 
