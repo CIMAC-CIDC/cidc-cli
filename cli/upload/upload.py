@@ -4,14 +4,18 @@ This is a simple command-line tool that allows users to upload data to our googl
 """
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
-# pylint: disable=R0903
+
 import collections
 import datetime
-from os.path import isfile, dirname, getsize
-import subprocess
-from typing import List, NamedTuple, Tuple
+from os.path import isfile, dirname, getsize, join
+
+from typing import List, NamedTuple, Tuple, Optional
+from uuid import uuid4
 
 from cidc_utils.requests import SmartFetch
+from google.cloud import storage
+from google.api_core.exceptions import NotFound
+
 
 from constants import EVE_URL, FILE_EXTENSION_DICT
 from utilities.cli_utilities import (
@@ -75,7 +79,7 @@ def update_job_status(
         return False
 
 
-def upload_files(directory: str, request_info: RequestInfo) -> str:
+def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
     """
     Launches the gsutil command using subprocess and uploads files to the
     google bucket.
@@ -87,22 +91,19 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         str -- Returns the google URIs of the newly uploaded files.
     """
     try:
-        gsutil_args: List[str] = ["gsutil"]
-        google_path: str = request_info.headers["google_folder_path"]
         insert_id: str = request_info.mongo_data["_id"]
-        if len(request_info.files_uploaded) > 3:
-            gsutil_args.append("-m")
-
-        # Insert records into a staging area for later processing
-        gsutil_args.extend(
-            ["cp", "-r", directory, "gs://%s/%s" % (google_path, insert_id)]
-        )
-        subprocess.check_output(gsutil_args, shell=False)
+        bucket = storage.Client().bucket(request_info.headers["google_folder_path"])
+        files_to_upload: List[dict] = request_info.files_uploaded
+        for item in files_to_upload:
+            upload_name = "%s/%s" % (insert_id, item["uuid_alias"])
+            blob = bucket.blob(upload_name)
+            blob.upload_from_filename(join(directory, item["file_name"]))
+            print(blob.name)
         update_job_status(True, request_info)
         return insert_id
-    except subprocess.CalledProcessError as error:
+    except (NotFound, FileNotFoundError) as error:
         print("Error: Upload to Google failed: %s" % str(error))
-        update_job_status(False, request_info, error)
+        update_job_status(False, request_info, str(error))
         return None
 
 
@@ -178,13 +179,13 @@ def check_id_present(sample_id: str, list_of_ids: List[str]) -> bool:
     Returns:
         bool -- [description]
     """
-    if not sample_id in list_of_ids:
+    if sample_id not in list_of_ids:
         print("Error: SampleID %s is not a valid sample ID for this trial" % sample_id)
         return False
     return True
 
 
-def guess_file_ext(file_name) -> str:
+def guess_file_ext(file_name) -> Optional[str]:
     """
     Guesses a file extension from the file name.
 
@@ -192,7 +193,7 @@ def guess_file_ext(file_name) -> str:
         file_name {str} -- Name of the file.
 
     Returns:
-        str -- Data type corresponding to file extension.
+        Optional[str] -- Data type corresponding to file extension.
     """
     split_name = file_name.split(".")
     try:
@@ -209,7 +210,7 @@ def guess_file_ext(file_name) -> str:
 
 def create_manifest_payload(
     entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
-) -> Tuple[List[dict], List[str]]:
+) -> Tuple[List[dict], List[dict]]:
     """
     Turns the files
 
@@ -220,10 +221,10 @@ def create_manifest_payload(
         directory {str} -- Root directory holding files.
 
     Returns:
-        List[dict] -- List of dictionaries formatted to be sent to the API.
+        Tuple[List[dict], List[dict]] -- List of dictionaries formatted to be sent to the API.
     """
     payload = []
-    file_names = []
+    file_name_and_alias: List[dict] = []
     selected_assay = selections.selected_assay
     trial_id = selections.selected_trial["_id"]
     trial_name = selections.selected_trial["trial_name"]
@@ -244,7 +245,7 @@ def create_manifest_payload(
                 tumor_normal = "NORMAL"
             if key in {"FASTQ_NORMAL_2", "FASTQ_TUMOR_2"}:
                 pair_label = "PAIR 2"
-
+            alias = str(uuid4())
             payload.append(
                 {
                     "assay": selected_assay["assay_id"],
@@ -257,6 +258,7 @@ def create_manifest_payload(
                     "sample_ids": [entry["#CIMAC_SAMPLE_ID"]],
                     "trial": trial_id,
                     "trial_name": trial_name,
+                    "uuid_alias": alias,
                     "fastq_properties": {
                         "patient_id": entry["CIMAC_PATIENT_ID"],
                         "timepoint": entry["TIMEPOINT"],
@@ -271,14 +273,14 @@ def create_manifest_payload(
                     },
                 }
             )
-            file_names.append(entry[key])
+            file_name_and_alias.append({"file_name": entry[key], "uuid_alias": alias})
 
-    return payload, file_names
+    return payload, file_name_and_alias
 
 
 def upload_manifest(
     non_static_inputs: List[str], selections: Selections
-) -> Tuple[str, dict, List[str]]:
+) -> Tuple[str, dict, List[dict]]:
     """
     Upload method using a manifest file.
 
@@ -287,7 +289,7 @@ def upload_manifest(
         selections {Selections} -- User selections.
 
     Returns:
-        Tuple[str, dict, List[str]] -- Tuple, file directory, payload object, file names.
+        Tuple[str, dict, List[dict]] -- Tuple, file directory, payload object, file names.
     """
     sample_ids = selections.selected_trial["samples"]
     file_path = find_manifest_path()
@@ -295,10 +297,10 @@ def upload_manifest(
     tumor_normal_pairs = parse_upload_manifest(file_path)
     print("Metadata analyzed. Found %s entries." % len(tumor_normal_pairs))
 
-    file_names = []
-    payload = []
+    file_details: List[dict] = []
+    payload: List[dict] = []
     bad_sample_id = False
-    file_dir = dirname(file_path)
+    file_dir: str = dirname(file_path)
 
     for entry in tumor_normal_pairs:
         if not check_id_present(entry["#CIMAC_SAMPLE_ID"], sample_ids):
@@ -307,10 +309,10 @@ def upload_manifest(
         # Map to inputs. If this works correctly it should add all the file names to the list.
         # will depend on the non static inputs exactly matching the keys that contain the filenames.
         if not bad_sample_id:
-            next_payload, next_file_names = create_manifest_payload(
+            next_payload, next_file_details = create_manifest_payload(
                 entry, non_static_inputs, selections, file_dir
             )
-            file_names = file_names + next_file_names
+            file_details = file_details + next_file_details
             payload = payload + next_payload
 
     if bad_sample_id:
@@ -328,7 +330,7 @@ def upload_manifest(
         "files": payload,
     }
 
-    return file_dir, ingestion_payload, file_names
+    return file_dir, ingestion_payload, file_details
 
 
 def run_upload_process() -> None:
@@ -352,7 +354,7 @@ def run_upload_process() -> None:
     )
 
     try:
-        upload_dir, payload, file_list = [upload_manifest][method - 1](
+        upload_dir, payload, file_details = [upload_manifest][method - 1](
             assay_r["non_static_inputs"], selections
         )
 
@@ -361,16 +363,20 @@ def run_upload_process() -> None:
         )
 
         req_info = RequestInfo(
-            response_upload.json(), eve_token, response_upload.headers, file_list
+            response_upload.json(), eve_token, response_upload.headers, file_details
         )
 
         job_id = upload_files(upload_dir, req_info)
+
         if not job_id:
             raise RuntimeError("File upload failed.")
-        upload_complete: str = (
-            "Upload completed. There will be a short delay while the files are processed."
-            + " After processing is complete, you will be able to see the files within the"
-            + " CIMAC-CIDC Data Portal."
+        upload_complete: str = str.join(
+            " ",
+            (
+                "Upload completed. There will be a short delay while the files are processed.",
+                "After processing is complete, you will be able to see the files within the",
+                "CIMAC-CIDC Data Portal.",
+            ),
         )
         print(upload_complete)
     except FileNotFoundError:

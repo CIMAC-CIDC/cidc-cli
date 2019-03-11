@@ -5,9 +5,9 @@ Utility methods for the CIDC-CLI Interface
 
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
-# pylint: disable=R0903
+
 import os
-from typing import List, Tuple, NamedTuple
+from typing import List, Tuple, NamedTuple, Optional
 from cidc_utils.requests import SmartFetch
 from constants import EVE_URL, USER_CACHE
 
@@ -41,13 +41,13 @@ def terminal_sensitive_print(message: str, width: int = 80) -> None:
         chars: int = width + 1
         while not blank:
             chars -= 1
-            if message[_ : _ + chars][-1] == " ":
+            if message[_: _ + chars][-1] == " ":
                 blank = True
             if chars <= 60:
                 blank = True
                 chars = width
 
-        print(message[_ : _ + chars].strip())
+        print(message[_: _ + chars].strip())
 
 
 def generate_options_list(options: List[str], header: str) -> str:
@@ -119,7 +119,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
             print("Please only enter valid filepaths")
         except FileNotFoundError as error:
             directory = None
-            print("Error loading file: " + error)
+            print("Error loading file: " + str(error))
 
     return directory, files_to_upload
 
@@ -138,12 +138,11 @@ def force_valid_menu_selection(
     Returns:
         int -- The user's selection
     """
-    selection = -1
-    user_input = None
+    selection: str = "-1"
 
     # Force user to make valid selection
     while int(selection) not in range(1, number_options + 1):
-        user_input = input(prompt)
+        user_input: str = input(prompt)
         try:
             int(user_input)
             selection = user_input
@@ -170,7 +169,7 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
     return force_valid_menu_selection(len(options), prompt)
 
 
-def ensure_logged_in() -> str:
+def ensure_logged_in() -> Optional[str]:
     """
     Checks if the user is logged in, and if they are not, prompts them to log in.
 
@@ -237,7 +236,7 @@ def user_prompt_yn(prompt: str) -> bool:
     Returns:
         bool -- True if yes, false if no
     """
-    selection = -1
+    selection: str = "-1"
     while selection not in {"y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"}:
         selection = input(prompt)
         if selection not in {"y", "yes", "n", "no", "Y", "Yes", "YES", "N", "NO"}:
@@ -247,7 +246,7 @@ def user_prompt_yn(prompt: str) -> bool:
     return False
 
 
-def select_assay_trial(prompt: str) -> Selections:
+def select_assay_trial(prompt: str) -> Optional[Selections]:
     """
     Returns the user's selection of assay and trial
 
@@ -255,7 +254,8 @@ def select_assay_trial(prompt: str) -> Selections:
         prompt {String} -- Text promp describing the function.
 
     Returns:
-        Selections -- token, selected trial, and selected assay.
+        Optional[Selections] -- token, selected trial, and selected assay.
+        none if failed.
     """
     print(prompt)
     eve_token = ensure_logged_in()
@@ -276,7 +276,7 @@ def select_assay_trial(prompt: str) -> Selections:
                 + "registered on our website, and that you correctly copied the token."
             )
         else:
-            print("ERROR: %s" % rte)
+            print("ERROR: %s" % str(rte))
         return None
 
     # Select Trial
@@ -296,7 +296,8 @@ def select_assay_trial(prompt: str) -> Selections:
 
     selected_trial = user_trials[
         option_select_framework(
-            [trial["trial_name"] for trial in user_trials], "=====| Available Trials |====="
+            [trial["trial_name"] for trial in user_trials],
+            "=====| Available Trials |=====",
         )
         - 1
     ]

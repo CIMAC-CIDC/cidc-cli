@@ -14,6 +14,8 @@ bson = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-html = "*"
+google-api-core = "*"
+google-cloud-storage = "*"
 
 [dev-packages]
 pylint = "*"
