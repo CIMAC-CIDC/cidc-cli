@@ -38,6 +38,49 @@ def mock_with_inputs(inputs: List[object], function: Callable, arguments: List[o
         return function(*arguments)
 
 
+class FakeClient(object):
+    """
+    Class to fake a google storage client.
+
+    Arguments:
+        object {[type]} -- [description]
+    """
+
+    def __init__(self):
+        self.name = None
+        self.bucket_name = None
+
+    def bucket(self, bucket_name: str):
+        """
+        Mocks the bucket call.
+
+        Arguments:
+            bucket_name {str} -- [description]
+        """
+        self.bucket_name = bucket_name
+        return self
+
+    def blob(self, upload_name: str):
+        """
+        Mocks the "blob" function. Just returns self ref.
+
+        Arguments:
+            upload_name {str} -- [description]
+        """
+        print("Blob name: %s" % upload_name)
+        self.name = upload_name
+
+        return self
+
+    def upload_from_filename(self, path: str):
+        """[summary]
+
+        Arguments:
+            path {str} -- [description]
+        """
+        print("Upload path: %s" % path)
+
+
 class FakeFetcher(object):
     """
     Class to provide the .json() method for mocking http response calls.
@@ -48,6 +91,7 @@ class FakeFetcher(object):
     Returns:
         [type] -- [description]
     """
+
     def __init__(self, response):
         """[summary]
 
@@ -55,6 +99,7 @@ class FakeFetcher(object):
             response {[type]} -- [description]
         """
         self.response = response
+
     def json(self):
         """
         Returns the json object passed to it on init.
