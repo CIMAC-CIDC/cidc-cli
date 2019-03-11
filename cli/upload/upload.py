@@ -7,9 +7,10 @@ __license__ = "MIT"
 # pylint: disable=R0903
 import collections
 import datetime
-from os.path import isfile, dirname, getsize
+from os.path import isfile, dirname, getsize, join
 import subprocess
-from typing import List, NamedTuple, Tuple
+from typing import List, NamedTuple, Tuple, Optional
+from uuid import uuid4
 
 from cidc_utils.requests import SmartFetch
 
@@ -75,7 +76,7 @@ def update_job_status(
         return False
 
 
-def upload_files(directory: str, request_info: RequestInfo) -> str:
+def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
     """
     Launches the gsutil command using subprocess and uploads files to the
     google bucket.
@@ -87,22 +88,25 @@ def upload_files(directory: str, request_info: RequestInfo) -> str:
         str -- Returns the google URIs of the newly uploaded files.
     """
     try:
-        gsutil_args: List[str] = ["gsutil"]
         google_path: str = request_info.headers["google_folder_path"]
         insert_id: str = request_info.mongo_data["_id"]
-        if len(request_info.files_uploaded) > 3:
-            gsutil_args.append("-m")
-
-        # Insert records into a staging area for later processing
-        gsutil_args.extend(
-            ["cp", "-r", directory, "gs://%s/%s" % (google_path, insert_id)]
-        )
-        subprocess.check_output(gsutil_args, shell=False)
+        num_files: int = len(request_info.files_uploaded)
+        index: int = 1
+        for item in request_info.files_uploaded:
+            print("Uploading files, progress: %s/%s" % (index, num_files))
+            gsutil_args = [
+                "gsutil",
+                "mv",
+                join(directory, item["file_name"]),
+                "gs://%s/%s/%s" % (google_path, insert_id, item["uuid_alias"]),
+            ]
+            subprocess.check_output(gsutil_args)
+            index += 1
         update_job_status(True, request_info)
         return insert_id
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: %s" % str(error))
-        update_job_status(False, request_info, error)
+        update_job_status(False, request_info, str(error))
         return None
 
 
@@ -178,7 +182,7 @@ def check_id_present(sample_id: str, list_of_ids: List[str]) -> bool:
     Returns:
         bool -- [description]
     """
-    if not sample_id in list_of_ids:
+    if sample_id not in list_of_ids:
         print("Error: SampleID %s is not a valid sample ID for this trial" % sample_id)
         return False
     return True
@@ -244,7 +248,7 @@ def create_manifest_payload(
                 tumor_normal = "NORMAL"
             if key in {"FASTQ_NORMAL_2", "FASTQ_TUMOR_2"}:
                 pair_label = "PAIR 2"
-
+            alias = str(uuid4())
             payload.append(
                 {
                     "assay": selected_assay["assay_id"],
@@ -257,6 +261,7 @@ def create_manifest_payload(
                     "sample_ids": [entry["#CIMAC_SAMPLE_ID"]],
                     "trial": trial_id,
                     "trial_name": trial_name,
+                    "uuid_alias": alias,
                     "fastq_properties": {
                         "patient_id": entry["CIMAC_PATIENT_ID"],
                         "timepoint": entry["TIMEPOINT"],
@@ -271,7 +276,7 @@ def create_manifest_payload(
                     },
                 }
             )
-            file_names.append(entry[key])
+            file_names.append({"file_name": entry[key], "uuid_alias": alias})
 
     return payload, file_names
 
@@ -295,10 +300,10 @@ def upload_manifest(
     tumor_normal_pairs = parse_upload_manifest(file_path)
     print("Metadata analyzed. Found %s entries." % len(tumor_normal_pairs))
 
-    file_names = []
-    payload = []
+    file_names: List[dict] = []
+    payload: List[dict] = []
     bad_sample_id = False
-    file_dir = dirname(file_path)
+    file_dir: str = dirname(file_path)
 
     for entry in tumor_normal_pairs:
         if not check_id_present(entry["#CIMAC_SAMPLE_ID"], sample_ids):
@@ -367,10 +372,13 @@ def run_upload_process() -> None:
         job_id = upload_files(upload_dir, req_info)
         if not job_id:
             raise RuntimeError("File upload failed.")
-        upload_complete: str = (
-            "Upload completed. There will be a short delay while the files are processed."
-            + " After processing is complete, you will be able to see the files within the"
-            + " CIMAC-CIDC Data Portal."
+        upload_complete: str = str.join(
+            " ",
+            (
+                "Upload completed. There will be a short delay while the files are processed.",
+                "After processing is complete, you will be able to see the files within the",
+                "CIMAC-CIDC Data Portal.",
+            ),
         )
         print(upload_complete)
     except FileNotFoundError:
