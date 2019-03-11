@@ -98,7 +98,9 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             upload_name = "%s/%s" % (insert_id, item["uuid_alias"])
             blob = bucket.blob(upload_name)
             blob.upload_from_filename(join(directory, item["file_name"]))
-            print(blob.name)
+            print(
+                "File %s, upload complete, alias: %s" % (item["file_name"], blob.name)
+            )
         update_job_status(True, request_info)
         return insert_id
     except (NotFound, FileNotFoundError) as error:
