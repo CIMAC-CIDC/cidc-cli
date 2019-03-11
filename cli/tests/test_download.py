@@ -2,6 +2,9 @@
 """
 Tests for the download module.
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 from unittest.mock import patch
 from download.download import (
     paginate_selections,
@@ -31,19 +34,22 @@ def test_run_selective_download():
     Test run_selective_download
     """
     response = FakeFetcher({"_items": [{"file_name": "a", "gs_uri": "gs://000"}]})
-    with patch("download.download.select_assay_trial", return_value=SEL), patch(\
-        "download.download.EVE_FETCHER.get", return_value=response\
-    ), patch("download.download.gsutil_copy_data", return_value=True), patch(\
-        "download.download.get_valid_dir", return_value=[True]\
+    with patch("download.download.select_assay_trial", return_value=SEL), patch(
+        "download.download.EVE_FETCHER.get", return_value=response
+    ), patch("download.download.gsutil_copy_data", return_value=True), patch(
+        "download.download.get_valid_dir", return_value=[True]
     ):
-        try:
-            mock_with_inputs(["1", "e"], run_selective_download, [])
-            mock_with_inputs(["2", "e"], run_selective_download, [])
-            mock_with_inputs(["a"], run_selective_download, [])
-        except ValueError:
-            raise AssertionError("ValueError raised")
-        except IndexError:
-            raise AssertionError("IndexError raised")
+        mock_with_inputs(["1", "e"], run_selective_download, [])
+        mock_with_inputs(["2", "e"], run_selective_download, [])
+        mock_with_inputs(["a"], run_selective_download, [])
+    with patch("download.download.select_assay_trial", return_value=None):
+        run_selective_download()
+    with patch("download.download.select_assay_trial", return_value=SEL):
+        with patch(
+            "download.download.EVE_FETCHER.get",
+            return_value=FakeFetcher({"_items": []}),
+        ):
+            run_selective_download()
 
 
 def test_paginate_selections():
@@ -83,3 +89,6 @@ def test_get_files_for_dl():
         ):
             if get_files_for_dl():
                 raise AssertionError("test_get_files_for_dl: Assertion Failed")
+    with patch("download.download.select_assay_trial", return_value=None):
+        if get_files_for_dl():
+            raise AssertionError("Function failed to exit")

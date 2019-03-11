@@ -1,6 +1,10 @@
+#!/usr/bin/env python
 """
 Utility methods for the CIDC-CLI Interface
 """
+
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
 # pylint: disable=R0903
 import os
 from typing import List, Tuple, NamedTuple

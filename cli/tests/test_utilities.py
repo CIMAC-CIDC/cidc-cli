@@ -2,6 +2,9 @@
 """
 Tests for the command line interface
 """
+__author__ = "Lloyd McCarthy"
+__license__ = "MIT"
+
 import os
 import unittest
 from unittest.mock import patch
@@ -123,15 +126,15 @@ def test_run_jwt_login():
     """
     Test run_jwt_login.
     """
-    token = "token"
+    fake = "foo"
     if run_jwt_login(None):
         raise AssertionError("test_run_jwt_login: Assertion Failed")
     with patch(
         "utilities.cli_utilities.EVE_FETCHER.get", return_value={"status_code": 200}
     ):
-        if not run_jwt_login(token):
+        if not run_jwt_login(fake):
             raise AssertionError("test_run_jwt_login: Assertion Failed")
-    if run_jwt_login(token):
+    if run_jwt_login(fake):
         raise AssertionError("test_run_jwt_login: Assertion Failed")
 
 
