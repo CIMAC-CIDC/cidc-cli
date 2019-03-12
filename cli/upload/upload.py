@@ -8,6 +8,7 @@ __license__ = "MIT"
 import collections
 import datetime
 from os.path import isfile, dirname, getsize, join
+from os import rename
 import subprocess
 from typing import List, NamedTuple, Tuple, Optional
 from uuid import uuid4
@@ -92,21 +93,32 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
         insert_id: str = request_info.mongo_data["_id"]
         num_files: int = len(request_info.files_uploaded)
         index: int = 1
+
         for item in request_info.files_uploaded:
+            file_path = join(directory, item["file_name"])
+            alias_path = join(directory, item["uuid_alias"])
+            # Rename the file for copying.
+            rename(file_path, alias_path)
             print("Uploading files, progress: %s/%s" % (index, num_files))
             gsutil_args = [
                 "gsutil",
-                "mv",
+                "cp",
                 join(directory, item["file_name"]),
-                "gs://%s/%s/%s" % (google_path, insert_id, item["uuid_alias"]),
+                "gs://%s/%s" % (google_path, insert_id),
             ]
             subprocess.check_output(gsutil_args)
+            # Change back once done.
+            rename(alias_path, file_path)
             index += 1
         update_job_status(True, request_info)
         return insert_id
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: %s" % str(error))
         update_job_status(False, request_info, str(error))
+        return None
+    except FileNotFoundError as fnf:
+        print("Error, file not found: %s" % str(fnf))
+        update_job_status(False, request_info, str(fnf))
         return None
 
 
@@ -188,7 +200,7 @@ def check_id_present(sample_id: str, list_of_ids: List[str]) -> bool:
     return True
 
 
-def guess_file_ext(file_name) -> str:
+def guess_file_ext(file_name) -> Optional[str]:
     """
     Guesses a file extension from the file name.
 
@@ -213,7 +225,7 @@ def guess_file_ext(file_name) -> str:
 
 def create_manifest_payload(
     entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
-) -> Tuple[List[dict], List[str]]:
+) -> Tuple[List[dict], List[dict]]:
     """
     Turns the files
 
@@ -224,7 +236,7 @@ def create_manifest_payload(
         directory {str} -- Root directory holding files.
 
     Returns:
-        List[dict] -- List of dictionaries formatted to be sent to the API.
+        Tuple[List[dict], List[dict] -- List of dictionaries formatted to be sent to the API.
     """
     payload = []
     file_names = []
@@ -283,7 +295,7 @@ def create_manifest_payload(
 
 def upload_manifest(
     non_static_inputs: List[str], selections: Selections
-) -> Tuple[str, dict, List[str]]:
+) -> Tuple[str, dict, List[dict]]:
     """
     Upload method using a manifest file.
 
@@ -292,7 +304,7 @@ def upload_manifest(
         selections {Selections} -- User selections.
 
     Returns:
-        Tuple[str, dict, List[str]] -- Tuple, file directory, payload object, file names.
+        Tuple[str, dict, List[dict]] -- Tuple, file directory, payload object, file names.
     """
     sample_ids = selections.selected_trial["samples"]
     file_path = find_manifest_path()
@@ -302,7 +314,7 @@ def upload_manifest(
 
     file_names: List[dict] = []
     payload: List[dict] = []
-    bad_sample_id = False
+    bad_sample_id: bool = False
     file_dir: str = dirname(file_path)
 
     for entry in tumor_normal_pairs:
