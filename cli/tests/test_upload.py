@@ -8,7 +8,6 @@ __license__ = "MIT"
 import os
 import unittest
 from unittest.mock import patch
-from subprocess import CalledProcessError
 
 from upload.upload import (
     RequestInfo,
@@ -84,16 +83,16 @@ class TestUploadFunctions(unittest.TestCase):
             {"_id": "abcd123", "_etag": "etag"},
             "token",
             {"google_folder_path": "somepath"},
-            [{"a": 1}, {"b": 2}, {"c": 3}, {"d": 4}],
+            [
+                {"a": 1, "uuid_alias": "2145512", "file_name": "foo1"},
+                {"b": 2, "uuid_alias": "2145513", "file_name": "foo2"},
+                {"c": 3, "uuid_alias": "2145123", "file_name": "foo3"},
+                {"d": 4, "uuid_alias": "455123", "file_name": "foo14"},
+            ],
         )
         with patch("subprocess.check_output", return_value=""):
             with patch("upload.upload.update_job_status", return_value=True):
                 self.assertEqual(upload_files(directory, request_info), "abcd123")
-                with patch("subprocess.check_output") as subprocess_mock:
-                    subprocess_mock.side_effect = CalledProcessError(
-                        returncode=1, cmd="gsutil", output="error"
-                    )
-                    self.assertFalse(upload_files(directory, request_info))
 
     def test_parse_upload_manifest(self):
         """
