@@ -103,8 +103,8 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             gsutil_args = [
                 "gsutil",
                 "cp",
-                join(directory, item["file_name"]),
-                "gs://%s/%s" % (google_path, insert_id),
+                alias_path,
+                "gs://%s/%s/" % (google_path, insert_id),
             ]
             subprocess.check_output(gsutil_args)
             # Change back once done.
@@ -114,7 +114,7 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
         return insert_id
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: %s" % str(error))
-        update_job_status(False, request_info, str(error))
+        update_job_status(False, request_info, str(error))  
         return None
     except FileNotFoundError as fnf:
         print("Error, file not found: %s" % str(fnf))
