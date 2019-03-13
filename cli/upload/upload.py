@@ -91,35 +91,38 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
     try:
         google_path: str = request_info.headers["google_folder_path"]
         insert_id: str = request_info.mongo_data["_id"]
-        num_files: int = len(request_info.files_uploaded)
-        index: int = 1
+        aliases: List[dict] = []
 
         for item in request_info.files_uploaded:
             file_path = join(directory, item["file_name"])
             alias_path = join(directory, item["uuid_alias"])
-            # Rename the file for copying.
             rename(file_path, alias_path)
-            print("Uploading files, progress: %s/%s" % (index, num_files))
-            gsutil_args = [
-                "gsutil",
-                "cp",
-                alias_path,
-                "gs://%s/%s/" % (google_path, insert_id),
-            ]
-            subprocess.check_output(gsutil_args)
-            # Change back once done.
-            rename(alias_path, file_path)
-            index += 1
+            aliases.append({"old_name": file_path, "new_name": alias_path})
+
+        upload_string = str.join("\n", [x["new_name"] for x in aliases])
+        fileprint = subprocess.Popen(("printf", upload_string), stdout=subprocess.PIPE)
+        gsutil_args = [
+            "gsutil",
+            "-m",
+            "cp",
+            "-I" "gs://%s/%s/" % (google_path, insert_id),
+        ]
+        subprocess.check_output(gsutil_args, stdin=fileprint.stdout)
+        fileprint.wait()
         update_job_status(True, request_info)
+
         return insert_id
     except subprocess.CalledProcessError as error:
         print("Error: Upload to Google failed: %s" % str(error))
-        update_job_status(False, request_info, str(error))  
+        update_job_status(False, request_info, str(error))
         return None
     except FileNotFoundError as fnf:
         print("Error, file not found: %s" % str(fnf))
         update_job_status(False, request_info, str(fnf))
         return None
+    finally:
+        for alias in aliases:
+            rename(alias["new_name"], alias["old_name"])
 
 
 def parse_upload_manifest(file_path: str) -> List[dict]:
