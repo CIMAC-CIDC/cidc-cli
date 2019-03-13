@@ -84,15 +84,37 @@ class TestUploadFunctions(unittest.TestCase):
             "token",
             {"google_folder_path": "somepath"},
             [
-                {"a": 1, "uuid_alias": "2145512", "file_name": "foo1"},
-                {"b": 2, "uuid_alias": "2145513", "file_name": "foo2"},
-                {"c": 3, "uuid_alias": "2145123", "file_name": "foo3"},
-                {"d": 4, "uuid_alias": "455123", "file_name": "foo14"},
+                {
+                    "a": 1,
+                    "uuid_alias": "2145512",
+                    "file_name": "PD_010N.sorted.SNV_1.fq.gz",
+                },
+                {
+                    "b": 2,
+                    "uuid_alias": "2145513",
+                    "file_name": "PD_010N.sorted.SNV_2.fq.gz",
+                },
+                {
+                    "c": 3,
+                    "uuid_alias": "2145123",
+                    "file_name": "PD_010T.sorted.SNV_1.fq.gz",
+                },
+                {
+                    "d": 4,
+                    "uuid_alias": "455123",
+                    "file_name": "PD_010T.sorted.SNV_2.fq.gz",
+                },
             ],
         )
         with patch("subprocess.check_output", return_value=""):
             with patch("upload.upload.update_job_status", return_value=True):
                 self.assertEqual(upload_files(directory, request_info), "abcd123")
+                found = [
+                    os.path.isfile(os.path.join(directory, item["file_name"]))
+                    for item in request_info.files_uploaded
+                ]
+                if not all(found):
+                    raise AssertionError("Files were renamed properly.")
 
     def test_parse_upload_manifest(self):
         """
