@@ -105,7 +105,8 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             "gsutil",
             "-m",
             "cp",
-            "-I" "gs://%s/%s/" % (google_path, insert_id),
+            "-I",
+            "gs://%s/%s/" % (google_path, insert_id),
         ]
         subprocess.check_output(gsutil_args, stdin=fileprint.stdout)
         fileprint.wait()
