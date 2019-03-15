@@ -182,7 +182,7 @@ def ensure_logged_in() -> Optional[str]:
     if not USER_CACHE.get_key():
         print(
             "You are not currently authenticated. Run 'jwt_login' to log in\b"
-            + "with a token. If you do not have a token, you can get one from the website."
+            + " with a token. If you do not have a token, you can get one from the website."
         )
         return None
 
@@ -362,8 +362,9 @@ def run_sample_delete() -> None:
         return
 
     # Create query.
+
     query = {"trial": selections.selected_trial["_id"]}
-    endpoint = "data/where=?%s" % json.dumps(query)
+    endpoint = "data/?where=%s" % json.dumps(query)
     data = EVE_FETCHER.get(endpoint=endpoint).json()["_items"]
 
     # List sample ids.
@@ -410,7 +411,7 @@ def run_lock_trial() -> None:
     selected_trial = selections.selected_trial
     trial_id = selected_trial["_id"]
     if "locked" in selected_trial and selected_trial["locked"]:
-        if user_prompt_yn("Trial is locked. Do you want to unlock it?"):
+        if user_prompt_yn("Trial is locked. Do you want to unlock it? [Y/n]: "):
             payload = {
                 "locked": False
             }
@@ -437,4 +438,4 @@ def run_lock_trial() -> None:
                 + "Trials may only be locked by an administrator"
             )
         else:
-            print("Failed to %s trial %s: %s" % (verb, trial_id, str(rte)))
+            print("Failed to %s trial %s: %s" % (verb[:-2], trial_id, str(rte)))
