@@ -17,7 +17,9 @@ from upload import run_upload_process
 from utilities.cli_utilities import (
     user_prompt_yn,
     run_jwt_login,
-    terminal_sensitive_print
+    terminal_sensitive_print,
+    run_sample_delete,
+    run_lock_trial
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -194,7 +196,19 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         run_selective_download()
 
-    def get_user_consent(self, rest=None) -> None:  # pylint: disable=W0613
+    def do_sample_delete(self, rest=None) -> None:  # pylint: disable=W0613:
+        """
+        Delete all files associated with a sample.
+        """
+        run_sample_delete()
+
+    def do_lock_trial(self, rest=None) -> None:  # pylint: disable=W0613:
+        """
+        Lock or unlock a trial.
+        """
+        run_lock_trial()
+
+    def get_user_consent(self, rest=None) -> bool:  # pylint: disable=W0613
         """
         Ensures the user reads and agrees to TOS.
 
