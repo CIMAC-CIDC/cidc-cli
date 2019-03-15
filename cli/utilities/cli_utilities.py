@@ -365,7 +365,7 @@ def run_sample_delete() -> None:
 
     query = {"trial": selections.selected_trial["_id"]}
     endpoint = "data/?where=%s" % json.dumps(query)
-    data = EVE_FETCHER.get(endpoint=endpoint).json()["_items"]
+    data = EVE_FETCHER.get(endpoint=endpoint, token=selections.eve_token).json()["_items"]
 
     # List sample ids.
     sample_ids: List[str] = []
@@ -385,10 +385,11 @@ def run_sample_delete() -> None:
     try:
         for item in to_delete:
             EVE_FETCHER.delete(
-                endpoint="data",
+                endpoint="data_edit",
                 item_id=item["_id"],
                 _etag=item["_etag"],
                 token=selections.eve_token,
+                code=204
             ).json()["_items"]
             print("File %s deleted." % item["file_name"])
         print("All files related to sample %s deleted." % sample_id)
