@@ -231,7 +231,7 @@ def create_manifest_payload(
     entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
 ) -> Tuple[List[dict], List[dict]]:
     """
-    Turns the files
+    Formats information about the files to be uploaded.
 
     Arguments:
         entry {dict} -- Row from the manifest file.
@@ -354,7 +354,7 @@ def upload_manifest(
 
 def run_upload_process() -> None:
     """
-    Function responsible for guiding the user through the upload process
+    Function responsible for guiding the user through the upload process.
     """
 
     selections = select_assay_trial("This is the upload function\n")
