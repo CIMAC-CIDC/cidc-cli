@@ -390,7 +390,7 @@ def run_sample_delete() -> None:
                 _etag=item["_etag"],
                 token=selections.eve_token,
                 code=204
-            ).json()["_items"]
+            )
             print("File %s deleted." % item["file_name"])
         print("All files related to sample %s deleted." % sample_id)
     except RuntimeError as rte:
