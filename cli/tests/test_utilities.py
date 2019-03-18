@@ -17,12 +17,87 @@ from utilities.cli_utilities import (
     force_valid_menu_selection,
     user_prompt_yn,
     get_valid_dir,
-    terminal_sensitive_print,
     run_jwt_login,
-    select_assay_trial
+    select_assay_trial,
+    lock_trial,
+    run_lock_trial,
+    Selections,
+    run_sample_delete,
 )
 from tests.helper_functions import mock_with_inputs, FakeFetcher
 from constants import USER_CACHE
+
+TRIAL_RESPONSE = {
+    "_items": [
+        {
+            "trial_name": "trial1",
+            "_id": "123",
+            "assays": [{"assay_name": "assay1", "assay_id": "245"}],
+            "collaborators": ["test@test.com"],
+            "email": "test@test.com",
+            "locked": False,
+            "_etag": "ackjsdckj23123213",
+        }
+    ],
+    "status_code": 200,
+}
+TRIAL_RESPONSE_LOCKED = {
+    "_items": [
+        {
+            "trial_name": "trial1",
+            "_id": "123",
+            "assays": [{"assay_name": "assay1", "assay_id": "245"}],
+            "collaborators": ["test@test.com"],
+            "email": "test@test.com",
+            "locked": True,
+            "_etag": "ackjsdckj23123213",
+        }
+    ],
+    "status_code": 200,
+}
+
+
+def test_run_sample_delete():
+    """
+    Test run_sample_delete
+    """
+    select = Selections("something", TRIAL_RESPONSE_LOCKED["_items"][0], {})
+    with patch("utilities.cli_utilities.select_trial", return_value=select), patch(
+        "utilities.cli_utilities.EVE_FETCHER.patch", return_value={"status_code": 200}
+    ), patch(
+        "utilities.cli_utilities.EVE_FETCHER.get",
+        return_value=FakeFetcher(TRIAL_RESPONSE_LOCKED),
+    ), patch(
+        "utilities.cli_utilities.EVE_FETCHER.delete", return_value={"status_code": 204}
+    ):
+        pass
+
+
+def test_run_lock_trial():
+    """
+    Test run_lock_trial
+    """
+    select = Selections("something", TRIAL_RESPONSE_LOCKED["_items"][0], {})
+    with patch("utilities.cli_utilities.select_trial", return_value=select):
+        with patch(
+            "utilities.cli_utilities.EVE_FETCHER.patch",
+            return_value={"status_code": 200},
+        ):
+            mock_with_inputs(["y"], run_lock_trial, [])
+            mock_with_inputs(["n"], run_lock_trial, [])
+
+
+def test_lock_trial():
+    """
+    Test lock_trial
+    """
+    with patch(
+        "utilities.cli_utilities.EVE_FETCHER.patch", return_value={"status_code": 200}
+    ):
+        if not lock_trial(
+            True, Selections("something", TRIAL_RESPONSE["_items"][0], {})
+        ):
+            raise AssertionError("Failed to lock trial test")
 
 
 def test_generate_options_list():
@@ -147,13 +222,6 @@ def test_store_token():
         raise AssertionError("test_store_token: Assertion Failed")
 
 
-def test_terminal_sensitive_print():
-    """
-    Test terminal_sensitive_print.
-    """
-    terminal_sensitive_print("hello hello", width=7)
-
-
 def test_select_assay_trial():
     """
     Test select_assay_trial
@@ -170,18 +238,17 @@ def test_select_assay_trial():
                 "_id": "123",
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
                 "collaborators": ["test@test.com"],
-                "email": "test@test.com"
+                "email": "test@test.com",
             }
         ],
         "status_code": 200,
     }
-    no_trials = {
-        "_items": [],
-        "status_code": 200,
-    }
+    no_trials = {"_items": [], "status_code": 500}
     bad_response = FakeFetcher(no_trials)
     response_with_method = FakeFetcher(response)
-    with patch("utilities.cli_utilities.EVE_FETCHER.get", return_value=response_with_method):
+    with patch(
+        "utilities.cli_utilities.EVE_FETCHER.get", return_value=response_with_method
+    ):
         selections = mock_with_inputs(inputs, select_assay_trial, ["Prompt"])
         if (
             selections.eve_token != "foo"
@@ -191,7 +258,7 @@ def test_select_assay_trial():
                 "_id": "123",
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
                 "collaborators": ["test@test.com"],
-                "email": "test@test.com"
+                "email": "test@test.com",
             }
             or selections.selected_assay != {"assay_name": "assay1", "assay_id": "245"}
         ):
