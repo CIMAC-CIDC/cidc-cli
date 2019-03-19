@@ -2,12 +2,12 @@
 """
 Utility methods for the CIDC-CLI Interface
 """
-
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
-# pylint: disable=R0903
+
 import json
 import os
+import time
 from typing import List, Tuple, NamedTuple, Optional
 from cidc_utils.requests import SmartFetch
 from constants import EVE_URL, USER_CACHE
@@ -23,32 +23,6 @@ class Selections(NamedTuple):
     eve_token: str
     selected_trial: dict
     selected_assay: dict
-
-
-def terminal_sensitive_print(message: str, width: int = 80) -> None:
-    """
-    Prints a given string with a number of characters as a max width. Attempts to respect
-    whitespaces.
-
-    Arguments:
-        message {str} -- Message to be printed
-        width {int} -- Terminal width
-
-    Returns:
-        None -- No return.
-    """
-    for _ in range(0, len(message), width):
-        blank: bool = False
-        chars: int = width + 1
-        while not blank:
-            chars -= 1
-            if message[_: _ + chars][-1] == " ":
-                blank = True
-            if chars <= 60:
-                blank = True
-                chars = width
-
-        print(message[_: _ + chars].strip())
 
 
 def generate_options_list(options: List[str], header: str) -> str:
@@ -148,7 +122,7 @@ def force_valid_menu_selection(
         try:
             int(user_input)
             selection = user_input
-        except TypeError:
+        except (TypeError, ValueError):
             print("Please enter an integer")
         if int(selection) not in range(1, number_options + 1):
             print(err_msg)
@@ -169,6 +143,27 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
     """
     prompt: str = generate_options_list(options, prompt_header)
     return force_valid_menu_selection(len(options), prompt)
+
+
+def show_countdown(num_seconds: int, notification: str, step: int = -1) -> None:
+    """[summary]
+
+    Arguments:
+        num_seconds {int} -- Number of seconds to count down from.
+        notification {str} -- Message to print with remaining time.
+
+    Keyword Arguments:
+        step {int} -- increment to update count (default: {1})
+
+    Returns:
+        None -- [description]
+    """
+    if step > 0:
+        raise ValueError("Cannot call with positive step. Negative numebrs only.")
+
+    for i in range(120, 0, step):
+        print(notification + str(i), end="\r", flush=True)
+        time.sleep(1)
 
 
 def ensure_logged_in() -> Optional[str]:
@@ -238,14 +233,13 @@ def user_prompt_yn(prompt: str) -> bool:
     Returns:
         bool -- True if yes, false if no
     """
+    choices = {"y", "yes", "n", "no", "Y", "YES", "N", "NO"}
     selection = "-1"
-    while selection.lower() not in {"y", "yes", "n", "no"}:
+    while selection not in choices:
         selection = input(prompt)
-        if selection.lower() not in {"y", "yes", "n", "no"}:
+        if selection not in choices:
             print("Please select either yes or no")
-    if selection.lower() in {"y", "yes"}:
-        return True
-    return False
+    return bool(selection in {"y", "yes", "Y", "YES"})
 
 
 def select_trial(prompt: str) -> Optional[Selections]:
@@ -266,7 +260,13 @@ def select_trial(prompt: str) -> Optional[Selections]:
 
     try:
         response = EVE_FETCHER.get(token=eve_token, endpoint="trials")
-        email = EVE_FETCHER.get(endpoint="accounts_info", token=eve_token).json()
+        user_response = EVE_FETCHER.get(
+            endpoint="accounts_info", token=eve_token
+        ).json()["_items"]
+        if not user_response:
+            print("No account found for user.")
+            return None
+        email = user_response[0]["email"]
     except RuntimeError as rte:
         if "401" in str(rte):
             print(
@@ -284,9 +284,7 @@ def select_trial(prompt: str) -> Optional[Selections]:
         print("No trials were found for this user")
         return None
 
-    user_email = email["_items"][0]["email"]
-
-    user_trials = list(filter(lambda x: user_email in x["collaborators"], trials))
+    user_trials = [x for x in trials if email in x["collaborators"]]
 
     if not user_trials:
         print("No trials were found for this user.")
@@ -361,11 +359,22 @@ def run_sample_delete() -> None:
     if not selections:
         return
 
-    # Create query.
+    if not selections.selected_trial["locked"]:
+        if not user_prompt_yn(
+            "The selected trial is not locked. Would you like to lock it? [Y\\n]: "
+        ) or not lock_trial(True, selections):
+            return
 
-    query = {"trial": selections.selected_trial["_id"]}
+    trial_id = selections.selected_trial["_id"]
+    query = {"trial": trial_id}
     endpoint = "data/?where=%s" % json.dumps(query)
-    data = EVE_FETCHER.get(endpoint=endpoint, token=selections.eve_token).json()["_items"]
+
+    try:
+        data = EVE_FETCHER.get(endpoint=endpoint, token=selections.eve_token).json()[
+            "_items"
+        ]
+    except RuntimeError as rte:
+        print("Failed to fetch records from /data: %s" % str(rte))
 
     # List sample ids.
     sample_ids: List[str] = []
@@ -379,8 +388,18 @@ def run_sample_delete() -> None:
         sample_set, "These are the available samples, choose one to delete."
     )
     sample_id = sample_set[sample_selection - 1]
+    to_delete = [x for x in data if sample_id in x["sample_ids"]]
 
-    to_delete = list(filter(lambda x: sample_id in x["sample_ids"], data))
+    # Also get related analysis records.
+    query["sample_ids"] = sample_id
+    an_endpoint = "analysis/?where=%s" % json.dumps(query)
+
+    try:
+        analysis = EVE_FETCHER.get(
+            endpoint=an_endpoint, token=selections.eve_token
+        ).json()["_items"]
+    except RuntimeError as rte:
+        print("Failed to fetch records from /analysis: %s" % str(rte))
 
     try:
         for item in to_delete:
@@ -389,9 +408,18 @@ def run_sample_delete() -> None:
                 item_id=item["_id"],
                 _etag=item["_etag"],
                 token=selections.eve_token,
-                code=204
+                code=204,
             )
             print("File %s deleted." % item["file_name"])
+        for run in analysis:
+            EVE_FETCHER.delete(
+                endpoint="analysis",
+                item_id=run["_id"],
+                _etag=run["_etag"],
+                token=selections.eve_token,
+                code=204,
+            )
+            print("Analysis run %s deleted." % run["_id"])
         print("All files related to sample %s deleted." % sample_id)
     except RuntimeError as rte:
         print("There was an error deleting the files: %s" % str(rte))
@@ -410,28 +438,46 @@ def run_lock_trial() -> None:
         return
 
     selected_trial = selections.selected_trial
-    trial_id = selected_trial["_id"]
     if "locked" in selected_trial and selected_trial["locked"]:
         if user_prompt_yn("Trial is locked. Do you want to unlock it? [Y/n]: "):
-            payload = {
-                "locked": False
-            }
+            is_locking = False
         else:
             return
+    elif "locked" in selected_trial:
+        is_locking = True
     else:
-        payload = {"locked": True}
+        print(
+            "Error: Trial record has no lock status field. Please report this to the developers."
+        )
+        return
 
-    verb = "locked" if payload["locked"] else "unlocked"
+    lock_trial(is_locking, selections)
 
+
+def lock_trial(is_locking: bool, selections: Selections) -> bool:
+    """
+    Function to lock or unlock a trial.
+
+    Arguments:
+        is_locking {dict} -- Boolean to indicate whether it is a lock or unlock.
+        selections {Selections} -- User selection object.
+
+    Returns:
+        bool -- True if success, else false.
+    """
+    verb = "locked" if is_locking else "unlocked"
+    selected_trial = selections.selected_trial
+    trial_id = selected_trial["_id"]
     try:
         EVE_FETCHER.patch(
             endpoint="trials",
             item_id=trial_id,
             _etag=selected_trial["_etag"],
-            json=payload,
-            token=selections.eve_token
+            json={"locked": is_locking},
+            token=selections.eve_token,
         )
         print("Trial %s %s successfully" % (trial_id, verb))
+        return True
     except RuntimeError as rte:
         if "401" in str(rte):
             print(
@@ -440,3 +486,4 @@ def run_lock_trial() -> None:
             )
         else:
             print("Failed to %s trial %s: %s" % (verb[:-2], trial_id, str(rte)))
+        return False

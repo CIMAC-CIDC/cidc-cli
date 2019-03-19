@@ -4,6 +4,7 @@ Class defining the behavior of the interactive command line interface
 """
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
+
 # pylint: disable=R0201
 import cmd
 import os
@@ -17,9 +18,8 @@ from upload import run_upload_process
 from utilities.cli_utilities import (
     user_prompt_yn,
     run_jwt_login,
-    terminal_sensitive_print,
     run_sample_delete,
-    run_lock_trial
+    run_lock_trial,
 )
 
 EVE_FETCHER = SmartFetch(EVE_URL)
@@ -67,12 +67,10 @@ class ExitCmd(cmd.Cmd):
             "Welcome to the CIDC CLI! Before doing anything else, log in to our "
             + "system using the JWT you received from the web portal."
         )
-        terminal_sensitive_print(login_message)
+        print(login_message)
 
         while not USER_CACHE.get_key():
-            token = input(
-                "Please enter your token here: "
-            )
+            token = input("Please enter your token here: ")
             run_jwt_login(token)
 
         while True:
@@ -178,13 +176,13 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         run_upload_process()
 
-    def do_download_data(self, rest=None) -> None:  # pylint: disable=W0613
+    def do_download_trial_data(self, rest=None) -> None:  # pylint: disable=W0613
         """
         Starts the download process
         """
         run_download_process()
 
-    def do_selective_download(self, rest=None) -> None:  # pylint: disable=W0613
+    def do_download_individual_files(self, rest=None) -> None:  # pylint: disable=W0613
         """
         Download individual data items.
 
@@ -196,13 +194,13 @@ class CIDCCLI(ExitCmd, ShellCmd):
         """
         run_selective_download()
 
-    def do_sample_delete(self, rest=None) -> None:  # pylint: disable=W0613:
+    def do_delete_wes_sample(self, rest=None) -> None:  # pylint: disable=W0613:
         """
-        Delete all files associated with a sample.
+        Delete all files associated with a sample (for WES).
         """
         run_sample_delete()
 
-    def do_lock_trial(self, rest=None) -> None:  # pylint: disable=W0613:
+    def do_toggle_trial_lock(self, rest=None) -> None:  # pylint: disable=W0613:
         """
         Lock or unlock a trial.
         """

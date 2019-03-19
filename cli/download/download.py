@@ -10,7 +10,7 @@ import math
 import os
 import sys
 import subprocess
-from typing import List
+from typing import List, Optional
 
 from cidc_utils.requests import SmartFetch
 
@@ -100,7 +100,7 @@ def elegant_options(
     return with_commands
 
 
-def get_files_for_dl() -> List[dict]:
+def get_files_for_dl() -> Optional[List[dict]]:
     """
     Workflow for guiding users to download their files.
 

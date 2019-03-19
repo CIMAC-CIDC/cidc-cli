@@ -55,6 +55,7 @@ class FakeFetcher(object):
             response {[type]} -- [description]
         """
         self.response = response
+
     def json(self):
         """
         Returns the json object passed to it on init.
