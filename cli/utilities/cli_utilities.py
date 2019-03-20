@@ -176,7 +176,7 @@ def ensure_logged_in() -> Optional[str]:
 
     if not USER_CACHE.get_key():
         print(
-            "You are not currently authenticated. Run 'jwt_login' to log in\b"
+            "You are not currently authenticated. Run 'jwt_login' to log in"
             + " with a token. If you do not have a token, you can get one from the website."
         )
         return None
@@ -184,7 +184,7 @@ def ensure_logged_in() -> Optional[str]:
     return USER_CACHE.get_key()
 
 
-def cache_token(token: str) -> None:
+def cache_token(token: Optional[str]) -> None:
     """
     Stashes a token in the cli_utilities instantiated USER_CACHE
 
@@ -212,11 +212,15 @@ def run_jwt_login(token: str) -> bool:
         print("Please enter a token when running this command")
         return False
     try:
-        EVE_FETCHER.get(token=token, endpoint="trials")
         cache_token(token)
+        if not USER_CACHE.get_key():
+            cache_token(None)
+            return False
+        EVE_FETCHER.get(token=token, endpoint="trials")
         print("Token is valid, you are now logged in!")
         return True
     except RuntimeError:
+        cache_token(None)
         print(
             "Your token is invalid. Please make sure your token was entered correctly"
         )
@@ -438,6 +442,7 @@ def run_lock_trial() -> None:
         return
 
     selected_trial = selections.selected_trial
+    print(selected_trial)
     if "locked" in selected_trial and selected_trial["locked"]:
         if user_prompt_yn("Trial is locked. Do you want to unlock it? [Y/n]: "):
             is_locking = False
@@ -482,7 +487,7 @@ def lock_trial(is_locking: bool, selections: Selections) -> bool:
         if "401" in str(rte):
             print(
                 "You are not allowed to lock trials."
-                + "Trials may only be locked by an administrator"
+                + " Trials may only be locked by an administrator"
             )
         else:
             print("Failed to %s trial %s: %s" % (verb[:-2], trial_id, str(rte)))
