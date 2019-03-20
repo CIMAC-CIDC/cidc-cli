@@ -21,8 +21,7 @@ from utilities.cli_utilities import (
     select_assay_trial,
     lock_trial,
     run_lock_trial,
-    Selections,
-    run_sample_delete,
+    Selections
 )
 from tests.helper_functions import mock_with_inputs, FakeFetcher
 from constants import USER_CACHE

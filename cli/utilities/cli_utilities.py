@@ -106,12 +106,12 @@ def force_valid_menu_selection(
     Script that forces a user to choose a valid option based on the number of options.
 
     Arguments:
-        number_options {int} -- number of valid options
-        prompt {str} -- Message you want displayed to user
-        err_msg {str} -- Message to be printed when a bad selection is made
+        number_options {int} -- Number of valid options.
+        prompt {str} -- Message you want displayed to user.
+        err_msg {str} -- Message to be printed when a bad selection is made.
 
     Returns:
-        int -- The user's selection
+        int -- Index of the user's selection.
     """
     selection = "-1"
     user_input = None
@@ -146,7 +146,8 @@ def option_select_framework(options: List[str], prompt_header: str) -> int:
 
 
 def show_countdown(num_seconds: int, notification: str, step: int = -1) -> None:
-    """[summary]
+    """
+    Shows a countdown that counts down from the total number of seconds.
 
     Arguments:
         num_seconds {int} -- Number of seconds to count down from.
@@ -173,14 +174,12 @@ def ensure_logged_in() -> Optional[str]:
     Returns:
         str -- API access token
     """
-
     if not USER_CACHE.get_key():
         print(
             "You are not currently authenticated. Run 'jwt_login' to log in"
             + " with a token. If you do not have a token, you can get one from the website."
         )
         return None
-
     return USER_CACHE.get_key()
 
 
@@ -192,7 +191,7 @@ def cache_token(token: Optional[str]) -> None:
         token {str} -- JWT Token
 
     Returns:
-        None -- [description]
+        None -- No return.
     """
     USER_CACHE.cache_key(token)
 
@@ -312,7 +311,7 @@ def select_assay(selected_trial: dict) -> Optional[dict]:
         selected_trial {dict} -- Trial mongo record.
 
     Returns:
-        dict -- Assay dictionary object.
+        Optional[dict] -- Assay dictionary object, or None.
     """
     if not selected_trial["assays"]:
         print("No assays are registered for the selected trial.")
@@ -350,6 +349,118 @@ def select_assay_trial(prompt: str) -> Optional[Selections]:
     return Selections(trial_selection.eve_token, selected_trial, selected_assay)
 
 
+def delete_record(record: dict, endpoint: str, token: str) -> None:
+    """
+    Delete a record from the specified endpoint.
+
+    Arguments:
+        record {dict} -- Record to be included. Must include _id and _etag.
+        endpoint {str} -- Endpoint to send the request to.
+        token {str} -- JWT.
+
+    Returns:
+        None -- No return.
+    """
+    EVE_FETCHER.delete(
+        endpoint=endpoint,
+        item_id=record["_id"],
+        _etag=record["_etag"],
+        token=token,
+        code=204,
+    )
+
+
+def pick_sample_id(records: List[dict]) -> Optional[str]:
+    """
+    Function to let a user pick a sample ID from all unique sample IDs in a list of records.
+
+    Arguments:
+        records {List[dict]} -- List of /data records.
+
+    Returns:
+        Optional[str] -- Chosen sample ID.
+    """
+    sample_ids: List[str] = []
+    for rec in records:
+        sample_ids = sample_ids + rec["sample_ids"]
+
+    sample_set = list(set(sample_ids))
+
+    if not sample_set:
+        return None
+
+    sample_selection = option_select_framework(
+        sample_set, "These are the available samples, choose one to delete."
+    )
+
+    return sample_set[sample_selection - 1]
+
+
+def delete_related_records(
+    records: List[dict], sample_id: str, selections: Selections
+) -> None:
+    """
+    Deletes all records related to a particular sample ID.
+
+    Arguments:
+        records {List[dict]} -- List of records returned from /data
+        sample_id {str} -- Chosen Sample ID.
+        selections {Selections} -- User's trial selection.
+
+    Returns:
+        None -- No return.
+    """
+    query: dict = {"trial": selections.selected_trial["_id"], "sample_ids": sample_id}
+    token = selections.eve_token
+    to_delete = [x for x in records if sample_id in x["sample_ids"]]
+
+    # Also get related analysis records
+    an_endpoint = "analysis?where=%s" % json.dumps(query)
+
+    try:
+        analysis = EVE_FETCHER.get(endpoint=an_endpoint, token=token).json()["_items"]
+    except RuntimeError as rte:
+        print("Failed to fetch records from /analysis: %s" % str(rte))
+        return
+
+    try:
+        for item in to_delete:
+            delete_record(item, "data_edit", token)
+            print("Record %s deleted." % item["file_name"])
+        for run in analysis:
+            delete_record(run, "analysis", token)
+            print("Analysis run record %s deleted." % run["_id"])
+        print("All records related to sample %s deleted." % sample_id)
+    except RuntimeError as rte:
+        print("There was an error deleting the records: %s" % str(rte))
+
+
+def set_unprocessed_maf(selections: Selections):
+    try:
+        query = "data?where=%s" % json.dumps(
+            {"trial": selections.selected_trial["_id"], "data_format": "MAF"}
+        )
+        records = EVE_FETCHER.get(endpoint=query, token=selections.eve_token).json()
+    except RuntimeError as rte:
+        print(str(rte))
+
+    for rec in records["_items"]:
+        try:
+            EVE_FETCHER.patch(
+                endpoint="data_edit",
+                item_id=rec["_id"],
+                _etag=rec["_etag"],
+                json={"processed": False},
+                code=200,
+            )
+            print("Set record %s to unprocessed" % rec["file_name"])
+        except RuntimeError as rte:
+            print(
+                "Failed to set sample maf %s as unprocessed: %s"
+                % (rec["file_name"], str(rte))
+            )
+
+
 def run_sample_delete() -> None:
     """
     Allows user to delete a sample on a trial.
@@ -357,7 +468,6 @@ def run_sample_delete() -> None:
     Returns:
         None -- No return.
     """
-    # Get trial.
     selections = select_trial("Please select a trial to delete samples from: ")
 
     if not selections:
@@ -367,74 +477,58 @@ def run_sample_delete() -> None:
         if not user_prompt_yn(
             "The selected trial is not locked. Would you like to lock it? [Y\\n]: "
         ) or not lock_trial(True, selections):
+            print("The delete option requires the trial to be locked to proceed.")
             return
 
-    trial_id = selections.selected_trial["_id"]
-    query = {"trial": trial_id}
-    endpoint = "data/?where=%s" % json.dumps(query)
+    query: dict = {"trial": selections.selected_trial["_id"]}
+    endpoint: str = "data?where=%s" % json.dumps(query)
 
     try:
-        data = EVE_FETCHER.get(endpoint=endpoint, token=selections.eve_token).json()[
-            "_items"
-        ]
-    except RuntimeError as rte:
-        print("Failed to fetch records from /data: %s" % str(rte))
-
-    # List sample ids.
-    sample_ids: List[str] = []
-    for rec in data:
-        sample_ids = sample_ids + rec["sample_ids"]
-
-    sample_set = list(set(sample_ids))
-
-    # Select one to delete.
-    sample_selection = option_select_framework(
-        sample_set, "These are the available samples, choose one to delete."
-    )
-    sample_id = sample_set[sample_selection - 1]
-    to_delete = [x for x in data if sample_id in x["sample_ids"]]
-
-    # Also get related analysis records.
-    query["sample_ids"] = sample_id
-    an_endpoint = "analysis/?where=%s" % json.dumps(query)
-
-    try:
-        analysis = EVE_FETCHER.get(
-            endpoint=an_endpoint, token=selections.eve_token
+        data: List[dict] = EVE_FETCHER.get(
+            endpoint=endpoint, token=selections.eve_token
         ).json()["_items"]
     except RuntimeError as rte:
-        print("Failed to fetch records from /analysis: %s" % str(rte))
+        print("Failed to fetch records from /data: %s" % str(rte))
+        return
 
-    try:
-        for item in to_delete:
-            EVE_FETCHER.delete(
-                endpoint="data_edit",
-                item_id=item["_id"],
-                _etag=item["_etag"],
+    sample_id = pick_sample_id(data)
+    query["sample_ids"] = sample_id
+    delete_related_records(data, sample_id, selections)
+
+    yes = True
+    while yes:
+        yes = user_prompt_yn(
+            "Do you want to delete another sample from this trial? [Y/n]: "
+        )
+        if yes:
+            sample_id = pick_sample_id(data)
+            if not sample_id:
+                yes = False
+            else:
+                delete_related_records(data, sample_id, selections)
+
+    if user_prompt_yn("Do you want to delete samples from another trial? [Y/n]: "):
+        run_sample_delete()
+    elif user_prompt_yn("Is the trial ready to be unlocked? [Y/n]: "):
+        try:
+            trial_refresh = EVE_FETCHER.get(
+                endpoint="trials",
+                item_id=selections.selected_trial["_id"],
                 token=selections.eve_token,
-                code=204,
-            )
-            print("File %s deleted." % item["file_name"])
-        for run in analysis:
-            EVE_FETCHER.delete(
-                endpoint="analysis",
-                item_id=run["_id"],
-                _etag=run["_etag"],
-                token=selections.eve_token,
-                code=204,
-            )
-            print("Analysis run %s deleted." % run["_id"])
-        print("All files related to sample %s deleted." % sample_id)
-    except RuntimeError as rte:
-        print("There was an error deleting the files: %s" % str(rte))
+            ).json()
+            selections = Selections(selections.eve_token, trial_refresh, {})
+        except RuntimeError as rte:
+            print("Failed to get an updated _etag for trial: %s" % str(rte))
+        lock_trial(False, selections)
+        set_unprocessed_maf(selections)
 
 
 def run_lock_trial() -> None:
     """
-    Allows an administrator to lock or unlock a = trial.
+    Allows an administrator to lock or unlock a trial.
 
     Returns:
-        None -- Returns None.
+        None -- No return.
     """
     selections = select_trial("This is the trial locking function:")
 
@@ -442,7 +536,6 @@ def run_lock_trial() -> None:
         return
 
     selected_trial = selections.selected_trial
-    print(selected_trial)
     if "locked" in selected_trial and selected_trial["locked"]:
         if user_prompt_yn("Trial is locked. Do you want to unlock it? [Y/n]: "):
             is_locking = False
