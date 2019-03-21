@@ -37,10 +37,7 @@ def generate_options_list(options: List[str], header: str) -> str:
         str -- Completed list in string form
     """
     opts = "".join(
-        [
-            ("[" + str(idx + 1) + "] - " + option + "\n")
-            for idx, option in enumerate(options)
-        ]
+        ["[%s] - %s\n" % (str(idx + 1), option) for idx, option in enumerate(options)]
     )
     return "%s\n%s" % (header, opts)
 
@@ -84,7 +81,7 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
                     for item in files_to_upload:
                         print(item)
                     confirm_upload = user_prompt_yn(
-                        "These are the files found in the provided directory, proceed? [Y/N] "
+                        "These are the files found in the provided directory, proceed?"
                     )
                     directory = directory if confirm_upload else None
                 else:
@@ -154,17 +151,17 @@ def show_countdown(num_seconds: int, notification: str, step: int = -1) -> None:
         notification {str} -- Message to print with remaining time.
 
     Keyword Arguments:
-        step {int} -- increment to update count (default: {1})
+        step {int} -- increment to update count (default: {-1})
 
     Returns:
-        None -- [description]
+        None -- No return.
     """
     if step > 0:
-        raise ValueError("Cannot call with positive step. Negative numebrs only.")
+        raise ValueError("Cannot call with positive step. Negative numbers only.")
 
-    for i in range(120, 0, step):
+    for i in range(num_seconds, 0, step):
         print(notification + str(i), end="\r", flush=True)
-        time.sleep(1)
+        time.sleep(step)
 
 
 def ensure_logged_in() -> Optional[str]:
@@ -239,7 +236,7 @@ def user_prompt_yn(prompt: str) -> bool:
     choices = {"y", "yes", "n", "no", "Y", "YES", "N", "NO"}
     selection = "-1"
     while selection not in choices:
-        selection = input(prompt)
+        selection = input(prompt + " [Y/n]:")
         if selection not in choices:
             print("Please select either yes or no")
     return bool(selection in {"y", "yes", "Y", "YES"})
@@ -293,11 +290,13 @@ def select_trial(prompt: str) -> Optional[Selections]:
         print("No trials were found for this user.")
         return None
 
+    trial_name_display = []
+    for trial in user_trials:
+        status = u"\U0001f512" if trial["locked"] else u"\U0001f513"
+        trial_name_display.append(trial["trial_name"] + "    " + status)
+
     selected_trial = user_trials[
-        option_select_framework(
-            [trial["trial_name"] for trial in user_trials],
-            "=====| Available Trials |=====",
-        )
+        option_select_framework(trial_name_display, "=====| Available Trials |=====")
         - 1
     ]
     return Selections(eve_token, selected_trial, {})
@@ -452,6 +451,7 @@ def set_unprocessed_maf(selections: Selections):
                 _etag=rec["_etag"],
                 json={"processed": False},
                 code=200,
+                token=selections.eve_token,
             )
             print("Set record %s to unprocessed" % rec["file_name"])
         except RuntimeError as rte:
@@ -497,9 +497,7 @@ def run_sample_delete() -> None:
 
     yes = True
     while yes:
-        yes = user_prompt_yn(
-            "Do you want to delete another sample from this trial? [Y/n]: "
-        )
+        yes = user_prompt_yn("Do you want to delete another sample from this trial?")
         if yes:
             sample_id = pick_sample_id(data)
             if not sample_id:
@@ -507,18 +505,23 @@ def run_sample_delete() -> None:
             else:
                 delete_related_records(data, sample_id, selections)
 
-    if user_prompt_yn("Do you want to delete samples from another trial? [Y/n]: "):
+    try:
+        trial_refresh = EVE_FETCHER.get(
+            endpoint="trials",
+            item_id=selections.selected_trial["_id"],
+            token=selections.eve_token,
+        ).json()
+        selections = Selections(selections.eve_token, trial_refresh, {})
+    except RuntimeError as rte:
+        print("Failed to get an updated _etag for trial: %s" % str(rte))
+
+    if user_prompt_yn("Do you want to delete samples from another trial?"):
+        if user_prompt_yn(
+            "Before switching to the new trial, is this trial ready to be unlocked?"
+        ):
+            lock_trial(False, selections)
         run_sample_delete()
-    elif user_prompt_yn("Is the trial ready to be unlocked? [Y/n]: "):
-        try:
-            trial_refresh = EVE_FETCHER.get(
-                endpoint="trials",
-                item_id=selections.selected_trial["_id"],
-                token=selections.eve_token,
-            ).json()
-            selections = Selections(selections.eve_token, trial_refresh, {})
-        except RuntimeError as rte:
-            print("Failed to get an updated _etag for trial: %s" % str(rte))
+    elif user_prompt_yn("Is the trial ready to be unlocked?"):
         lock_trial(False, selections)
         set_unprocessed_maf(selections)
 
@@ -537,7 +540,7 @@ def run_lock_trial() -> None:
 
     selected_trial = selections.selected_trial
     if "locked" in selected_trial and selected_trial["locked"]:
-        if user_prompt_yn("Trial is locked. Do you want to unlock it? [Y/n]: "):
+        if user_prompt_yn("Trial is locked. Do you want to unlock it?"):
             is_locking = False
         else:
             return
@@ -563,7 +566,7 @@ def lock_trial(is_locking: bool, selections: Selections) -> bool:
     Returns:
         bool -- True if success, else false.
     """
-    verb = "locked" if is_locking else "unlocked"
+    adjective = "locked" if is_locking else "unlocked"
     selected_trial = selections.selected_trial
     trial_id = selected_trial["_id"]
     try:
@@ -574,7 +577,7 @@ def lock_trial(is_locking: bool, selections: Selections) -> bool:
             json={"locked": is_locking},
             token=selections.eve_token,
         )
-        print("Trial %s %s successfully" % (trial_id, verb))
+        print("Trial %s %s successfully" % (selected_trial["trial_name"], adjective))
         return True
     except RuntimeError as rte:
         if "401" in str(rte):
@@ -583,5 +586,8 @@ def lock_trial(is_locking: bool, selections: Selections) -> bool:
                 + " Trials may only be locked by an administrator"
             )
         else:
-            print("Failed to %s trial %s: %s" % (verb[:-2], trial_id, str(rte)))
+            print(
+                "Failed to %s trial %s: %s"
+                % (adjective[:-2], selected_trial["trial_name"], str(rte))
+            )
         return False

@@ -391,7 +391,8 @@ def run_upload_process() -> None:
         upload_complete: str = str.join(
             " ",
             (
-                "Upload completed. There will be a short delay while the files are processed.",
+                "Upload completed. %s There will be a short delay while the files are processed."
+                % u"\u2705",
                 "After processing is complete, you will be able to see the files within the",
                 "CIMAC-CIDC Data Portal.",
             ),
