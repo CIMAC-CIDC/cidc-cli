@@ -226,8 +226,9 @@ def test_select_assay_trial():
     Test select_assay_trial
     """
     with patch("constants.USER_CACHE.get_key", return_value=None):
-        if select_assay_trial("prompt"):
-            raise AssertionError("test_select_assay_trial: Assertion Failed")
+        value = select_assay_trial("prompt")
+        if value:
+            raise AssertionError("test_select_assay_trial: Assertion  1 Failed")
     inputs = [1, 1]
     USER_CACHE.cache_key("foo")
     response = {
@@ -238,6 +239,7 @@ def test_select_assay_trial():
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
                 "collaborators": ["test@test.com"],
                 "email": "test@test.com",
+                "locked": False
             }
         ],
         "status_code": 200,
@@ -258,12 +260,13 @@ def test_select_assay_trial():
                 "assays": [{"assay_name": "assay1", "assay_id": "245"}],
                 "collaborators": ["test@test.com"],
                 "email": "test@test.com",
+                "locked": False
             }
             or selections.selected_assay != {"assay_name": "assay1", "assay_id": "245"}
         ):
-            raise AssertionError("test_select_assay_trial: Assertion Failed")
+            raise AssertionError("test_select_assay_trial: Assertion 2 Failed")
     if select_assay_trial(""):
-        raise AssertionError("test_select_assay_trial: Assertion Failed")
+        raise AssertionError("test_select_assay_trial: Assertion 3 Failed")
     with patch("utilities.cli_utilities.EVE_FETCHER.get", return_value=bad_response):
         if select_assay_trial(""):
-            raise AssertionError("test_select_assay_trial: Assertion Failed")
+            raise AssertionError("test_select_assay_trial: Assertion 4 Failed")

@@ -59,7 +59,7 @@ class ExitCmd(cmd.Cmd):
         Overrides default method to catch ctrl-c and exit gracefully.
         """
         print(self.intro)
-        if not user_prompt_yn("Do you agree to the above terms and conditions? (Y/N)"):
+        if not user_prompt_yn("Do you agree to the above terms and conditions?"):
             return True
 
         print(BANNER)
@@ -216,7 +216,7 @@ class CIDCCLI(ExitCmd, ShellCmd):
         Returns:
             None -- [description]
         """
-        if not user_prompt_yn("Do you agree to the above terms and conditions? (Y/N)"):
+        if not user_prompt_yn("Do you agree to the above terms and conditions?"):
             return True
         return False
 
