@@ -89,10 +89,6 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
         except (ValueError, TypeError):
             directory = None
             print("Please only enter valid filepaths")
-        except FileNotFoundError as error:
-            directory = None
-            print("Error loading file: " + str(error))
-
     return directory, files_to_upload
 
 
@@ -161,7 +157,7 @@ def show_countdown(num_seconds: int, notification: str, step: int = -1) -> None:
 
     for i in range(num_seconds, 0, step):
         print(notification + str(i), end="\r", flush=True)
-        time.sleep(step)
+        time.sleep(step * -1)
 
 
 def ensure_logged_in() -> Optional[str]:
@@ -209,9 +205,6 @@ def run_jwt_login(token: str) -> bool:
         return False
     try:
         cache_token(token)
-        if not USER_CACHE.get_key():
-            cache_token(None)
-            return False
         EVE_FETCHER.get(token=token, endpoint="trials")
         print("Token is valid, you are now logged in!")
         return True
@@ -279,7 +272,6 @@ def select_trial(prompt: str) -> Optional[Selections]:
 
     # Select Trial
     trials = response.json()["_items"]
-
     if not trials:
         print("No trials were found for this user")
         return None
@@ -292,7 +284,7 @@ def select_trial(prompt: str) -> Optional[Selections]:
 
     trial_name_display = []
     for trial in user_trials:
-        status = u"\U0001f512" if trial["locked"] else u"\U0001f513"
+        status = u"\U0001f512" if trial["locked"] else u"\U0001f535"
         trial_name_display.append(trial["trial_name"] + "    " + status)
 
     selected_trial = user_trials[
@@ -312,7 +304,7 @@ def select_assay(selected_trial: dict) -> Optional[dict]:
     Returns:
         Optional[dict] -- Assay dictionary object, or None.
     """
-    if not selected_trial["assays"]:
+    if "assays" not in selected_trial or not selected_trial["assays"]:
         print("No assays are registered for the selected trial.")
         return None
 
@@ -384,10 +376,9 @@ def pick_sample_id(records: List[dict]) -> Optional[str]:
         sample_ids = sample_ids + rec["sample_ids"]
 
     sample_set = list(set(sample_ids))
-
     if not sample_set:
         return None
-
+    sample_set.sort()
     sample_selection = option_select_framework(
         sample_set, "These are the available samples, choose one to delete."
     )
@@ -461,6 +452,26 @@ def set_unprocessed_maf(selections: Selections):
             )
 
 
+def simple_query(endpoint: str, token: str) -> List[dict]:
+    """
+    Fetches from an endpoint using values from selections.
+
+    Arguments:
+        endpoint {str} -- [description]
+        token {str} -- [description]
+
+    Returns:
+        List[dict] -- [description]
+    """
+    try:
+        return EVE_FETCHER.get(endpoint=endpoint, token=token).json()["_items"]
+    except RuntimeError as rte:
+        print("Failed to fetch records from endpoint: %s : %s" % (endpoint, str(rte)))
+    except KeyError:
+        print("No _items field returned.")
+    return []
+
+
 def run_sample_delete() -> None:
     """
     Allows user to delete a sample on a trial.
@@ -475,22 +486,14 @@ def run_sample_delete() -> None:
 
     if not selections.selected_trial["locked"]:
         if not user_prompt_yn(
-            "The selected trial is not locked. Would you like to lock it? [Y\\n]: "
+            "The selected trial is not locked. Would you like to lock it?"
         ) or not lock_trial(True, selections):
             print("The delete option requires the trial to be locked to proceed.")
             return
 
     query: dict = {"trial": selections.selected_trial["_id"]}
     endpoint: str = "data?where=%s" % json.dumps(query)
-
-    try:
-        data: List[dict] = EVE_FETCHER.get(
-            endpoint=endpoint, token=selections.eve_token
-        ).json()["_items"]
-    except RuntimeError as rte:
-        print("Failed to fetch records from /data: %s" % str(rte))
-        return
-
+    data = simple_query(endpoint, selections.eve_token)
     sample_id = pick_sample_id(data)
     query["sample_ids"] = sample_id
     delete_related_records(data, sample_id, selections)
@@ -499,8 +502,11 @@ def run_sample_delete() -> None:
     while yes:
         yes = user_prompt_yn("Do you want to delete another sample from this trial?")
         if yes:
+            # Fetch from /data again to get rid of the deleted sample.
+            data = simple_query(endpoint, selections.eve_token)
             sample_id = pick_sample_id(data)
             if not sample_id:
+                print("There are no more samples associated with this trial.")
                 yes = False
             else:
                 delete_related_records(data, sample_id, selections)
