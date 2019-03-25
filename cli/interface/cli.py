@@ -33,7 +33,7 @@ class ShellCmd(cmd.Cmd):
     Class to impart shell functionality to CMD
     """
 
-    def do_shell(self, command):
+    def shell(self, command):
         """
         Instantiates shell environment
 
@@ -220,7 +220,7 @@ class CIDCCLI(ExitCmd, ShellCmd):
             return True
         return False
 
-    def do_jwt_login(self, token: str = None) -> None:
+    def do_login(self, token: str = None) -> None:
         """
         Function for handling a user's login.
 
