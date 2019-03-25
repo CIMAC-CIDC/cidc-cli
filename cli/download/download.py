@@ -95,7 +95,6 @@ def elegant_options(
     """
     str_pag_list = [[x['file_name'] for x in page] for page in paginated_list]
     formatted_list = [generate_options_list(page, prompt) for page in str_pag_list]
-    # List available commands
     with_commands = [sublist + "\n" + ", ".join(commands) for sublist in formatted_list]
     return with_commands
 
@@ -137,6 +136,8 @@ def run_download_process() -> None:
     Function for users to download data.
     """
     records = get_files_for_dl()
+    if not records:
+        return
     gsutil_copy_data(records, get_valid_dir()[0])
 
 

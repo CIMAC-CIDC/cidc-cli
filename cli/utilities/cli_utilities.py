@@ -495,6 +495,11 @@ def run_sample_delete() -> None:
     endpoint: str = "data?where=%s" % json.dumps(query)
     data = simple_query(endpoint, selections.eve_token)
     sample_id = pick_sample_id(data)
+
+    if not sample_id:
+        print("No samples found for this trial!")
+        return
+
     query["sample_ids"] = sample_id
     delete_related_records(data, sample_id, selections)
 
