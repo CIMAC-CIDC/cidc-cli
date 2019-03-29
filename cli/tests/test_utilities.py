@@ -30,6 +30,8 @@ from utilities.cli_utilities import (
     simple_query,
     user_prompt_yn,
     run_sample_delete,
+    delete_related_records,
+    set_unprocessed_maf,
 )
 
 TRIAL_RESPONSE = {
@@ -45,6 +47,11 @@ TRIAL_RESPONSE = {
         }
     ],
     "status_code": 200,
+}
+TRIAL_RESPONSE_NO_LOCK_FIELD = {
+    "_items": [
+        {"trial_name": "nofield", "_id": "567", "assays": [], "_etag": "bcbdcbdcb"}
+    ]
 }
 TRIAL_RESPONSE_LOCKED = {
     "_items": [
@@ -77,30 +84,91 @@ TRIAL_RESPONSE_UNLOCKED = {
 SMART_FETCH = "utilities.cli_utilities.EVE_FETCHER."
 SMART_GET = SMART_FETCH + "get"
 SMART_PATCH = SMART_FETCH + "patch"
+SELECTIONS = Selections("something", TRIAL_RESPONSE["_items"][0], {})
+
+
+def test_set_unprocessed_maf():
+    """
+    Test set_unprocessed_maf
+    """
+    records = {"_items": [{"_id": "9494", "file_name": "yyy", "_etag": "e"}]}
+    with patch(SMART_GET, side_effect=[RuntimeError("T")]):
+        set_unprocessed_maf(SELECTIONS)
+    with patch(SMART_GET, return_value=FakeFetcher(records)):
+        with patch(SMART_PATCH, return_value=True):
+            set_unprocessed_maf(SELECTIONS)
+        with patch(SMART_PATCH, side_effect=[RuntimeError("I")]):
+            set_unprocessed_maf(SELECTIONS)
+    with patch(SMART_GET, side_effect=[FakeFetcher(records), RuntimeError("Y")]):
+        set_unprocessed_maf(SELECTIONS)
+
+
+def test_delete_related_records():
+    """
+    Test delete_related_records
+    """
+    records = [
+        {"sample_ids": ["1"], "file_name": "abc1"},
+        {"sample_ids": ["1"], "file_name": "abc2"},
+        {"sample_ids": ["2"], "file_name": "abc3"},
+    ]
+    sample_id = "1"
+    selections = Selections("something", TRIAL_RESPONSE["_items"][0], {})
+    with patch(SMART_GET, side_effect=[RuntimeError("Planned Error")]):
+        delete_related_records(records, sample_id, selections)
+    analysis = {"_items": [{"_id": "abcd"}]}
+    with patch(SMART_GET, return_value=FakeFetcher(analysis)):
+        with patch("utilities.cli_utilities.delete_record", return_value=True):
+            delete_related_records(records, sample_id, selections)
+        with patch(
+            "utilities.cli_utilities.delete_record", side_effect=[RuntimeError("B")]
+        ):
+            delete_related_records(records, sample_id, selections)
 
 
 def test_run_sample_delete():
     """
     Test run_sample_delete
     """
+    with patch("utilities.cli_utilities.select_trial", return_value=None):
+        run_sample_delete()
+    with patch(
+        "utilities.cli_utilities.select_trial",
+        return_value=Selections("something", TRIAL_RESPONSE_UNLOCKED["_items"][0], {}),
+    ):
+        mock_with_inputs(["n"], run_sample_delete, [])
+        with patch("utilities.cli_utilities.pick_sample_id", return_value=None):
+            with patch("utilities.cli_utilities.lock_trial", return_value=True):
+                mock_with_inputs(["y"], run_sample_delete, [])
+
     with patch(
         "utilities.cli_utilities.select_trial",
         return_value=Selections("something", TRIAL_RESPONSE_UNLOCKED["_items"][0], {}),
     ), patch(
         "utilities.cli_utilities.simple_query",
-        return_value=[{"sample_ids": ["S1", "S2"]}],
+        side_effect=[
+            [{"sample_ids": ["S1", "S2"]}],
+            [{"sample_ids": ["S1", "S2"]}],
+            [{"sample_ids": ["S1", "S2"]}],
+            [{"sample_ids": ["S1", "S2"]}],
+        ],
     ), patch(
         "utilities.cli_utilities.delete_related_records", return_value=True
     ), patch(
-        SMART_GET, side_effect=[FakeFetcher({"_id": "123"}), FakeFetcher({"_items": []})]
+        SMART_GET,
+        side_effect=[
+            FakeFetcher({"_id": "123"}),
+            FakeFetcher({"_items": []}),
+            FakeFetcher({"_id": "123"}),
+            FakeFetcher({"_items": []}),
+        ],
     ), patch(
         "utilities.cli_utilities.lock_trial", return_value=True
     ), patch(
         SMART_PATCH, return_value=True
     ):
-        print("HONK")
         mock_with_inputs(["Y", "1", "n", "n", "Y"], run_sample_delete, [])
-        print("HONK2")
+        mock_with_inputs(["Y", "1", "y", "1", "n", "n", "Y"], run_sample_delete, [])
 
 
 def test_simple_query():
@@ -123,11 +191,11 @@ def test_show_countdown():
     Test show_countdown
     """
     try:
-        show_countdown(2, "", 1)
+        show_countdown(0, "", 1)
         raise AssertionError("Failed to throw error for bad step value.")
     except ValueError:
         pass
-    show_countdown(2, "", -1)
+    show_countdown(1, "", -1)
 
 
 def test_pick_sample_id():
@@ -150,6 +218,11 @@ def test_run_lock_trial():
     """
     select = Selections("something", TRIAL_RESPONSE_LOCKED["_items"][0], {})
     un_select = Selections("something", TRIAL_RESPONSE_UNLOCKED["_items"][0], {})
+    no_field = Selections("something", TRIAL_RESPONSE_NO_LOCK_FIELD["_items"][0], {})
+    with patch("utilities.cli_utilities.select_trial", return_value=None):
+        run_lock_trial()
+    with patch("utilities.cli_utilities.select_trial", return_value=no_field):
+        run_lock_trial()
     with patch("utilities.cli_utilities.select_trial", return_value=select):
         with patch(SMART_PATCH, return_value={"status_code": 200}):
             mock_with_inputs(["y"], run_lock_trial, [])
@@ -164,15 +237,14 @@ def test_lock_trial():
     Test lock_trial
     """
     with patch(SMART_PATCH, return_value={"status_code": 200}):
-        if not lock_trial(
-            True, Selections("something", TRIAL_RESPONSE["_items"][0], {})
-        ):
+        if not lock_trial(True, SELECTIONS):
             raise AssertionError("Failed to lock trial test")
     with patch(SMART_PATCH, side_effect=RuntimeError("401")):
-        if lock_trial(
-            True, Selections("something", TRIAL_RESPONSE_LOCKED["_items"][0], {})
-        ):
+        if lock_trial(True, SELECTIONS):
             raise AssertionError("Failed to catch 401")
+    with patch(SMART_PATCH, side_effect=RuntimeError("412")):
+        if lock_trial(True, SELECTIONS):
+            raise AssertionError("Failed to catch 412")
 
 
 def test_generate_options_list():
@@ -312,6 +384,24 @@ def test_select_trial():
         with patch(SMART_GET, side_effect=RuntimeError("401")):
             if select_trial(""):
                 raise AssertionError("Returned after 401")
+        with patch(
+            SMART_GET,
+            side_effect=[
+                FakeFetcher({"_items": []}),
+                FakeFetcher({"_items": [{"email": "abcd"}]}),
+            ],
+        ):
+            if select_trial(""):
+                raise AssertionError("Returned with no trials")
+        with patch(
+            SMART_GET,
+            side_effect=[
+                FakeFetcher(TRIAL_RESPONSE),
+                FakeFetcher({"_items": [{"email": "abcd"}]}),
+            ],
+        ):
+            if select_trial(""):
+                raise AssertionError("Returned with no user trials")
 
 
 def test_select_assay_trial():

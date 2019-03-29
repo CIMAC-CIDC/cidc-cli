@@ -169,7 +169,7 @@ def ensure_logged_in() -> Optional[str]:
     """
     if not USER_CACHE.get_key():
         print(
-            "You are not currently authenticated. Run 'jwt_login' to log in"
+            "You are not currently authenticated. Run 'login' to log in"
             + " with a token. If you do not have a token, you can get one from the website."
         )
         return None
@@ -433,6 +433,7 @@ def set_unprocessed_maf(selections: Selections):
         records = EVE_FETCHER.get(endpoint=query, token=selections.eve_token).json()
     except RuntimeError as rte:
         print(str(rte))
+        return
 
     for rec in records["_items"]:
         try:
@@ -457,11 +458,11 @@ def simple_query(endpoint: str, token: str) -> List[dict]:
     Fetches from an endpoint using values from selections.
 
     Arguments:
-        endpoint {str} -- [description]
-        token {str} -- [description]
+        endpoint {str} -- API Endpoint to query.
+        token {str} -- JWT
 
     Returns:
-        List[dict] -- [description]
+        List[dict] -- List of records returned.
     """
     try:
         return EVE_FETCHER.get(endpoint=endpoint, token=token).json()["_items"]
