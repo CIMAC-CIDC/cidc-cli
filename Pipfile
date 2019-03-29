@@ -14,7 +14,8 @@ bson = "*"
 pytest = "*"
 pytest-cov = "*"
 pytest-html = "*"
-pyjwt = "*"
+PyJWT = "*"
+tox = "*"
 
 [dev-packages]
 pylint = "*"
