@@ -16,12 +16,13 @@ pytest-cov = "*"
 pytest-html = "*"
 PyJWT = "*"
 tox = "*"
+urllib3 = "*"
 
 [dev-packages]
 pylint = "*"
 "pep8" = "*"
 black = "*"
-"nose2" = {extras = ["coverage-plugin"]}
+nose2 = {extras = ["coverage-plugin"]}
 pytest-html = "*"
 "flake8" = "*"
 "flake8-mypy" = "*"
