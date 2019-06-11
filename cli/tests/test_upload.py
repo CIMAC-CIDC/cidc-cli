@@ -12,6 +12,7 @@ from unittest.mock import patch
 from upload.upload import (
     RequestInfo,
     parse_upload_manifest,
+    parse_upload_manifest2,
     update_job_status,
     upload_files,
     find_manifest_path,
@@ -124,6 +125,12 @@ class TestUploadFunctions(unittest.TestCase):
             results = parse_upload_manifest(
                 "./sample_data/testing_manifests/dfci_9999_manifest.csv"
             )
+            print(len(results))
+            print(results[0])
+            print('\n\n')
+            for k, v in results[0].items():
+              print(k, v)
+            #assert False
             self.assertEqual(len(results), 30)
         with self.subTest():
             results = parse_upload_manifest(
@@ -216,19 +223,39 @@ def test_check_id_present():
         raise AssertionError("test_check_id_present: Assertion Failed")
 
 
-def test_create_manifest_payload():
+def test_manifest_payload_migration():
     """
-    Test create_manifest_payload
+    Tests dropin replacement of "create_manifest_payload"
     """
-    tumor_normal_pairs = parse_upload_manifest(
+    tumor_normal_pairs1 = parse_upload_manifest(
         "./sample_data/fake_manifest_wes/manifest.csv"
     )
-    entry = tumor_normal_pairs[0]
-    payload, file_names = create_manifest_payload(
-        entry,
+    entry1 = tumor_normal_pairs1[0]
+
+    tumor_normal_pairs2 = parse_upload_manifest2(
+        "./cli/tests/assay_upload/data/wes_template.xlsx"
+    )
+    entry2 = tumor_normal_pairs2[0]
+
+    # assert equality
+    assert len(entry1) == len(entry2)
+
+    # next function using old way
+    payload1, file_names1 = create_manifest_payload(
+        entry1,
         NON_STATIC_INPUTS,
         SELECTIONS,
         os.path.dirname("./sample_data/fake_manifest_wes/"),
     )
-    if len(file_names) != 4 or len(payload) != 4:
+    if len(file_names1) != 4 or len(payload1) != 4:
+        raise AssertionError("test_create_manifest_payload: Assertion Failed")
+
+    # new function
+    payload2, file_names2 = create_manifest_payload(
+        entry2,
+        NON_STATIC_INPUTS,
+        SELECTIONS,
+        os.path.dirname("./sample_data/fake_manifest_wes/"),
+    )
+    if len(file_names2) != 4 or len(payload2) != 4:
         raise AssertionError("test_create_manifest_payload: Assertion Failed")

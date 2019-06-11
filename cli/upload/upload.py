@@ -14,6 +14,7 @@ from typing import List, NamedTuple, Tuple, Optional
 from uuid import uuid4
 
 from cidc_utils.requests import SmartFetch
+from cidc_schemas import template_reader, template_writer
 
 from constants import EVE_URL, FILE_EXTENSION_DICT
 from utilities.cli_utilities import (
@@ -100,7 +101,8 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             aliases.append({"old_name": file_path, "new_name": alias_path})
 
         upload_string = str.join("\n", [x["new_name"] for x in aliases])
-        fileprint = subprocess.Popen(("printf", upload_string), stdout=subprocess.PIPE)
+        fileprint = subprocess.Popen(
+            ("printf", upload_string), stdout=subprocess.PIPE)
         gsutil_args = [
             "gsutil",
             "-m",
@@ -126,6 +128,77 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             rename(alias["new_name"], alias["old_name"])
 
 
+def parse_upload_manifest2(file_path: str) -> List[dict]:
+    """
+    Parse Excel for good stuff.
+
+    Arguments:
+        file_path {str} -- Path to upload manifest.
+
+    Returns:
+        List[dict] -- List of dictionaries of patientIDs + Timepoints.
+    """
+    tumor_normal_pairs: list = []
+
+    tr = template_reader.XlTemplateReader.from_excel(file_path)
+    # print("&&&&&&&&&&&")
+    # print(tr.grouped_rows["WES"][template_writer.RowType.HEADER])
+    # print(tr.grouped_rows["WES"][template_writer.RowType.PREAMBLE])
+
+    # parse out some header info.
+    preamble = {}
+    for row in tr.grouped_rows["WES"][template_writer.RowType.PREAMBLE]:
+        key = row[0]
+        val = row[1]
+        preamble[key] = val
+
+    # group by tumor normal.
+    data_rows = tr.grouped_rows["WES"][template_writer.RowType.DATA]
+    header = tr.grouped_rows["WES"][template_writer.RowType.HEADER][0]
+    pairs = {}
+    for row in data_rows:
+
+        # simplify.
+        entry = {}
+        for i in range(len(row)):
+            entry[header[i]] = row[i]
+
+        # look for pair.
+        pid = entry['CIMAC PARTICIPANT ID']
+        if pid not in pairs:
+            pairs[pid] = {}
+
+        # assign it
+        gsrc = entry['GENOMIC SOURCE']
+        pairs[pid][gsrc] = entry
+
+    # generate the required equivalent values.
+    for pid in pairs:
+
+        # get the data points.
+        tumor = pairs[pid]['Tumor']
+        normal = pairs[pid]['Normal']
+
+        # these are the comprable entities i need to fill.
+        entry = {}
+        entry['CIMAC_SAMPLE_ID'] = pid
+        entry['TRIAL_ID'] = preamble['LEAD ORGANIZATION STUDY ID']
+        entry['CIMAC_PATIENT_ID'] = pid
+        entry['TIMEPOINT'] = "NA"
+        entry['TIMEPOINT_UNIT'] = "NA"
+        entry['FASTQ_NORMAL_1'] = normal['FORWARD FASTQ']
+        entry['FASTQ_NORMAL_2'] = normal['REVERSE FASTQ']
+        entry['FASTQ_TUMOR_1'] = tumor['FORWARD FASTQ']
+        entry['FASTQ_TUMOR_2'] = tumor['REVERSE FASTQ']
+        entry['BATCH_ID'] = "NA"
+        entry['INSTRUMENT_MODEL'] = preamble['SEQUENCER PLATFORM']
+        entry['READ_LENGTH'] = preamble['READ LENGTH']
+        entry['AVG_INSERT_SIZE'] = tumor['AVERAGE INSERT SIZE']
+        tumor_normal_pairs.append(entry)
+
+    return tumor_normal_pairs
+
+
 def parse_upload_manifest(file_path: str) -> List[dict]:
     """
     Breaks a TSV or CSV manifest file into paired records.
@@ -136,6 +209,11 @@ def parse_upload_manifest(file_path: str) -> List[dict]:
     Returns:
         List[dict] -- List of dictionaries of patientIDs + Timepoints.
     """
+    
+    # short cut to support both manifests
+    if file_path.count(".xlsx") > 0:
+      return parse_upload_manifest2(file_path)
+    
     tumor_normal_pairs: list = []
 
     with open(file_path, "r") as manifest:
@@ -223,11 +301,12 @@ def guess_file_ext(file_name) -> Optional[str]:
             ext = "%s.%s" % (split_name[-2], split_name[-1])
             return FILE_EXTENSION_DICT[ext]
         except KeyError:
-            print("Error processing file %s. Extension not recognized" % (file_name))
+            print("Error processing file %s. Extension not recognized" %
+                  (file_name))
             return None
 
 
-def create_manifest_payload(
+def create_manifest_payload2(
     entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
 ) -> Tuple[List[dict], List[dict]]:
     """
@@ -297,6 +376,84 @@ def create_manifest_payload(
     return payload, file_names
 
 
+def create_manifest_payload(
+    entry: dict, non_static_inputs: List[str], selections: Selections, directory: str
+) -> Tuple[List[dict], List[dict]]:
+    """
+    Formats information about the files to be uploaded.
+
+    Arguments:
+        entry {dict} -- Row from the manifest file.
+        non_static_inputs {List[str]} -- Names of inputs from the trial.
+        selections {Selections} -- User selection of trial/assay.
+        directory {str} -- Root directory holding files.
+
+    Returns:
+        Tuple[List[dict], List[dict] -- List of dictionaries formatted to be sent to the API.
+    """
+    payload = []
+    file_names = []
+    selected_assay = selections.selected_assay
+    trial_id = selections.selected_trial["_id"]
+    trial_name = selections.selected_trial["trial_name"]
+
+    for key in entry:
+        if key in non_static_inputs:
+            file_name = entry[key]
+            file_size = None
+
+            try:
+                file_size = getsize(directory + "/" + file_name)
+            except FileNotFoundError:
+                print("File: %s was not found" % (directory + "/" + file_name))
+
+            # strip headers
+            tmp = {}
+            for h in entry:
+              h2 = h.replace("#","")
+              tmp[h2] = entry[h]
+            entry = tmp
+
+
+            tumor_normal = "TUMOR"
+            pair_label = "PAIR 1"
+            if key in {"FASTQ_NORMAL_1", "FASTQ_NORMAL_2"}:
+                tumor_normal = "NORMAL"
+            if key in {"FASTQ_NORMAL_2", "FASTQ_TUMOR_2"}:
+                pair_label = "PAIR 2"
+            alias = str(uuid4())
+            payload.append(
+                {
+                    "assay": selected_assay["assay_id"],
+                    "experimental_strategy": selected_assay["assay_name"],
+                    "data_format": guess_file_ext(file_name),
+                    "file_name": file_name,
+                    "file_size": file_size,
+                    "mapping": key,
+                    "number_of_samples": 1,
+                    "sample_ids": [entry["CIMAC_SAMPLE_ID"]],
+                    "trial": trial_id,
+                    "trial_name": trial_name,
+                    "uuid_alias": alias,
+                    "fastq_properties": {
+                        "patient_id": entry["CIMAC_PATIENT_ID"],
+                        "timepoint": entry["TIMEPOINT"],
+                        "timepoint_unit": entry["TIMEPOINT_UNIT"],
+                        "batch_id": entry["BATCH_ID"],
+                        "instrument_model": entry["INSTRUMENT_MODEL"],
+                        "read_length": entry["READ_LENGTH"],
+                        "avg_insert_size": entry["AVG_INSERT_SIZE"],
+                        "sample_id": entry["CIMAC_SAMPLE_ID"],
+                        "sample_type": tumor_normal,
+                        "pair_label": pair_label,
+                    },
+                }
+            )
+            file_names.append({"file_name": entry[key], "uuid_alias": alias})
+
+    return payload, file_names
+
+
 def upload_manifest(
     non_static_inputs: List[str], selections: Selections
 ) -> Tuple[str, dict, List[dict]]:
@@ -310,6 +467,11 @@ def upload_manifest(
     Returns:
         Tuple[str, dict, List[dict]] -- Tuple, file directory, payload object, file names.
     """
+    print("Hello----------")
+    print(non_static_inputs)
+    print(selections)
+    print("Hello----------")
+
     sample_ids = selections.selected_trial["samples"]
     file_path = find_manifest_path()
 
@@ -373,6 +535,8 @@ def run_upload_process() -> None:
     )
 
     try:
+        print(upload_manifest)
+        print(method)
         upload_dir, payload, file_list = [upload_manifest][method - 1](
             assay_r["non_static_inputs"], selections
         )
