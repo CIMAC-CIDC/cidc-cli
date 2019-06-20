@@ -17,6 +17,12 @@ pytest-html = "*"
 PyJWT = "*"
 tox = "*"
 urllib3 = "*"
+cidc_schemas = {git = "https://github.com/CIMAC-CIDC/cidc-schemas.git"}
+openpyxl = "*"
+dateparser = "*"
+jsonschema = "*"
+pyyaml = "*"
+xlsxwriter = "*"
 
 [dev-packages]
 pylint = "*"
@@ -26,6 +32,7 @@ nose2 = {extras = ["coverage-plugin"]}
 pytest-html = "*"
 "flake8" = "*"
 "flake8-mypy" = "*"
+autopep8 = "*"
 
 [requires]
 python_version = "3.6"

@@ -205,14 +205,17 @@ def run_jwt_login(token: str) -> bool:
         return False
     try:
         cache_token(token)
+        print("HEY")
         EVE_FETCHER.get(token=token, endpoint="trials")
         print("Token is valid, you are now logged in!")
         return True
-    except RuntimeError:
+    except RuntimeError as e:
         cache_token(None)
         print(
             "Your token is invalid. Please make sure your token was entered correctly"
         )
+        print(e)
+        raise e
         return False
 
 
@@ -284,7 +287,10 @@ def select_trial(prompt: str) -> Optional[Selections]:
 
     trial_name_display = []
     for trial in user_trials:
-        status = u"\U0001f512" if trial["locked"] else u"\U0001f535"
+        if "locked" in trial and not trial["locked"]:
+          status = u"\U0001f535"
+        else:
+          status = u"\U0001f512" 
         trial_name_display.append(trial["trial_name"] + "    " + status)
 
     selected_trial = user_trials[
