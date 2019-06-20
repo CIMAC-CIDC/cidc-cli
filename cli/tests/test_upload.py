@@ -125,12 +125,6 @@ class TestUploadFunctions(unittest.TestCase):
             results = parse_upload_manifest(
                 "./sample_data/testing_manifests/dfci_9999_manifest.csv"
             )
-            print(len(results))
-            print(results[0])
-            print('\n\n')
-            for k, v in results[0].items():
-              print(k, v)
-            #assert False
             self.assertEqual(len(results), 30)
         with self.subTest():
             results = parse_upload_manifest(
@@ -163,7 +157,6 @@ class TestUploadFunctions(unittest.TestCase):
         """
         Test upload_manifest.
         """
-        assert False
         with self.subTest():
             with patch(
                 "builtins.input",
@@ -266,7 +259,7 @@ def test_manifest_payload_migration():
     entry1 = tumor_normal_pairs1[0]
 
     tumor_normal_pairs2 = parse_upload_manifest2(
-        "./cli/tests/assay_upload/data/wes_template.xlsx"
+        "./sample_data/fake_manifest_wes/wes_template.xlsx"
     )
     entry2 = tumor_normal_pairs2[0]
 
