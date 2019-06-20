@@ -11,7 +11,11 @@ from cidc_utils.caching import CredentialCache
 
 ENV_FILE = find_dotenv()
 if ENV_FILE:
-    load_dotenv(ENV_FILE)
+    with open(ENV_FILE) as fin:
+      lines = fin.readlines()
+      for line in lines:
+        k, v = line.split("=")
+        env[k] = v.strip()
 
 DOMAIN = env.get('DOMAIN')
 AUDIENCE = env.get('AUDIENCE')
@@ -20,7 +24,6 @@ REDIRECT_URI = env.get('REDIRECT_URI')
 SCOPE = env.get('SCOPE')
 EVE_URL = env.get('EVE_URL')
 IDP = env.get('IDP')
-
 USER_CACHE = CredentialCache(100, 600)
 FILE_EXTENSION_DICT = {
     "fa": "FASTQ",

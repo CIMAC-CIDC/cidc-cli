@@ -163,6 +163,7 @@ class TestUploadFunctions(unittest.TestCase):
         """
         Test upload_manifest.
         """
+        assert False
         with self.subTest():
             with patch(
                 "builtins.input",
@@ -175,6 +176,38 @@ class TestUploadFunctions(unittest.TestCase):
                     len(ingestion_payload["files"]) == 24
                     and len(file_names) == 24
                     and file_dir == "./sample_data/fake_manifest_wes"
+                )
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.bad.sample_id",
+            ):
+                with self.assertRaises(RuntimeError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.csv",
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
+
+    def test_upload_manifest2(self):
+        """
+        Test upload_manifest: redux
+        """
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/fake_manifest_wes/wes_template.xlsx",
+            ):
+                file_dir, ingestion_payload, file_names = upload_manifest(
+                    NON_STATIC_INPUTS, SELECTIONS
+                )
+                self.assertTrue(
+                    #len(ingestion_payload["files"]) == 24
+                    #and len(file_names) == 24
+                    file_dir == "./sample_data/fake_manifest_wes"
                 )
         with self.subTest():
             with patch(

@@ -184,7 +184,7 @@ def parse_upload_manifest2(file_path: str) -> List[dict]:
         entry['CIMAC_SAMPLE_ID'] = pid
         entry['TRIAL_ID'] = preamble['LEAD ORGANIZATION STUDY ID']
         entry['CIMAC_PATIENT_ID'] = pid
-        entry['TIMEPOINT'] = "NA"
+        entry['TIMEPOINT'] = 0
         entry['TIMEPOINT_UNIT'] = "NA"
         entry['FASTQ_NORMAL_1'] = normal['FORWARD FASTQ']
         entry['FASTQ_NORMAL_2'] = normal['REVERSE FASTQ']
@@ -467,15 +467,18 @@ def upload_manifest(
     Returns:
         Tuple[str, dict, List[dict]] -- Tuple, file directory, payload object, file names.
     """
-    print("Hello----------")
-    print(non_static_inputs)
-    print(selections)
-    print("Hello----------")
 
+    # get trial and path.
     sample_ids = selections.selected_trial["samples"]
     file_path = find_manifest_path()
 
-    tumor_normal_pairs = parse_upload_manifest(file_path)
+    # parse file properly (note this is a hack to support migration to new manifest)
+    old_way = False
+    if file_path.count("xlsx") > 0:
+      tumor_normal_pairs = parse_upload_manifest2(file_path)
+    else:
+      tumor_normal_pairs = parse_upload_manifest(file_path)
+      old_way = True
     print("Metadata analyzed. Found %s entries." % len(tumor_normal_pairs))
 
     file_names: List[dict] = []
@@ -484,7 +487,8 @@ def upload_manifest(
     file_dir: str = dirname(file_path)
 
     for entry in tumor_normal_pairs:
-        if not check_id_present(entry["#CIMAC_SAMPLE_ID"], sample_ids):
+        if old_way:
+          if not check_id_present(entry["#CIMAC_SAMPLE_ID"], sample_ids):
             bad_sample_id = True
 
         # Map to inputs. If this works correctly it should add all the file names to the list.
@@ -535,8 +539,6 @@ def run_upload_process() -> None:
     )
 
     try:
-        print(upload_manifest)
-        print(method)
         upload_dir, payload, file_list = [upload_manifest][method - 1](
             assay_r["non_static_inputs"], selections
         )
