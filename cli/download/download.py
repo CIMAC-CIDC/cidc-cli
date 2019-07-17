@@ -14,8 +14,8 @@ from typing import List, Optional
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL
-from utilities.cli_utilities import (
+from ..constants import EVE_URL
+from ..utilities.cli_utilities import (
     generate_options_list,
     get_valid_dir,
     select_assay_trial,
@@ -94,8 +94,10 @@ def elegant_options(
         List[str] -- Formatted options list.
     """
     str_pag_list = [[x['file_name'] for x in page] for page in paginated_list]
-    formatted_list = [generate_options_list(page, prompt) for page in str_pag_list]
-    with_commands = [sublist + "\n" + ", ".join(commands) for sublist in formatted_list]
+    formatted_list = [generate_options_list(
+        page, prompt) for page in str_pag_list]
+    with_commands = [sublist + "\n" +
+                     ", ".join(commands) for sublist in formatted_list]
     return with_commands
 
 
@@ -168,7 +170,8 @@ def run_selective_download() -> None:
 
     commands = ["[N]ext", "[P]revious", "[E]xit", "Download [A]ll: "]
     paginated_list = paginate_selections(retrieved)
-    pages = elegant_options(paginated_list, commands, "=====| Files to Download |=====")
+    pages = elegant_options(paginated_list, commands,
+                            "=====| Files to Download |=====")
     print(paginated_list)
     page_index = 0
     end_dl = False

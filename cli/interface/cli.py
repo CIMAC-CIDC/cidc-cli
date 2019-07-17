@@ -12,10 +12,10 @@ import platform
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL, BANNER, USER_CACHE
-from download import run_selective_download, run_download_process
-from upload import run_upload_process
-from utilities.cli_utilities import (
+from ..constants import EVE_URL, BANNER, USER_CACHE
+from ..download import run_selective_download, run_download_process
+from ..upload import run_upload_process
+from ..utilities.cli_utilities import (
     user_prompt_yn,
     run_jwt_login,
     run_sample_delete,

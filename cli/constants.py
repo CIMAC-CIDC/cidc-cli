@@ -5,6 +5,7 @@ Responsible for loading all of the environmental variables.
 __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
 
+import os
 from os import environ as env
 from dotenv import find_dotenv, load_dotenv
 from cidc_utils.caching import CredentialCache
@@ -20,8 +21,12 @@ REDIRECT_URI = env.get('REDIRECT_URI')
 SCOPE = env.get('SCOPE')
 EVE_URL = env.get('EVE_URL')
 IDP = env.get('IDP')
+API_V2_URL = env.get('API_V2_URL')
 
 USER_CACHE = CredentialCache(100, 600)
+# A persistent alternative to USER_CACHE for use by cli_v2
+TOKEN_CACHE_DIR = '.cidc_cache'
+TOKEN_CACHE_PATH = os.path.join(TOKEN_CACHE_DIR, 'id_token')
 FILE_EXTENSION_DICT = {
     "fa": "FASTQ",
     "fa.gz": "FASTQ",

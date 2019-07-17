@@ -15,8 +15,8 @@ from uuid import uuid4
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL, FILE_EXTENSION_DICT
-from utilities.cli_utilities import (
+from ..constants import EVE_URL, FILE_EXTENSION_DICT
+from ..utilities.cli_utilities import (
     select_assay_trial,
     option_select_framework,
     Selections,
@@ -100,7 +100,8 @@ def upload_files(directory: str, request_info: RequestInfo) -> Optional[str]:
             aliases.append({"old_name": file_path, "new_name": alias_path})
 
         upload_string = str.join("\n", [x["new_name"] for x in aliases])
-        fileprint = subprocess.Popen(("printf", upload_string), stdout=subprocess.PIPE)
+        fileprint = subprocess.Popen(
+            ("printf", upload_string), stdout=subprocess.PIPE)
         gsutil_args = [
             "gsutil",
             "-m",
@@ -223,7 +224,8 @@ def guess_file_ext(file_name) -> Optional[str]:
             ext = "%s.%s" % (split_name[-2], split_name[-1])
             return FILE_EXTENSION_DICT[ext]
         except KeyError:
-            print("Error processing file %s. Extension not recognized" % (file_name))
+            print("Error processing file %s. Extension not recognized" %
+                  (file_name))
             return None
 
 
