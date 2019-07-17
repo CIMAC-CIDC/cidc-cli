@@ -8,12 +8,13 @@ from setuptools import setup, find_packages
 
 setup(
     name="cidc_cli",
-    version='0.1.0',
-    packages=find_packages(exclude=('.tests', 'Pipfile', 'Pipfile.lock')),
+    version="0.1.0",
+    packages=find_packages(exclude=(".tests", "Pipfile", "Pipfile.lock")),
     entry_points={
-        'console_scripts': [
-            'cidc_cli = cli.interface.cli:main'
+        "console_scripts": [
+            "cidc_cli = cli.interface.cli:main",
+            "cidc = cli.cli_v2.cli:cidc",
         ]
     },
-    python_requires='>=3.6'
+    python_requires=">=3.6",
 )
