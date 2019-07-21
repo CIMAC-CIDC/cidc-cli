@@ -95,10 +95,10 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> dict:
 
 def _update_job_status(job_id: int, etag: str, status: str):
     """Update the status for an existing upload job"""
-    url = _url(f'/upload-jobs/{job_id}')
+    url = _url(f'/upload_jobs/{job_id}')
     data = {'status': status}
     if_match = {'If-Match': etag}
-    response = requests.patch(url, data=data, headers=_with_auth(if_match))
+    response = requests.patch(url, json=data, headers=_with_auth(if_match))
 
     if response.status_code != 200:
         raise ApiError(_error_message(response))
