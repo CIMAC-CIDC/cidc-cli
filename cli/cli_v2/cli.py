@@ -9,7 +9,7 @@ from . import api
 from . import auth
 from ..constants import UPLOAD_WORKSPACE
 
-
+#### $ cidc ####
 @click.group()
 def cidc():
     """The CIDC command-line interface."""
@@ -53,7 +53,8 @@ def upload_assay(assay, xlsx):
     # that initiates the upload job and grants object-level GCS access.
     with open(xlsx, 'rb') as xlsx_file:
         upload_info = api.initiate_upload(assay, xlsx_file)
-        click.echo('Initiating upload...')
+
+    click.echo('Initiating upload...')
 
     # Move to the directory containing the xlsx file,
     # since the local filepaths we get back in upload_info
@@ -72,14 +73,14 @@ def upload_assay(assay, xlsx):
         shutil.copy(local_path, path)
     os.chdir(UPLOAD_WORKSPACE)
 
-    try:
-        # Construct the upload command
-        gcs_bucket_uri = 'gs://%s' % upload_info['gcs_bucket']
-        gsutil_args = ["gsutil", "-m", "cp", "-r", ".", gcs_bucket_uri]
+    # Construct the upload command
+    gcs_bucket_uri = 'gs://%s' % upload_info['gcs_bucket']
+    gsutil_args = ["gsutil", "-m", "cp", "-r", ".", gcs_bucket_uri]
 
+    try:
         # Run the upload command
         subprocess.check_output(gsutil_args)
-    except Exception as e:
+    except (Exception, KeyboardInterrupt) as e:
         # Clean up the workspace
         shutil.rmtree(UPLOAD_WORKSPACE)
 
@@ -87,7 +88,7 @@ def upload_assay(assay, xlsx):
         api.job_failed(upload_info['job_id'], upload_info['job_etag'])
 
         # Alert the user that the upload job failed
-        click.ClickException(str(e))
+        raise e
 
     # Clean up the workspace
     shutil.rmtree(UPLOAD_WORKSPACE)
