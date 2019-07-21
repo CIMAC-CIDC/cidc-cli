@@ -47,7 +47,13 @@ def list_assays():
 @click.option("--assay", required=True, help="Assay type.")
 @click.option("--xlsx", required=True, help="Path to the assay metadata spreadsheet.")
 def upload_assay(assay, xlsx):
-    """Upload data for an assay."""
+    """
+    Upload data for an assay.
+
+    TODO: better error-handling. Right now, if a user, e.g., throws a KeyboardInterrupt before
+    reaching the try-except block wrapping the gsutil invocation, the API doesn't get alerted
+    that the upload job failed.
+    """
 
     # Read the .xlsx file and make the API call
     # that initiates the upload job and grants object-level GCS access.
