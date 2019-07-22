@@ -303,26 +303,26 @@ class TestUploadFunctions(unittest.TestCase):
         Test function for get_valid_dir
         """
         try:
-            os.mkdir("cli/tests/empty_dir")
+            os.mkdir("tests/empty_dir")
         except FileExistsError:
             pass
         with self.subTest():
-            inputs = ["cli/tests/test_directory", "y"]
+            inputs = ["tests/test_directory", "y"]
             self.assertEqual(
                 len(mock_with_inputs(inputs, get_valid_dir, [False])[1]), 3
             )
         with self.subTest():
-            inputs = [1, mock_with_inputs, "cli/tests/test_directory", "y"]
+            inputs = [1, mock_with_inputs, "tests/test_directory", "y"]
             self.assertEqual(
                 len(mock_with_inputs(inputs, get_valid_dir, [False])[1]), 3
             )
         with self.subTest():
-            inputs = ["cli/tests/empty_dir", "cli/tests/test_directory", "y"]
+            inputs = ["tests/empty_dir", "tests/test_directory", "y"]
             self.assertEqual(
                 len(mock_with_inputs(inputs, get_valid_dir, [False])[1]), 0
             )
         with self.subTest():
-            inputs = ["cli/tests/empty_dir", "cli/tests/test_directory", "y"]
+            inputs = ["tests/empty_dir", "tests/test_directory", "y"]
 
 
 def test_option_select_framework():
