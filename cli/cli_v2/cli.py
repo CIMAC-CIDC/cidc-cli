@@ -1,18 +1,20 @@
+"""The second generation CIDC command-line interface."""
 import os
 import shutil
-import functools
 import subprocess
 
 import click
 
 from . import api
 from . import auth
+from . import gcloud
 from ..constants import UPLOAD_WORKSPACE
 
 #### $ cidc ####
 @click.group()
 def cidc():
     """The CIDC command-line interface."""
+    gcloud.check_installed()
 
 
 #### $ cidc login ####
@@ -54,6 +56,8 @@ def upload_assay(assay, xlsx):
     reaching the try-except block wrapping the gsutil invocation, the API doesn't get alerted
     that the upload job failed.
     """
+    # Log in to gcloud (required for IAM to work)
+    gcloud.login()
 
     # Read the .xlsx file and make the API call
     # that initiates the upload job and grants object-level GCS access.

@@ -17,6 +17,7 @@ if ENV_FILE:
 
 # Settings relevant to cli_v2
 API_V2_URL = env.get('API_V2_URL')
+AUTH0_DOMAIN = env.get('AUTH0_DOMAIN')
 CIDC_WORKING_DIR = os.path.join(Path.home(), '.cidc')
 TOKEN_CACHE_PATH = os.path.join(CIDC_WORKING_DIR, 'id_token')
 UPLOAD_WORKSPACE = os.path.join(CIDC_WORKING_DIR, 'upload-workspace')

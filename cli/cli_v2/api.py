@@ -5,7 +5,7 @@ import click
 import requests
 
 from . import auth
-from ..constants import API_V2_URL
+from ..constants import API_V2_URL, AUTH0_DOMAIN
 
 
 class ApiError(click.ClickException):
@@ -22,24 +22,18 @@ def _error_message(request: requests.Response):
     return request.json()['_error']['message']
 
 
-def _auth_header(id_token: str = None):
-    """
-    Build an authorization header using either the provided token
-    or the cached token if one has been set.
-    """
+def _with_auth(headers: dict = None, id_token: str = None) -> dict:
+    """Add an id token to the given headers"""
     if not id_token:
         id_token = auth.get_id_token()
-    return {'Authorization': f'Bearer {id_token}'}
-
-
-def _with_auth(headers: dict = {}) -> dict:
-    """Add an id token to the given headers"""
-    return {**headers, **_auth_header()}
+    if not headers:
+        headers = {}
+    return {**headers, 'Authorization': f'Bearer {id_token}'}
 
 
 def check_auth(id_token: str) -> Optional[str]:
     """Check if an id_token is valid by making a request to the base API URL."""
-    response = requests.get(_url('/'), headers=_auth_header(id_token))
+    response = requests.get(_url('/'), headers=_with_auth(id_token=id_token))
 
     # 401 Unauthorized, so token is invalid
     if response.status_code == 401:

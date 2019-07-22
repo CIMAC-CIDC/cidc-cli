@@ -3,6 +3,7 @@ import functools
 from typing import Optional
 
 import click
+from jose import jwt
 
 from . import api
 from ..constants import CIDC_WORKING_DIR, TOKEN_CACHE_PATH
@@ -60,6 +61,19 @@ def get_id_token() -> str:
     # Return the cached token if it is still valid
     try:
         validate_token(id_token)
-        return id_token
     except AuthError as e:
         raise_unauthenticated()
+
+    return id_token
+
+
+def get_user_email() -> str:
+    """Extract a user's email from their id token."""
+    token = get_id_token()
+
+    # We don't need to check verifications here,
+    # because get_id_token validates the token it returns
+    # with the API (this includes signature verification).
+    claims = jwt.get_unverified_claims(token)
+
+    return claims['email']

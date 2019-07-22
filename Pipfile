@@ -17,6 +17,7 @@ pytest-html = "*"
 PyJWT = "*"
 tox = "*"
 click = "*"
+python-jose = "*"
 
 [dev-packages]
 pylint = "*"
