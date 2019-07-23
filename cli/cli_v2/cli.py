@@ -8,7 +8,7 @@ import click
 from . import api
 from . import auth
 from . import gcloud
-from ..constants import UPLOAD_WORKSPACE
+from constants import UPLOAD_WORKSPACE
 
 #### $ cidc ####
 @click.group()

@@ -6,7 +6,7 @@ import click
 from jose import jwt
 
 from . import api
-from ..constants import CIDC_WORKING_DIR, TOKEN_CACHE_PATH
+from constants import CIDC_WORKING_DIR, TOKEN_CACHE_PATH
 
 
 class AuthError(click.ClickException):
