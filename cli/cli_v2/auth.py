@@ -1,20 +1,20 @@
-import os
-import functools
-from typing import Optional
-
+"""Methods for working with id tokens"""
 import click
 from jose import jwt
 
 from . import api
-from ..constants import CIDC_WORKING_DIR, TOKEN_CACHE_PATH
+from . import cache
+
+
+TOKEN = "id_token"
 
 
 class AuthError(click.ClickException):
     pass
 
 
-def raise_unauthenticated():
-    raise AuthError(
+def unauthenticated() -> AuthError:
+    return AuthError(
         'You are not authenticated. Please login with:\n'
         '   $ cidc login [YOUR PORTAL TOKEN]')
 
@@ -33,16 +33,11 @@ def cache_token(id_token: str):
     """
     If a token is valid, cache it for use in future commands.
     """
-    # Create the cache directory if it doesn't exist
-    if not os.path.exists(CIDC_WORKING_DIR):
-        os.mkdir(CIDC_WORKING_DIR)
-
     # Validate the id token
     validate_token(id_token)
 
     # Save the provided token
-    with open(TOKEN_CACHE_PATH, 'w') as cache:
-        cache.write(id_token)
+    cache.store(TOKEN, id_token)
 
 
 def get_id_token() -> str:
@@ -50,19 +45,18 @@ def get_id_token() -> str:
     Look for a cached id_token for this user. If one exists and is valid, return it.
     Otherwise, exit and prompt the user to log in.
     """
-    # If the cache doesn't exist, there is no cached token
-    if not os.path.exists(TOKEN_CACHE_PATH):
-        raise_unauthenticated()
+    # Try to find a cached token
+    id_token = cache.get(TOKEN)
 
-    # Get the cached token
-    with open(TOKEN_CACHE_PATH, 'r') as cache:
-        id_token = cache.read()
+    # If there's no cached token, the user needs to log in
+    if not id_token:
+        raise unauthenticated()
 
     # Return the cached token if it is still valid
     try:
         validate_token(id_token)
-    except AuthError as e:
-        raise_unauthenticated()
+    except AuthError:
+        raise unauthenticated()
 
     return id_token
 
