@@ -18,8 +18,8 @@ def _url(endpoint: str) -> str:
     return f"{API_V2_URL}/{endpoint}"
 
 
-def _error_message(request: requests.Response):
-    return request.json()['_error']['message']
+def _error_message(response: requests.Response):
+    return response.json()['_error']['message']
 
 
 def _with_auth(headers: dict = None, id_token: str = None) -> dict:
@@ -82,10 +82,7 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
     response = requests.post(_url('/ingestion/upload'),
                              headers=_with_auth(), data=data, files=files)
 
-    # Capture some expected HTTP errors
-    if response.status_code >= 500:
-        raise ApiError('Upload failed due to a server error.')
-    if response.status_code == 400:
+    if response.status_code != 200:
         raise ApiError(_error_message(response))
 
     try:
@@ -98,7 +95,7 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
         )
     except:
         raise ApiError(
-            "Cannot decode API response. This may be a bug in the CLI.")
+            "Cannot decode API response. You may need to update the CIDC CLI.")
 
 
 def _update_job_status(job_id: int, etag: str, status: str):

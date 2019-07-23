@@ -13,6 +13,7 @@ URL_MAPPING = {
     'local_path1.fastq.gz': 'gcs/path/1234/local_path1.fastq.gz',
     'local_path2.fastq.gz': 'gcs/path/4321/local_path2.fastq.gz'
 }
+UPLOAD_WORKSPACE = 'workspace'
 
 
 class UploadMocks:
@@ -31,7 +32,7 @@ class UploadMocks:
         self.api_job_failed = MagicMock()
         monkeypatch.setattr(api, "job_failed", self.api_job_failed)
 
-        monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', 'workspace')
+        monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
