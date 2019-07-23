@@ -15,8 +15,8 @@ from uuid import uuid4
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL, FILE_EXTENSION_DICT
-from utilities.cli_utilities import (
+from ..constants import EVE_URL, FILE_EXTENSION_DICT
+from ..utilities.cli_utilities import (
     select_assay_trial,
     option_select_framework,
     Selections,

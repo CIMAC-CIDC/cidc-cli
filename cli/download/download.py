@@ -14,8 +14,8 @@ from typing import List, Optional
 
 from cidc_utils.requests import SmartFetch
 
-from constants import EVE_URL
-from utilities.cli_utilities import (
+from ..constants import EVE_URL
+from ..utilities.cli_utilities import (
     generate_options_list,
     get_valid_dir,
     select_assay_trial,

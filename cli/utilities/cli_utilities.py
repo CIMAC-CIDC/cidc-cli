@@ -10,7 +10,8 @@ import os
 import time
 from typing import List, Tuple, NamedTuple, Optional
 from cidc_utils.requests import SmartFetch
-from constants import EVE_URL, USER_CACHE
+
+from ..constants import EVE_URL, USER_CACHE
 
 EVE_FETCHER = SmartFetch(EVE_URL)
 

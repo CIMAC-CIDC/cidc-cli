@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 import pytest
 from click.testing import CliRunner
 
-from cli_v2 import cli
+from cli.cli_v2 import cli
 
 
 @pytest.fixture

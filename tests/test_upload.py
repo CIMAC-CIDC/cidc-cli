@@ -9,7 +9,7 @@ import os
 import unittest
 from unittest.mock import patch
 
-from upload.upload import (
+from cli.upload.upload import (
     RequestInfo,
     parse_upload_manifest,
     update_job_status,
@@ -20,8 +20,9 @@ from upload.upload import (
     create_manifest_payload,
     upload_manifest,
 )
-from tests.helper_functions import mock_with_inputs
-from utilities.cli_utilities import Selections
+from cli.utilities.cli_utilities import Selections
+
+from .helper_functions import mock_with_inputs
 
 NON_STATIC_INPUTS = {
     "FASTQ_NORMAL_1",
@@ -60,7 +61,7 @@ class TestUploadFunctions(unittest.TestCase):
         Test update_job_status
         """
         with patch(
-            "upload.upload.EVE_FETCHER.patch", return_value={"status_code": 200}
+            "cli.upload.upload.EVE_FETCHER.patch", return_value={"status_code": 200}
         ):
             request_info = RequestInfo(
                 {"_id": "abcd123", "_etag": "etag"}, "token", {}, [{}]
@@ -69,7 +70,7 @@ class TestUploadFunctions(unittest.TestCase):
                 self.assertTrue(update_job_status(True, request_info))
             with self.subTest():
                 self.assertTrue(update_job_status(False, request_info))
-        with patch("upload.upload.EVE_FETCHER.patch") as patch_mock:
+        with patch("cli.upload.upload.EVE_FETCHER.patch") as patch_mock:
             with self.subTest():
                 patch_mock.side_effect = RuntimeError("Test Error")
                 self.assertFalse(update_job_status(True, request_info))
@@ -107,8 +108,9 @@ class TestUploadFunctions(unittest.TestCase):
             ],
         )
         with patch("subprocess.check_output", return_value=""):
-            with patch("upload.upload.update_job_status", return_value=True):
-                self.assertEqual(upload_files(directory, request_info), "abcd123")
+            with patch("cli.upload.upload.update_job_status", return_value=True):
+                self.assertEqual(upload_files(
+                    directory, request_info), "abcd123")
                 found = [
                     os.path.isfile(os.path.join(directory, item["file_name"]))
                     for item in request_info.files_uploaded
