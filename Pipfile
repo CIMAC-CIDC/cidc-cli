@@ -24,6 +24,7 @@ jsonschema = "*"
 pyyaml = "*"
 xlsxwriter = "*"
 click = "*"
+python-jose = "*"
 
 [dev-packages]
 pylint = "*"
