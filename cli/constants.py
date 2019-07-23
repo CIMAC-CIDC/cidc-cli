@@ -6,7 +6,6 @@ __author__ = "Lloyd McCarthy"
 __license__ = "MIT"
 
 import os
-from pathlib import Path
 from os import environ as env
 from dotenv import find_dotenv, load_dotenv
 from cidc_utils.caching import CredentialCache
@@ -14,15 +13,6 @@ from cidc_utils.caching import CredentialCache
 ENV_FILE = find_dotenv()
 if ENV_FILE:
     load_dotenv(ENV_FILE)
-
-# Settings relevant to cli_v2
-API_V2_URL = env.get('API_V2_URL')
-AUTH0_DOMAIN = env.get('AUTH0_DOMAIN')
-CIDC_WORKING_DIR = os.path.join(Path.home(), '.cidc')
-TOKEN_CACHE_PATH = os.path.join(CIDC_WORKING_DIR, 'id_token')
-UPLOAD_WORKSPACE = os.path.join(CIDC_WORKING_DIR, 'upload-workspace')
-# End cli_v2 settings
-
 
 DOMAIN = env.get('DOMAIN')
 AUDIENCE = env.get('AUDIENCE')

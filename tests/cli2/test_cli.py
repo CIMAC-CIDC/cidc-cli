@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from cli.cli_v2 import cli
+from cli2 import cli
 
 
 def test_cidc_structure(runner: CliRunner):
@@ -39,7 +39,7 @@ def test_assays_list(runner: CliRunner, monkeypatch):
     """
     Check that assay_list displays supported assays as expected.
     """
-    monkeypatch.setattr("cli.cli_v2.api.list_assays", lambda: ['wes', 'pbmc'])
+    monkeypatch.setattr("cli2.api.list_assays", lambda: ['wes', 'pbmc'])
     res = runner.invoke(cli.assays, ['list'])
     assert '* wes' in res.output
     assert '* pbmc' in res.output

@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from cli.cli_v2 import cache
+from cli2 import cache
 
 
 def test_cache_hit(runner: CliRunner):

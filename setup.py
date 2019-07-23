@@ -13,7 +13,7 @@ setup(
     entry_points={
         "console_scripts": [
             "cidc_cli = cli.interface.cli:main",
-            "cidc = cli.cli_v2.cli:cidc",
+            "cidc = cli2.cli:cidc",
         ]
     },
     python_requires=">=3.6",

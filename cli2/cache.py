@@ -6,7 +6,7 @@ Values set using this cache will persist across CLI command invocations.
 import os
 from typing import Optional
 
-from ..constants import CIDC_WORKING_DIR
+from .constants import CIDC_WORKING_DIR
 
 
 def _key_path(key: str) -> str:

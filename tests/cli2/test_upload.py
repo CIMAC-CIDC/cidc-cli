@@ -3,8 +3,8 @@ from unittest.mock import MagicMock
 import pytest
 from click.testing import CliRunner
 
-from cli.cli_v2 import api
-from cli.cli_v2 import upload
+from cli2 import api
+from cli2 import upload
 
 JOB_ID = 1
 JOB_ETAG = 'abcd'
@@ -18,7 +18,7 @@ URL_MAPPING = {
 class UploadMocks:
     def __init__(self, monkeypatch):
         self.gcloud_login = MagicMock()
-        monkeypatch.setattr("cli.cli_v2.gcloud.login", self.gcloud_login)
+        monkeypatch.setattr("cli2.gcloud.login", self.gcloud_login)
 
         self.api_initiate_upload = MagicMock()
         self.api_initiate_upload.return_value = api.UploadInfo(
