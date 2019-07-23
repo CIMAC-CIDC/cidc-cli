@@ -4,4 +4,3 @@ install:
 script:
   # Only run the tests for the new CLI
   - pytest tests/cli2
-  
