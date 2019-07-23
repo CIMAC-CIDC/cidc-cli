@@ -1,14 +1,7 @@
 """The second generation CIDC command-line interface."""
-import os
-import shutil
-import subprocess
-
 import click
 
-from . import api
-from . import auth
-from . import gcloud
-from . import upload
+from . import api, auth, gcloud, upload, config
 
 #### $ cidc ####
 @click.group()
@@ -25,6 +18,25 @@ def login(portal_token):
     click.echo("Validating token...")
     auth.cache_token(portal_token)
     click.echo("You are now logged in.")
+
+#### $ cidc config ####
+@click.group('config')
+def config_():
+    """Manage CLI configuration."""
+
+#### $ cidc config set-env ####
+@click.command()
+@click.argument('environment', required=True, type=click.Choice(['prod', 'staging', 'dev']))
+def set_env(environment):
+    """Set the CLI environment."""
+    config.set_env(environment)
+    click.echo(f"Updated CLI environment to {environment}")
+
+#### $ cidc config get-env ####
+@click.command()
+def get_env():
+    """Get the current CLI environment."""
+    click.echo(config.get_env())
 
 #### $ cidc manifests ####
 @click.group()
@@ -59,6 +71,10 @@ def upload_assay(assay, xlsx):
 cidc.add_command(login)
 cidc.add_command(manifests)
 cidc.add_command(assays)
+cidc.add_command(config_)
+
+config_.add_command(set_env)
+config_.add_command(get_env)
 
 assays.add_command(list_assays)
 assays.add_command(upload_assay)

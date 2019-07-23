@@ -17,6 +17,9 @@ def test_cidc_structure(runner: CliRunner):
     res = runner.invoke(cli.cidc, ['assays'])
     assert "Usage: cidc assays" in res.output
 
+    res = runner.invoke(cli.cidc, ['config'])
+    assert "Usage: cidc config" in res.output
+
     res = runner.invoke(cli.cidc, ['login', '-h'])
     assert "Usage: cidc login" in res.output
 
@@ -43,6 +46,27 @@ def test_assays_list(runner: CliRunner, monkeypatch):
     res = runner.invoke(cli.assays, ['list'])
     assert '* wes' in res.output
     assert '* pbmc' in res.output
+
+
+def test_env_config(runner: CliRunner, monkeypatch):
+    """
+    Test setting and getting the current environment.
+    """
+    monkeypatch.setattr('cli2.cache._cache_dir', lambda: 'workdir')
+    with runner.isolated_filesystem():
+        # Get default value
+        res = runner.invoke(cli.get_env)
+        assert 'prod' in res.output
+
+        # Set to valid value
+        res = runner.invoke(cli.set_env, ['dev'])
+        assert 'dev' in res.output
+        res = runner.invoke(cli.get_env)
+        assert 'dev'in res.output
+
+        # Try to set to invalid value
+        res = runner.invoke(cli.set_env, ['blah'])
+        assert 'Invalid value' in res.output
 
 
 def test_assays_upload(runner: CliRunner, monkeypatch):

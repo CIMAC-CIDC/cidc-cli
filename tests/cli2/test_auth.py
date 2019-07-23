@@ -17,7 +17,7 @@ def test_get_user_email(monkeypatch):
 
 def test_valid_token_flow(monkeypatch):
     """Check that caching works as expected for a valid token"""
-    monkeypatch.setattr('cli2.constants.CIDC_WORKING_DIR', 'foo')
+    monkeypatch.setattr('cli2.config.CIDC_WORKING_DIR', 'foo')
     monkeypatch.setattr(auth, 'validate_token', lambda token: None)
 
     TOKEN = "test-token"
@@ -31,7 +31,7 @@ def test_valid_token_flow(monkeypatch):
 
 def test_invalid_token_flow(monkeypatch):
     """Check that errors are thrown as expected for an invalid token"""
-    monkeypatch.setattr('cli2.constants.CIDC_WORKING_DIR', 'foo')
+    monkeypatch.setattr('cli2.config.CIDC_WORKING_DIR', 'foo')
 
     def auth_error(*args):
         raise auth.AuthError('uh oh')

@@ -3,11 +3,9 @@ import os
 import shutil
 import subprocess
 
-import click
-
 from . import api
 from . import gcloud
-from .constants import UPLOAD_WORKSPACE
+from .config import UPLOAD_WORKSPACE
 
 
 def upload_assay(assay_type: str, xlsx_path: str):

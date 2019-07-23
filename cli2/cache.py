@@ -6,18 +6,24 @@ Values set using this cache will persist across CLI command invocations.
 import os
 from typing import Optional
 
-from .constants import CIDC_WORKING_DIR
+
+def _cache_dir():
+    """Hack to prevent circular imports issue with the constants module"""
+    from .config import CIDC_WORKING_DIR
+
+    return CIDC_WORKING_DIR
 
 
 def _key_path(key: str) -> str:
-    return os.path.join(CIDC_WORKING_DIR, key)
+    return os.path.join(_cache_dir(), key)
 
 
 def store(key: str, value: str):
     """Persist a value across CLI commands."""
+    cdir = _cache_dir()
     # Create the cache directory if it doesn't exist
-    if not os.path.exists(CIDC_WORKING_DIR):
-        os.mkdir(CIDC_WORKING_DIR)
+    if not os.path.exists(cdir):
+        os.mkdir(cdir)
 
     # Save the provided value in a file named key
     with open(_key_path(key), 'w') as cache:

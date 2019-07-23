@@ -3,7 +3,7 @@ from io import BytesIO
 import pytest
 from unittest.mock import MagicMock
 
-from cli2 import api, constants
+from cli2 import api, config
 
 
 def make_response(body={}) -> MagicMock:
@@ -25,7 +25,7 @@ def patch_request(http_verb, response, monkeypatch):
 
 
 def test_url_builder():
-    base_url = constants.API_V2_URL + '/'
+    base_url = config.API_V2_URL + '/'
     assert api._url("") == base_url
     assert api._url("/a") == base_url + 'a'
     assert api._url("a") == base_url + 'a'

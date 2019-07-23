@@ -5,7 +5,7 @@ import click
 import requests
 
 from . import auth
-from .constants import API_V2_URL
+from .config import API_V2_URL
 
 
 class ApiError(click.ClickException):
