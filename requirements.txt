@@ -1,6 +1,11 @@
 click==7.0
+<<<<<<< HEAD
 git+https://github.com/CIMAC-CIDC/cidc-schemas@release
 git+https://github.com/CIMAC-CIDC/cidc-utils
+=======
+git+https://github.com/CIMAC-CIDC/cidc-schemas.git@e65c385345afa5d67cd22ba7334fef35ef8f48e5#egg=cidc-schemas
+git+https://github.com/CIMAC-CIDC/cidc-utils@2f2cf82007a3a67971293752e1dc168a7aad10e3#egg=cidc-utils
+>>>>>>> Remove pipenv dependency and simplify requirements
 python-dotenv==0.10.3
 python-jose==3.0.1
 requests==2.22.0
