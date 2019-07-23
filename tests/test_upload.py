@@ -12,6 +12,7 @@ from unittest.mock import patch
 from cli.upload.upload import (
     RequestInfo,
     parse_upload_manifest,
+    parse_upload_manifest2,
     update_job_status,
     upload_files,
     find_manifest_path,
@@ -186,6 +187,38 @@ class TestUploadFunctions(unittest.TestCase):
                 with self.assertRaises(FileNotFoundError):
                     upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
 
+    def test_upload_manifest2(self):
+        """
+        Test upload_manifest: redux
+        """
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/fake_manifest_wes/wes_template.xlsx",
+            ):
+                file_dir, ingestion_payload, file_names = upload_manifest(
+                    NON_STATIC_INPUTS, SELECTIONS
+                )
+                self.assertTrue(
+                    #len(ingestion_payload["files"]) == 24
+                    #and len(file_names) == 24
+                    file_dir == "./sample_data/fake_manifest_wes"
+                )
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.bad.sample_id",
+            ):
+                with self.assertRaises(RuntimeError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
+        with self.subTest():
+            with patch(
+                "builtins.input",
+                return_value="./sample_data/testing_manifests/manifest.csv",
+            ):
+                with self.assertRaises(FileNotFoundError):
+                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
+
 
 def test_find_manifest_path():
     """
@@ -218,19 +251,39 @@ def test_check_id_present():
         raise AssertionError("test_check_id_present: Assertion Failed")
 
 
-def test_create_manifest_payload():
+def test_manifest_payload_migration():
     """
-    Test create_manifest_payload
+    Tests dropin replacement of "create_manifest_payload"
     """
-    tumor_normal_pairs = parse_upload_manifest(
+    tumor_normal_pairs1 = parse_upload_manifest(
         "./sample_data/fake_manifest_wes/manifest.csv"
     )
-    entry = tumor_normal_pairs[0]
-    payload, file_names = create_manifest_payload(
-        entry,
+    entry1 = tumor_normal_pairs1[0]
+
+    tumor_normal_pairs2 = parse_upload_manifest2(
+        "./sample_data/fake_manifest_wes/wes_template.xlsx"
+    )
+    entry2 = tumor_normal_pairs2[0]
+
+    # assert equality
+    assert len(entry1) == len(entry2)
+
+    # next function using old way
+    payload1, file_names1 = create_manifest_payload(
+        entry1,
         NON_STATIC_INPUTS,
         SELECTIONS,
         os.path.dirname("./sample_data/fake_manifest_wes/"),
     )
-    if len(file_names) != 4 or len(payload) != 4:
+    if len(file_names1) != 4 or len(payload1) != 4:
+        raise AssertionError("test_create_manifest_payload: Assertion Failed")
+
+    # new function
+    payload2, file_names2 = create_manifest_payload(
+        entry2,
+        NON_STATIC_INPUTS,
+        SELECTIONS,
+        os.path.dirname("./sample_data/fake_manifest_wes/"),
+    )
+    if len(file_names2) != 4 or len(payload2) != 4:
         raise AssertionError("test_create_manifest_payload: Assertion Failed")

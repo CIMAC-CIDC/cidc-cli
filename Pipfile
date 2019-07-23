@@ -16,8 +16,13 @@ pytest-cov = "*"
 pytest-html = "*"
 PyJWT = "*"
 tox = "*"
-click = "*"
-python-jose = "*"
+urllib3 = "*"
+cidc_schemas = {git = "https://github.com/CIMAC-CIDC/cidc-schemas.git"}
+openpyxl = "*"
+dateparser = "*"
+jsonschema = "*"
+pyyaml = "*"
+xlsxwriter = "*"
 
 [dev-packages]
 pylint = "*"
