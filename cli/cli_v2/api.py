@@ -55,7 +55,15 @@ def list_assays() -> List[str]:
     return assays
 
 
-def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> dict:
+class UploadInfo(NamedTuple):
+    """Container for data we expect to get back from an initiate upload request"""
+    job_id: int
+    job_etag: str
+    gcs_bucket: str
+    url_mapping: dict
+
+
+def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
     """
     Initiate an assay upload.
 
@@ -64,7 +72,7 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> dict:
         xlsx_file: an open .xlsx file
 
     Returns:
-        dict: a mapping from local filepaths to GCS upload URIs,
+        UploadInfo: a mapping from local filepaths to GCS upload URIs,
         along with an upload job ID.
     """
     data = {'schema': assay_name}
@@ -81,7 +89,13 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> dict:
         raise ApiError(_error_message(response))
 
     try:
-        return response.json()
+        upload_info = response.json()
+        return UploadInfo(
+            upload_info['job_id'],
+            upload_info['job_etag'],
+            upload_info['gcs_bucket'],
+            upload_info['url_mapping']
+        )
     except:
         raise ApiError(
             "Cannot decode API response. This may be a bug in the CLI.")
