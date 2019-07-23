@@ -10,7 +10,8 @@ import os
 import time
 from typing import List, Tuple, NamedTuple, Optional
 from cidc_utils.requests import SmartFetch
-from constants import EVE_URL, USER_CACHE
+
+from ..constants import EVE_URL, USER_CACHE
 
 EVE_FETCHER = SmartFetch(EVE_URL)
 
@@ -37,7 +38,8 @@ def generate_options_list(options: List[str], header: str) -> str:
         str -- Completed list in string form
     """
     opts = "".join(
-        ["[%s] - %s\n" % (str(idx + 1), option) for idx, option in enumerate(options)]
+        ["[%s] - %s\n" % (str(idx + 1), option)
+         for idx, option in enumerate(options)]
     )
     return "%s\n%s" % (header, opts)
 
@@ -60,7 +62,8 @@ def get_valid_dir(is_download: bool = True) -> Tuple[str, List[str]]:
     while not directory:
         # Change prompt based on action.
         directory = input(
-            "Please enter the path where %s :\n" % (dl_msg if is_download else ul_msg)
+            "Please enter the path where %s :\n" % (
+                dl_msg if is_download else ul_msg)
         )
         try:
             # Check that the directory path exists.
@@ -153,7 +156,8 @@ def show_countdown(num_seconds: int, notification: str, step: int = -1) -> None:
         None -- No return.
     """
     if step > 0:
-        raise ValueError("Cannot call with positive step. Negative numbers only.")
+        raise ValueError(
+            "Cannot call with positive step. Negative numbers only.")
 
     for i in range(num_seconds, 0, step):
         print(notification + str(i), end="\r", flush=True)
@@ -294,7 +298,8 @@ def select_trial(prompt: str) -> Optional[Selections]:
         trial_name_display.append(trial["trial_name"] + "    " + status)
 
     selected_trial = user_trials[
-        option_select_framework(trial_name_display, "=====| Available Trials |=====")
+        option_select_framework(
+            trial_name_display, "=====| Available Trials |=====")
         - 1
     ]
     return Selections(eve_token, selected_trial, {})
@@ -406,7 +411,8 @@ def delete_related_records(
     Returns:
         None -- No return.
     """
-    query: dict = {"trial": selections.selected_trial["_id"], "sample_ids": sample_id}
+    query: dict = {
+        "trial": selections.selected_trial["_id"], "sample_ids": sample_id}
     token = selections.eve_token
     to_delete = [x for x in records if sample_id in x["sample_ids"]]
 
@@ -414,7 +420,8 @@ def delete_related_records(
     an_endpoint = "analysis?where=%s" % json.dumps(query)
 
     try:
-        analysis = EVE_FETCHER.get(endpoint=an_endpoint, token=token).json()["_items"]
+        analysis = EVE_FETCHER.get(
+            endpoint=an_endpoint, token=token).json()["_items"]
     except RuntimeError as rte:
         print("Failed to fetch records from /analysis: %s" % str(rte))
         return
@@ -436,7 +443,8 @@ def set_unprocessed_maf(selections: Selections):
         query = "data?where=%s" % json.dumps(
             {"trial": selections.selected_trial["_id"], "data_format": "MAF"}
         )
-        records = EVE_FETCHER.get(endpoint=query, token=selections.eve_token).json()
+        records = EVE_FETCHER.get(
+            endpoint=query, token=selections.eve_token).json()
     except RuntimeError as rte:
         print(str(rte))
         return
@@ -473,7 +481,8 @@ def simple_query(endpoint: str, token: str) -> List[dict]:
     try:
         return EVE_FETCHER.get(endpoint=endpoint, token=token).json()["_items"]
     except RuntimeError as rte:
-        print("Failed to fetch records from endpoint: %s : %s" % (endpoint, str(rte)))
+        print("Failed to fetch records from endpoint: %s : %s" %
+              (endpoint, str(rte)))
     except KeyError:
         print("No _items field returned.")
     return []
@@ -512,7 +521,8 @@ def run_sample_delete() -> None:
 
     yes = True
     while yes:
-        yes = user_prompt_yn("Do you want to delete another sample from this trial?")
+        yes = user_prompt_yn(
+            "Do you want to delete another sample from this trial?")
         if yes:
             # Fetch from /data again to get rid of the deleted sample.
             data = simple_query(endpoint, selections.eve_token)
@@ -595,7 +605,8 @@ def lock_trial(is_locking: bool, selections: Selections) -> bool:
             json={"locked": is_locking},
             token=selections.eve_token,
         )
-        print("Trial %s %s successfully" % (selected_trial["trial_name"], adjective))
+        print("Trial %s %s successfully" %
+              (selected_trial["trial_name"], adjective))
         return True
     except RuntimeError as rte:
         if "401" in str(rte):

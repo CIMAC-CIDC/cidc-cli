@@ -48,6 +48,7 @@ class FakeFetcher(object):
     Returns:
         [type] -- [description]
     """
+
     def __init__(self, response):
         """[summary]
 

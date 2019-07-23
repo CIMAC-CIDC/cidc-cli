@@ -33,8 +33,12 @@ pip3 install -r requirements.txt --user
 
 ### Step 4: Run the CIDC-CLI
 
-Navigate to the `cli` sub-directory (which is located in the root directory) and run:
-
+To display the help message for the new, non-interactive CLI, run:
 ```bash
-bash cli.sh
+cidc 
+```
+
+To run the old, interactive CLI, run:
+```bash
+cidc_cli
 ```
