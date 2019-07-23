@@ -81,16 +81,19 @@ def upload_assay(assay, xlsx):
         path = os.path.join(UPLOAD_WORKSPACE, gcs_object)
         os.makedirs(path)
         shutil.copy(local_path, path)
-    os.chdir(UPLOAD_WORKSPACE)
 
     # Construct the upload command
     gcs_bucket_uri = 'gs://%s' % upload_info['gcs_bucket']
     gsutil_args = ["gsutil", "-m", "cp", "-r", ".", gcs_bucket_uri]
 
+    os.chdir(UPLOAD_WORKSPACE)
+
     try:
         # Run the upload command
         subprocess.check_output(gsutil_args)
     except (Exception, KeyboardInterrupt) as e:
+        os.chdir(xlsx_dir)
+
         # Clean up the workspace
         shutil.rmtree(UPLOAD_WORKSPACE)
 
@@ -99,12 +102,14 @@ def upload_assay(assay, xlsx):
 
         # Alert the user that the upload job failed
         raise e
+    else:
+        os.chdir(xlsx_dir)
 
-    # Clean up the workspace
-    shutil.rmtree(UPLOAD_WORKSPACE)
+        # Clean up the workspace
+        shutil.rmtree(UPLOAD_WORKSPACE)
 
-    # Alert the API that upload job succeeded
-    api.job_succeeded(upload_info['job_id'], upload_info['job_etag'])
+        # Alert the API that upload job succeeded
+        api.job_succeeded(upload_info['job_id'], upload_info['job_etag'])
 
 
 # Wire up the interface
