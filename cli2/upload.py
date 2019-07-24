@@ -2,6 +2,7 @@
 import os
 import shutil
 import subprocess
+from datetime import datetime
 
 from . import api
 from . import gcloud
@@ -48,30 +49,48 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     """
     Upload local assay data to GCS using gsutil.
     """
-    # Copy the local files into a nested file structure equivalent
-    # to the structure we want to create in GCS, rooted in the UPLOAD_WORKSPACE
-    # directory. Having the files organized in this manner allows
-    # us to upload all files in parallel using the "gsutil -m ..."
-    # command below.
-    xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
-    for local_path, gcs_object in upload_info.url_mapping.items():
-        source_path = os.path.join(xlsx_dir, local_path)
-        target_path = os.path.join(UPLOAD_WORKSPACE, gcs_object)
-        os.makedirs(target_path)
-        shutil.copy(source_path, target_path)
-
-    # Construct the upload command
-    gcs_bucket_uri = 'gs://%s' % upload_info.gcs_bucket
-    gsutil_args = ["gsutil", "-m", "cp", "-r",
-                   UPLOAD_WORKSPACE, gcs_bucket_uri]
+    workspace = _get_workspace_path()
 
     try:
+        # Create the required local directory structure
+        # to support parallel uploads with gsutil
+        _populate_workspace(upload_info, xlsx, workspace)
+
+        # Construct the upload command
+        gcs_bucket_uri = 'gs://%s' % upload_info.gcs_bucket
+        gsutil_args = ["gsutil", "-m", "cp", "-r",
+                       workspace, gcs_bucket_uri]
+
         # Run the upload command
         subprocess.check_output(gsutil_args)
     except (Exception, KeyboardInterrupt) as e:
-        # Clean up the workspace then raise the exception
-        shutil.rmtree(UPLOAD_WORKSPACE)
+        _cleanup_workspace(workspace)
         raise e
     else:
-        # Clean up the workspace
-        shutil.rmtree(UPLOAD_WORKSPACE)
+        _cleanup_workspace(workspace)
+
+
+def _get_workspace_path():
+    """Generate a unique upload workspace path"""
+    return '%s.%s' % (UPLOAD_WORKSPACE, datetime.now())
+
+
+def _populate_workspace(upload_info: api.UploadInfo, xlsx: str, workspace_dir: str):
+    """
+    Copy the local files into a nested file structure equivalent
+    to the structure we want to create in GCS, rooted in the `workspace_dir`
+    directory. Having the files organized in this manner allows
+    us to upload all files in parallel using the "gsutil -m ...".
+    """
+    xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
+    for local_path, gcs_object in upload_info.url_mapping.items():
+        source_path = os.path.join(xlsx_dir, local_path)
+        target_path = os.path.join(workspace_dir, gcs_object)
+        os.makedirs(target_path)
+        shutil.copy(source_path, target_path)
+
+
+def _cleanup_workspace(workspace_dir: str):
+    """Delete the upload workspace directory if it exists."""
+    if os.path.exists(workspace_dir):
+        shutil.rmtree(workspace_dir)

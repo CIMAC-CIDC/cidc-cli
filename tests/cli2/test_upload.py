@@ -6,6 +6,8 @@ from click.testing import CliRunner
 from cli2 import api
 from cli2 import upload
 
+from .util import ExceptionCatchingThread
+
 JOB_ID = 1
 JOB_ETAG = 'abcd'
 GCS_BUCKET = 'upload-bucket'
@@ -43,13 +45,19 @@ class UploadMocks:
             self.api_job_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
 
 
-def run_upload(runner: CliRunner):
+def run_isolated_upload(runner: CliRunner):
+    """Run a test upload inside an isolated filesystem"""
     with runner.isolated_filesystem():
-        files = ['wes.xlsx'] + list(URL_MAPPING.keys())
-        for fname in files:
-            with open(fname, 'wb') as f:
-                f.write(b'blah blah metadata')
-        upload.upload_assay('wes', 'wes.xlsx')
+        run_upload(runner)
+
+
+def run_upload(runner: CliRunner):
+    """Run a test upload"""
+    files = ['wes.xlsx'] + list(URL_MAPPING.keys())
+    for fname in files:
+        with open(fname, 'wb') as f:
+            f.write(b'blah blah metadata')
+    upload.upload_assay('wes', 'wes.xlsx')
 
 
 def test_upload_assay_success(runner: CliRunner, monkeypatch):
@@ -62,7 +70,7 @@ def test_upload_assay_success(runner: CliRunner, monkeypatch):
     monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_success)
 
     # Run a successful upload.
-    run_upload(runner)
+    run_isolated_upload(runner)
 
     upload_success.assert_called_once()
     mocks.assert_expected_calls()
@@ -81,7 +89,7 @@ def test_upload_assay_interrupt(runner: CliRunner, monkeypatch):
 
     # Run an interrupted upload.
     with pytest.raises(KeyboardInterrupt):
-        run_upload(runner)
+        run_isolated_upload(runner)
 
     mocks.assert_expected_calls(failure=True)
 
@@ -98,6 +106,27 @@ def test_upload_assay_exception(runner: CliRunner, monkeypatch):
     monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_failure)
 
     with pytest.raises(Exception, match="bad upload"):
-        run_upload(runner)
+        run_isolated_upload(runner)
 
     mocks.assert_expected_calls(failure=True)
+
+
+def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
+    """
+    Check that two uploads can run simultaneously without the CLI encountering
+    errors. This is a smoketest, not a guarantee that the CLI robustly supports
+    concurrent uploads for different assays.
+    """
+    UploadMocks(monkeypatch)
+
+    gsutil_command = MagicMock()
+    monkeypatch.setattr("subprocess.check_output", gsutil_command)
+
+    def do_upload():
+        run_upload(runner)
+
+    with runner.isolated_filesystem():
+        t1 = ExceptionCatchingThread(do_upload)
+        t2 = ExceptionCatchingThread(do_upload)
+        t1.start(), t2.start()
+        t1.join(), t2.join()
