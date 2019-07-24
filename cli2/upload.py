@@ -59,7 +59,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
         # Construct the upload command
         gcs_bucket_uri = 'gs://%s' % upload_info.gcs_bucket
         gsutil_args = ["gsutil", "-m", "cp", "-r",
-                       workspace, gcs_bucket_uri]
+                       f'{workspace}/*', gcs_bucket_uri]
 
         # Run the upload command
         subprocess.check_output(gsutil_args)
@@ -85,7 +85,8 @@ def _populate_workspace(upload_info: api.UploadInfo, xlsx: str, workspace_dir: s
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for local_path, gcs_object in upload_info.url_mapping.items():
         source_path = os.path.join(xlsx_dir, local_path)
-        target_path = os.path.join(workspace_dir, gcs_object)
+        gcs_prefix = gcs_object.rstrip(local_path)
+        target_path = os.path.join(workspace_dir, gcs_prefix)
         os.makedirs(target_path)
         shutil.copy(source_path, target_path)
 
