@@ -1,12 +1,14 @@
 """The second generation CIDC command-line interface."""
 import click
 
-from . import api, auth, gcloud, upload, config
+from . import api, auth, gcloud, upload, config, consent
 
 #### $ cidc ####
 @click.group()
 def cidc():
     """The CIDC command-line interface."""
+    if not consent.check_consent():
+        exit(0)
     gcloud.check_installed()
 
 
