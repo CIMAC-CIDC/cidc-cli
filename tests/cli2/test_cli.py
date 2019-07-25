@@ -1,13 +1,19 @@
 from click.testing import CliRunner
 
-from cli2 import cli
+from cli2 import cli, consent
 
 
-def test_cidc_structure(runner: CliRunner):
+def skip_consent(monkeypatch):
+    monkeypatch.setattr('cli2.consent.check_consent', lambda: True)
+
+
+def test_cidc_structure(runner: CliRunner, monkeypatch):
     """
     Check that the interface is wired up correctly, and that
     usage is printed when commands are supplied without arguments.
     """
+    skip_consent(monkeypatch)
+
     res = runner.invoke(cli.cidc)
     assert "Usage: cidc" in res.output
 
@@ -29,6 +35,8 @@ def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
     Check that running `cidc [subcommand]` without a gcloud installation prompts
     the user to install gcloud.
     """
+    skip_consent(monkeypatch)
+
     def assert_gcloud_message(res):
         assert 'requires an installation of the gcloud SDK' in res.output
 
@@ -67,6 +75,20 @@ def test_env_config(runner: CliRunner, monkeypatch):
         # Try to set to invalid value
         res = runner.invoke(cli.set_env, ['blah'])
         assert 'Invalid value' in res.output
+
+
+def test_consent(runner: CliRunner, monkeypatch):
+    """Check the consent flow."""
+    monkeypatch.setattr('cli2.cache._cache_dir', lambda: 'workdir')
+    with runner.isolated_filesystem():
+        # User has not yet consented, so prompt for consent.
+        res = runner.invoke(cli.cidc, ['assays'], input='y')
+        assert consent.TERMS in res.output
+        assert consent.AGREEMENT in res.output
+
+        # User has now consented, so don't prompt.
+        res = runner.invoke(cli.cidc, ['assays'])
+        assert consent.TERMS not in res.output
 
 
 def test_assays_upload(runner: CliRunner, monkeypatch):
