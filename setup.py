@@ -12,7 +12,7 @@ with open("requirements.txt") as f:
 setup(
     name="cidc_cli",
     version="0.1.0",
-    packages=find_packages(exclude=(".tests")),
+    packages=find_packages(exclude=("tests")),
     entry_points={
         "console_scripts": [
             "cidc_cli = cli.interface.cli:main",
