@@ -11,7 +11,7 @@ Command line tool for interfacing with the CIDC workflow pipeline
 
 ### Install the CIDC-CLI
 ```bash
-pip3 install git+https://github.com/CIMAC-CIDC/cidc-cli
+pip3 install cidc-cli
 ```
 ### Run the CIDC-CLI
 

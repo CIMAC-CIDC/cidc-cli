@@ -4,3 +4,10 @@ install:
 script:
   # Only run the tests for the new CLI
   - pytest tests/cli2
+deploy:
+  provider: pypi
+  username: jlurye-ksg
+  password: $PYPI_PASSWORD
+  skip_existing: true
+  on:
+    branch: master
