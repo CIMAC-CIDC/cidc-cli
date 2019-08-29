@@ -37,6 +37,11 @@ def test_error_message_extractor():
     response = make_error_response(MSG)
     assert api._error_message(response) == MSG
 
+    # Error response without message
+    response = MagicMock()
+    response.json.side_effect = Exception()
+    response.status_code = 503
+    assert 'API server encountered an error' in api._error_message(response)
 
     MSG = ["first", "another"]
     response = make_error_response(MSG)
@@ -48,7 +53,7 @@ def test_error_message_extractor():
     response.json.side_effect = Exception()
     response.status_code = 503
     assert 'API server encountered an error' in api._error_message(response)
-    
+
     # Error response without proper json _error and 4xx code
     response = MagicMock()
     response.json.side_effect = Exception()
