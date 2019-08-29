@@ -16,7 +16,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     Orchestrator execution flow:
     1. Log in to gcloud. The CLI user must be authenticated with
        gcloud to be able to upload to GCS.
-    2. Make an initiate_upload request to the API. The API adds a
+    2. Make an initiate_assay_upload request to the API. The API adds a
        record to the database tracking that the CLI user started an
        upload job, grants the CLI user write permissions to the CIDC
        upload bucket in GCS, and returns information needed to
@@ -30,7 +30,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     # Read the .xlsx file and make the API call
     # that initiates the upload job and grants object-level GCS access.
     with open(xlsx_path, 'rb') as xlsx_file:
-        upload_info = api.initiate_upload(assay_type, xlsx_file)
+        upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
 
     try:
         # Log in to gcloud (required for gsutil to work)
@@ -39,10 +39,10 @@ def upload_assay(assay_type: str, xlsx_path: str):
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
-        api.job_failed(upload_info.job_id, upload_info.job_etag)
+        api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
         raise e
     else:
-        api.job_succeeded(upload_info.job_id, upload_info.job_etag)
+        api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):

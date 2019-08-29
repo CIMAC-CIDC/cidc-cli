@@ -135,7 +135,7 @@ def test_update_job_status(monkeypatch):
         return request
 
     monkeypatch.setattr('requests.patch', test_status('completed'))
-    api.job_succeeded(JOB_ID, JOB_ETAG)
+    api.assay_upload_succeeded(JOB_ID, JOB_ETAG)
 
     monkeypatch.setattr('requests.patch', test_status('errored'))
-    api.job_failed(JOB_ID, JOB_ETAG)
+    api.assay_upload_failed(JOB_ID, JOB_ETAG)

@@ -19,7 +19,13 @@ def _url(endpoint: str) -> str:
 
 
 def _error_message(response: requests.Response):
-    return response.json()['_error']['message']
+    try:
+        return response.json()['_error']['message']
+    except:
+        if response.status_code >= 500:
+            return "API server encountered an error processing your request"
+        else:
+            return response.status_code
 
 
 def _with_auth(headers: dict = None, id_token: str = None) -> dict:
@@ -63,7 +69,7 @@ class UploadInfo(NamedTuple):
     url_mapping: dict
 
 
-def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
+def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
     """
     Initiate an assay upload.
 
@@ -79,7 +85,7 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
 
     files = {'template': xlsx_file}
 
-    response = requests.post(_url('/ingestion/upload'),
+    response = requests.post(_url('/ingestion/upload_assay'),
                              headers=_with_auth(), data=data, files=files)
 
     if response.status_code != 200:
@@ -98,9 +104,9 @@ def initiate_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             "Cannot decode API response. You may need to update the CIDC CLI.")
 
 
-def _update_job_status(job_id: int, etag: str, status: str):
-    """Update the status for an existing upload job"""
-    url = _url(f'/upload_jobs/{job_id}')
+def _update_assay_upload_status(job_id: int, etag: str, status: str):
+    """Update the status for an existing assay upload job"""
+    url = _url(f'/assay_uploads/{job_id}')
     data = {'status': status}
     if_match = {'If-Match': etag}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
@@ -109,11 +115,11 @@ def _update_job_status(job_id: int, etag: str, status: str):
         raise ApiError(_error_message(response))
 
 
-def job_succeeded(job_id: int, etag: str):
-    """Tell the API that an upload job succeeded"""
-    _update_job_status(job_id, etag, 'completed')
+def assay_upload_succeeded(job_id: int, etag: str):
+    """Tell the API that an assay upload job succeeded"""
+    _update_assay_upload_status(job_id, etag, 'completed')
 
 
-def job_failed(job_id: int, etag: str):
-    """Tell the API that an upload job failed"""
-    _update_job_status(job_id, etag, 'errored')
+def assay_upload_failed(job_id: int, etag: str):
+    """Tell the API that an assay upload job failed"""
+    _update_assay_upload_status(job_id, etag, 'errored')

@@ -23,26 +23,30 @@ class UploadMocks:
         self.gcloud_login = MagicMock()
         monkeypatch.setattr("cli.gcloud.login", self.gcloud_login)
 
-        self.api_initiate_upload = MagicMock()
-        self.api_initiate_upload.return_value = api.UploadInfo(
+        self.api_initiate_assay_upload = MagicMock()
+        self.api_initiate_assay_upload.return_value = api.UploadInfo(
             JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING)
-        monkeypatch.setattr(api, "initiate_upload", self.api_initiate_upload)
+        monkeypatch.setattr(api, "initiate_assay_upload",
+                            self.api_initiate_assay_upload)
 
-        self.api_job_succeeded = MagicMock()
-        monkeypatch.setattr(api, "job_succeeded", self.api_job_succeeded)
+        self.assay_upload_succeeded = MagicMock()
+        monkeypatch.setattr(api, "assay_upload_succeeded",
+                            self.assay_upload_succeeded)
 
-        self.api_job_failed = MagicMock()
-        monkeypatch.setattr(api, "job_failed", self.api_job_failed)
+        self.assay_upload_failed = MagicMock()
+        monkeypatch.setattr(api, "assay_upload_failed",
+                            self.assay_upload_failed)
 
         monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
-        self.api_initiate_upload.assert_called_once()
+        self.api_initiate_assay_upload.assert_called_once()
         if failure:
-            self.api_job_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
+            self.assay_upload_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
         else:
-            self.api_job_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
+            self.assay_upload_succeeded.assert_called_once_with(
+                JOB_ID, JOB_ETAG)
 
 
 def run_isolated_upload(runner: CliRunner):
