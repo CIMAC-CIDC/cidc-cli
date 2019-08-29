@@ -26,7 +26,7 @@ def _error_message(response: requests.Response):
         if type(message) == dict and "errors" in message:
             return 'Multiple errors:\n  ' + '\n  '.join(map(str, message["errors"]))
         else:
-            return str(message) 
+            return str(message)
     except:
         return f"API server encountered an error processing your request {response.status_code}"
 
