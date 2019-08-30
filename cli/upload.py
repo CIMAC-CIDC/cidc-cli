@@ -32,6 +32,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     # Log in to gcloud (required for gsutil to work)
     gcloud.login()
 
+<<<<<<< HEAD
     try:
         # Read the .xlsx file and make the API call
         # that initiates the upload job and grants object-level GCS access.
@@ -40,14 +41,23 @@ def upload_assay(assay_type: str, xlsx_path: str):
 
     except (Exception, KeyboardInterrupt) as e:
         _handle_upload_exc(e)
+=======
+    # Log in to gcloud (required for gsutil to work)
+    gcloud.login()
+>>>>>>> Move gcloud.login outside the main try-except in upload_assay
 
     try:
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
+<<<<<<< HEAD
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a faild upload
+=======
+    except:
+>>>>>>> Move gcloud.login outside the main try-except in upload_assay
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
-        raise e
+        # print(e.__class__)
+        raise
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
         click.echo("Upload succeeded.")
