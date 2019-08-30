@@ -32,15 +32,16 @@ def upload_assay(assay_type: str, xlsx_path: str):
     with open(xlsx_path, 'rb') as xlsx_file:
         upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
 
-    try:
-        # Log in to gcloud (required for gsutil to work)
-        gcloud.login()
+    # Log in to gcloud (required for gsutil to work)
+    gcloud.login()
 
+    try:
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
-    except (Exception, KeyboardInterrupt) as e:
+    except:
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
-        raise e
+        # print(e.__class__)
+        raise
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
 
