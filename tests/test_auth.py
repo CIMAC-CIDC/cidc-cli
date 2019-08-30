@@ -44,6 +44,6 @@ def test_invalid_token_flow(monkeypatch, runner):
 
         # If a cached token is now invalid, the user should
         # be prompted to log in.
-        monkeypatch.setattr('cli2.cache.get', lambda key: 'blah')
+        monkeypatch.setattr('cli.cache.get', lambda key: 'blah')
         with pytest.raises(auth.AuthError, match='Please login'):
             auth.get_id_token()
