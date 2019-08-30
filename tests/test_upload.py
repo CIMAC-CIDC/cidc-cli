@@ -1,289 +1,132 @@
-#!/usr/bin/env python
-"""
-Tets for functions in upload.py
-"""
-__author__ = "Lloyd McCarthy"
-__license__ = "MIT"
+from .util import ExceptionCatchingThread
+from unittest.mock import MagicMock
 
-import os
-import unittest
-from unittest.mock import patch
+import pytest
+from click.testing import CliRunner
 
-from cli.upload.upload import (
-    RequestInfo,
-    parse_upload_manifest,
-    parse_upload_manifest2,
-    update_job_status,
-    upload_files,
-    find_manifest_path,
-    check_id_present,
-    guess_file_ext,
-    create_manifest_payload,
-    upload_manifest,
-)
-from cli.utilities.cli_utilities import Selections
+from cli import api
+from cli import upload
 
-from .helper_functions import mock_with_inputs
 
-NON_STATIC_INPUTS = {
-    "FASTQ_NORMAL_1",
-    "FASTQ_NORMAL_2",
-    "FASTQ_TUMOR_1",
-    "FASTQ_TUMOR_2",
+JOB_ID = 1
+JOB_ETAG = 'abcd'
+GCS_BUCKET = 'upload-bucket'
+URL_MAPPING = {
+    'local_path1.fastq.gz': 'gcs/path/1234/local_path1.fastq.gz',
+    'local_path2.fastq.gz': 'gcs/path/4321/local_path2.fastq.gz'
 }
-
-SELECTIONS = Selections(
-    "token",
-    {
-        "trial_name": "trial_1",
-        "_id": "abc123",
-        "samples": {
-            "CIMAC_P1_S1",
-            "CIMAC_P1_S2",
-            "CIMAC_P2_S1",
-            "CIMAC_P2_S2",
-            "CIMAC_P3_S1",
-            "CIMAC_P3_S2",
-        },
-    },
-    {"assay_name": "assay_1", "assay_id": "bca231"},
-)
+UPLOAD_WORKSPACE = 'workspace'
 
 
-class TestUploadFunctions(unittest.TestCase):
-    """Test class for the update job status function
+class UploadMocks:
+    def __init__(self, monkeypatch):
+        self.gcloud_login = MagicMock()
+        monkeypatch.setattr("cli.gcloud.login", self.gcloud_login)
 
-    Arguments:
-        unittest {[type]} -- [description]
+        self.api_initiate_upload = MagicMock()
+        self.api_initiate_upload.return_value = api.UploadInfo(
+            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING)
+        monkeypatch.setattr(api, "initiate_upload", self.api_initiate_upload)
+
+        self.api_job_succeeded = MagicMock()
+        monkeypatch.setattr(api, "job_succeeded", self.api_job_succeeded)
+
+        self.api_job_failed = MagicMock()
+        monkeypatch.setattr(api, "job_failed", self.api_job_failed)
+
+        monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
+
+    def assert_expected_calls(self, failure=False):
+        self.gcloud_login.assert_called_once()
+        self.api_initiate_upload.assert_called_once()
+        if failure:
+            self.api_job_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
+        else:
+            self.api_job_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
+
+
+def run_isolated_upload(runner: CliRunner):
+    """Run a test upload inside an isolated filesystem"""
+    with runner.isolated_filesystem():
+        run_upload(runner)
+
+
+def run_upload(runner: CliRunner):
+    """Run a test upload"""
+    files = ['wes.xlsx'] + list(URL_MAPPING.keys())
+    for fname in files:
+        with open(fname, 'wb') as f:
+            f.write(b'blah blah metadata')
+    upload.upload_assay('wes', 'wes.xlsx')
+
+
+def test_upload_assay_success(runner: CliRunner, monkeypatch):
     """
-
-    def test_update_job_status(self):
-        """
-        Test update_job_status
-        """
-        with patch(
-            "cli.upload.upload.EVE_FETCHER.patch", return_value={"status_code": 200}
-        ):
-            request_info = RequestInfo(
-                {"_id": "abcd123", "_etag": "etag"}, "token", {}, [{}]
-            )
-            with self.subTest():
-                self.assertTrue(update_job_status(True, request_info))
-            with self.subTest():
-                self.assertTrue(update_job_status(False, request_info))
-        with patch("cli.upload.upload.EVE_FETCHER.patch") as patch_mock:
-            with self.subTest():
-                patch_mock.side_effect = RuntimeError("Test Error")
-                self.assertFalse(update_job_status(True, request_info))
-
-    def test_upload_files(self):
-        """
-        Test upload_files
-        """
-        directory = "./sample_data/fake_manifest_wes/"
-        request_info = RequestInfo(
-            {"_id": "abcd123", "_etag": "etag"},
-            "token",
-            {"google_folder_path": "somepath"},
-            [
-                {
-                    "a": 1,
-                    "uuid_alias": "2145512",
-                    "file_name": "PD_010N.sorted.SNV_1.fq.gz",
-                },
-                {
-                    "b": 2,
-                    "uuid_alias": "2145513",
-                    "file_name": "PD_010N.sorted.SNV_2.fq.gz",
-                },
-                {
-                    "c": 3,
-                    "uuid_alias": "2145123",
-                    "file_name": "PD_010T.sorted.SNV_1.fq.gz",
-                },
-                {
-                    "d": 4,
-                    "uuid_alias": "455123",
-                    "file_name": "PD_010T.sorted.SNV_2.fq.gz",
-                },
-            ],
-        )
-        with patch("subprocess.check_output", return_value=""):
-            with patch("cli.upload.upload.update_job_status", return_value=True):
-                self.assertEqual(upload_files(
-                    directory, request_info), "abcd123")
-                found = [
-                    os.path.isfile(os.path.join(directory, item["file_name"]))
-                    for item in request_info.files_uploaded
-                ]
-                if not all(found):
-                    raise AssertionError("Files were renamed properly.")
-
-    def test_parse_upload_manifest(self):
-        """
-        Test for the parse_upload_manifest function.
-        """
-        with self.subTest():
-            results = parse_upload_manifest(
-                "./sample_data/testing_manifests/dfci_9999_manifest.csv"
-            )
-            self.assertEqual(len(results), 30)
-        with self.subTest():
-            results = parse_upload_manifest(
-                "./sample_data/testing_manifests/manifest.tsv"
-            )
-            self.assertEqual(len(results), 6)
-        with self.subTest():
-            with self.assertRaises(TypeError):
-                results = parse_upload_manifest(
-                    "./sample_data/testing_manifests/manifest.bad"
-                )
-        with self.subTest():
-            with self.assertRaises(IndexError):
-                results = parse_upload_manifest(
-                    "./sample_data/testing_manifests/manifest.extra_column.csv"
-                )
-
-    def test_guess_file_ext(self):
-        """
-        Test guess_file_ext
-        """
-        with self.subTest():
-            self.assertEqual(guess_file_ext("something.fa.gz"), "FASTQ")
-        with self.subTest():
-            self.assertEqual(guess_file_ext("something.fa"), "FASTQ")
-        with self.subTest():
-            self.assertIsNone(guess_file_ext("something.foo.bar"))
-
-    def test_upload_manifest(self):
-        """
-        Test upload_manifest.
-        """
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/fake_manifest_wes/manifest.csv",
-            ):
-                file_dir, ingestion_payload, file_names = upload_manifest(
-                    NON_STATIC_INPUTS, SELECTIONS
-                )
-                self.assertTrue(
-                    len(ingestion_payload["files"]) == 24
-                    and len(file_names) == 24
-                    and file_dir == "./sample_data/fake_manifest_wes"
-                )
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/testing_manifests/manifest.bad.sample_id",
-            ):
-                with self.assertRaises(RuntimeError):
-                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/testing_manifests/manifest.csv",
-            ):
-                with self.assertRaises(FileNotFoundError):
-                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
-
-    def test_upload_manifest2(self):
-        """
-        Test upload_manifest: redux
-        """
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/fake_manifest_wes/wes_template.xlsx",
-            ):
-                file_dir, ingestion_payload, file_names = upload_manifest(
-                    NON_STATIC_INPUTS, SELECTIONS
-                )
-                self.assertTrue(
-                    #len(ingestion_payload["files"]) == 24
-                    #and len(file_names) == 24
-                    file_dir == "./sample_data/fake_manifest_wes"
-                )
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/testing_manifests/manifest.bad.sample_id",
-            ):
-                with self.assertRaises(RuntimeError):
-                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
-        with self.subTest():
-            with patch(
-                "builtins.input",
-                return_value="./sample_data/testing_manifests/manifest.csv",
-            ):
-                with self.assertRaises(FileNotFoundError):
-                    upload_manifest(NON_STATIC_INPUTS, SELECTIONS)
-
-
-def test_find_manifest_path():
+    Check that a successful upload call follows the expected execution flow.
     """
-    Test find_manifest_path
+    mocks = UploadMocks(monkeypatch)
+
+    upload_success = MagicMock()
+    monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_success)
+
+    # Run a successful upload.
+    run_isolated_upload(runner)
+
+    upload_success.assert_called_once()
+    mocks.assert_expected_calls()
+
+
+def test_upload_assay_interrupt(runner: CliRunner, monkeypatch):
     """
-    with patch(
-        "builtins.input",
-        return_value="./sample_data/testing_manifests/dfci_9999_manifest.csv",
-    ):
-        if (
-            find_manifest_path()
-            != "./sample_data/testing_manifests/dfci_9999_manifest.csv"
-        ):
-            raise AssertionError("test_find_manifest_path: Assertion Failed")
-    if not mock_with_inputs(
-        ["foo", "./sample_data/testing_manifests/dfci_9999_manifest.csv"],
-        find_manifest_path,
-        [],
-    ):
-        raise AssertionError("test_find_manifest_path: Assertion Failed")
-
-
-def test_check_id_present():
+    Check that a KeyboardInterrupt-ed upload call alerts the API that the job errored.
     """
-    Test check_id_present
+    mocks = UploadMocks(monkeypatch)
+
+    # Simulate a keyboard interrupt
+    upload_failure = MagicMock()
+    upload_failure.side_effect = KeyboardInterrupt
+    monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_failure)
+
+    # Run an interrupted upload.
+    with pytest.raises(KeyboardInterrupt):
+        run_isolated_upload(runner)
+
+    mocks.assert_expected_calls(failure=True)
+
+
+def test_upload_assay_exception(runner: CliRunner, monkeypatch):
     """
-    if not check_id_present("A", ["A", "B", "C"]):
-        raise AssertionError("test_check_id_present: Assertion Failed")
-    if check_id_present("D", ["A", "B", "C"]):
-        raise AssertionError("test_check_id_present: Assertion Failed")
-
-
-def test_manifest_payload_migration():
+    Check that a failed upload call alerts the API that the job errored.
     """
-    Tests dropin replacement of "create_manifest_payload"
+    mocks = UploadMocks(monkeypatch)
+
+    # Simulate an exception
+    upload_failure = MagicMock()
+    upload_failure.side_effect = Exception("bad upload")
+    monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_failure)
+
+    with pytest.raises(Exception, match="bad upload"):
+        run_isolated_upload(runner)
+
+    mocks.assert_expected_calls(failure=True)
+
+
+def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
     """
-    tumor_normal_pairs1 = parse_upload_manifest(
-        "./sample_data/fake_manifest_wes/manifest.csv"
-    )
-    entry1 = tumor_normal_pairs1[0]
+    Check that two uploads can run simultaneously without the CLI encountering
+    errors. This is a smoketest, not a guarantee that the CLI robustly supports
+    concurrent uploads for different assays.
+    """
+    UploadMocks(monkeypatch)
 
-    tumor_normal_pairs2 = parse_upload_manifest2(
-        "./sample_data/fake_manifest_wes/wes_template.xlsx"
-    )
-    entry2 = tumor_normal_pairs2[0]
+    gsutil_command = MagicMock()
+    monkeypatch.setattr("subprocess.check_output", gsutil_command)
 
-    # assert equality
-    assert len(entry1) == len(entry2)
+    def do_upload():
+        run_upload(runner)
 
-    # next function using old way
-    payload1, file_names1 = create_manifest_payload(
-        entry1,
-        NON_STATIC_INPUTS,
-        SELECTIONS,
-        os.path.dirname("./sample_data/fake_manifest_wes/"),
-    )
-    if len(file_names1) != 4 or len(payload1) != 4:
-        raise AssertionError("test_create_manifest_payload: Assertion Failed")
-
-    # new function
-    payload2, file_names2 = create_manifest_payload(
-        entry2,
-        NON_STATIC_INPUTS,
-        SELECTIONS,
-        os.path.dirname("./sample_data/fake_manifest_wes/"),
-    )
-    if len(file_names2) != 4 or len(payload2) != 4:
-        raise AssertionError("test_create_manifest_payload: Assertion Failed")
+    with runner.isolated_filesystem():
+        t1 = ExceptionCatchingThread(do_upload)
+        t2 = ExceptionCatchingThread(do_upload)
+        t1.start(), t2.start()
+        t1.join(), t2.join()

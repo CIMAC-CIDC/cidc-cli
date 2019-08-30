@@ -1,7 +1,0 @@
-#CIMAC_SAMPLE_ID~TRIAL_ID~CIMAC_PATIENT_ID~TIMEPOINT~TIMEPOINT_UNIT~FASTQ_NORMAL_1~FASTQ_NORMAL_2~FASTQ_TUMOR_1~FASTQ_TUMOR_2~BATCH_ID~INSTRUMENT_MODEL~READ_LENGTH~AVG_INSERT_SIZE
-CIMAC_P1_S1~DFCI_9999~CIMAC_P1~15~days~PD_010N.sorted.SNV_1.fq.gz~PD_010N.sorted.SNV_2.fq.gz~PD_010T.sorted.SNV_1.fq.gz~PD_010T.sorted.SNV_2.fq.gz~1~Illumina HiSeq 2000~100~222
-CIMAC_P1_S2~DFCI_9999~CIMAC_P1~30~days~PD_011N.sorted.SNV_1.fq.gz~PD_011N.sorted.SNV_2.fq.gz~PD_011T.sorted.SNV_1.fq.gz~PD_011T.sorted.SNV_2.fq.gz~1~Illumina HiSeq 2000~100~222
-CIMAC_P2_S1~DFCI_9999~CIMAC_P2~15~days~PD_013N.sorted.SNV_1.fq.gz~PD_013N.sorted.SNV_2.fq.gz~PD_013T.sorted.SNV_1.fq.gz~PD_013T.sorted.SNV_2.fq.gz~2~Illumina HiSeq 2000~100~222
-CIMAC_P2_S2~DFCI_9999~CIMAC_P2~30~days~PD_015N.sorted.SNV_1.fq.gz~PD_015N.sorted.SNV_2.fq.gz~PD_015T.sorted.SNV_1.fq.gz~PD_015T.sorted.SNV_2.fq.gz~2~Illumina HiSeq 2000~100~222
-CIMAC_P3_S1~DFCI_9999~CIMAC_P3~15~days~PD_019N.sorted.SNV_1.fq.gz~PD_019N.sorted.SNV_2.fq.gz~PD_019T.sorted.SNV_1.fq.gz~PD_019T.sorted.SNV_2.fq.gz~1~Illumina HiSeq 2000~100~222
-CIMAC_P3_S2~DFCI_9999~CIMAC_P3~30~days~PD_021N.sorted.SNV_1.fq.gz~PD_021N.sorted.SNV_2.fq.gz~PD_021T.sorted.SNV_1.fq.gz~PD_021T.sorted.SNV_2.fq.gz~1~Illumina HiSeq 2000~100~222

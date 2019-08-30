@@ -3,7 +3,7 @@ from io import BytesIO
 import pytest
 from unittest.mock import MagicMock
 
-from cli2 import api, config
+from cli import api, config
 
 
 def make_response(body={}) -> MagicMock:
@@ -52,7 +52,7 @@ def test_with_auth(monkeypatch):
     assert api._with_auth(id_token=TOKEN) == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS, id_token=TOKEN) == HEADERS
 
-    monkeypatch.setattr('cli2.auth.get_id_token', lambda: TOKEN)
+    monkeypatch.setattr('cli.auth.get_id_token', lambda: TOKEN)
     assert api._with_auth() == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS) == HEADERS
 
