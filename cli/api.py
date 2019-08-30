@@ -20,7 +20,10 @@ def _url(endpoint: str) -> str:
 
 def _error_message(response: requests.Response):
     try:
-        return response.json()['_error']['message']
+        message = response.json()['_error']['message']
+        if response.status_code >= 500:
+            message = f"API server error: {message}"
+        return message
     except:
         if response.status_code >= 500:
             return "API server encountered an error processing your request"
