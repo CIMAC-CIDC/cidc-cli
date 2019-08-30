@@ -4,6 +4,8 @@ import shutil
 import subprocess
 from datetime import datetime
 
+import click
+
 from . import api
 from . import gcloud
 from .config import UPLOAD_WORKSPACE
@@ -27,23 +29,23 @@ def upload_assay(assay_type: str, xlsx_path: str):
        Else, if the upload succeeds, alert the api that the job was 
        successful.
     """
-    # Read the .xlsx file and make the API call
-    # that initiates the upload job and grants object-level GCS access.
-    with open(xlsx_path, 'rb') as xlsx_file:
-        upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
-
     # Log in to gcloud (required for gsutil to work)
     gcloud.login()
 
     try:
+        # Read the .xlsx file and make the API call
+        # that initiates the upload job and grants object-level GCS access.
+        with open(xlsx_path, 'rb') as xlsx_file:
+            upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
+
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
-    except:
+    except (Exception, KeyboardInterrupt) as e:
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
-        # print(e.__class__)
-        raise
+        _handle_upload_exc(e)
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
+        click.echo("Upload succeeded.")
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -66,7 +68,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
         subprocess.check_output(gsutil_args)
     except (Exception, KeyboardInterrupt) as e:
         _cleanup_workspace(workspace)
-        raise e
+        _handle_upload_exc(e)
     else:
         _cleanup_workspace(workspace)
 
@@ -96,3 +98,10 @@ def _cleanup_workspace(workspace_dir: str):
     """Delete the upload workspace directory if it exists."""
     if os.path.exists(workspace_dir):
         shutil.rmtree(workspace_dir)
+
+
+def _handle_upload_exc(e: Exception):
+    """Handle an exception thrown during an upload attempt."""
+    if isinstance(e, KeyboardInterrupt):
+        raise KeyboardInterrupt(f"Upload canceled.")
+    raise type(e)(f"Upload failed: {e}") from e

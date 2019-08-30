@@ -134,3 +134,12 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
         t2 = ExceptionCatchingThread(do_upload)
         t1.start(), t2.start()
         t1.join(), t2.join()
+
+
+def test_handle_upload_exc():
+    """Check that exceptions are processed correctly"""
+    with pytest.raises(KeyboardInterrupt, match="Upload canceled"):
+        upload._handle_upload_exc(KeyboardInterrupt())
+
+    with pytest.raises(RuntimeError, match="failed: foo"):
+        upload._handle_upload_exc(RuntimeError("foo"))
