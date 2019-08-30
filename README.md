@@ -15,12 +15,7 @@ pip3 install cidc-cli
 ```
 ### Run the CIDC-CLI
 
-To display the help message for the new, non-interactive CLI, run:
+To display the help message for the CLI, run:
 ```bash
 cidc 
-```
-
-To run the old, interactive CLI, run:
-```bash
-cidc_cli
 ```

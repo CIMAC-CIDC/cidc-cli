@@ -11,12 +11,11 @@ with open("requirements.txt") as f:
 
 setup(
     name="cidc_cli",
-    version="0.1.1",
+    version="0.2.0",
     packages=find_packages(exclude=("tests")),
     entry_points={
         "console_scripts": [
-            "cidc_cli = cli.interface.cli:main",
-            "cidc = cli2.cli:cidc",
+            "cidc = cli.cli:cidc",
         ]
     },
     description='A command-line interface for interacting with the CIDC.',
