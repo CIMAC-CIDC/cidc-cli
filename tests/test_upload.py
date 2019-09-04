@@ -12,8 +12,8 @@ JOB_ID = 1
 JOB_ETAG = 'abcd'
 GCS_BUCKET = 'upload-bucket'
 URL_MAPPING = {
-    'local_path1.fastq.gz': 'gcs/path/1234/local_path1.fastq.gz',
-    'local_path2.fastq.gz': 'gcs/path/4321/local_path2.fastq.gz'
+    'local_path1.fastq.gz': 'gcs/path/1234/fastq/2019-09-04T18:59:45.224099',
+    'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
 }
 UPLOAD_WORKSPACE = 'workspace'
 
