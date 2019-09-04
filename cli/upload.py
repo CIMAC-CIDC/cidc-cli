@@ -4,6 +4,8 @@ import shutil
 import subprocess
 from datetime import datetime
 
+import click
+
 from . import api
 from . import gcloud
 from .config import UPLOAD_WORKSPACE
@@ -16,7 +18,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     Orchestrator execution flow:
     1. Log in to gcloud. The CLI user must be authenticated with
        gcloud to be able to upload to GCS.
-    2. Make an initiate_upload request to the API. The API adds a
+    2. Make an initiate_assay_upload request to the API. The API adds a
        record to the database tracking that the CLI user started an
        upload job, grants the CLI user write permissions to the CIDC
        upload bucket in GCS, and returns information needed to
@@ -27,22 +29,23 @@ def upload_assay(assay_type: str, xlsx_path: str):
        Else, if the upload succeeds, alert the api that the job was 
        successful.
     """
-    # Read the .xlsx file and make the API call
-    # that initiates the upload job and grants object-level GCS access.
-    with open(xlsx_path, 'rb') as xlsx_file:
-        upload_info = api.initiate_upload(assay_type, xlsx_file)
+    # Log in to gcloud (required for gsutil to work)
+    gcloud.login()
 
     try:
-        # Log in to gcloud (required for gsutil to work)
-        gcloud.login()
+        # Read the .xlsx file and make the API call
+        # that initiates the upload job and grants object-level GCS access.
+        with open(xlsx_path, 'rb') as xlsx_file:
+            upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
 
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
-        api.job_failed(upload_info.job_id, upload_info.job_etag)
-        raise e
+        api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
+        _handle_upload_exc(e)
     else:
-        api.job_succeeded(upload_info.job_id, upload_info.job_etag)
+        api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
+        click.echo("Upload succeeded.")
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -65,7 +68,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
         subprocess.check_output(gsutil_args)
     except (Exception, KeyboardInterrupt) as e:
         _cleanup_workspace(workspace)
-        raise e
+        _handle_upload_exc(e)
     else:
         _cleanup_workspace(workspace)
 
@@ -95,3 +98,10 @@ def _cleanup_workspace(workspace_dir: str):
     """Delete the upload workspace directory if it exists."""
     if os.path.exists(workspace_dir):
         shutil.rmtree(workspace_dir)
+
+
+def _handle_upload_exc(e: Exception):
+    """Handle an exception thrown during an upload attempt."""
+    if isinstance(e, KeyboardInterrupt):
+        raise KeyboardInterrupt(f"Upload canceled.")
+    raise type(e)(f"Upload failed: {e}") from e
