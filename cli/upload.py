@@ -80,7 +80,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
 def _get_workspace_path():
     """Generate a unique upload workspace path"""
-    return '%s.%s' % (UPLOAD_WORKSPACE, datetime.now())
+    return '%s.%s' % (UPLOAD_WORKSPACE, datetime.now().isoformat())
 
 
 def _populate_workspace(upload_info: api.UploadInfo, xlsx: str, workspace_dir: str):
@@ -91,11 +91,10 @@ def _populate_workspace(upload_info: api.UploadInfo, xlsx: str, workspace_dir: s
     us to upload all files in parallel using the "gsutil -m ...".
     """
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
-    for local_path, gcs_object in upload_info.url_mapping.items():
+    for local_path, gcs_uri in upload_info.url_mapping.items():
         source_path = os.path.join(xlsx_dir, local_path)
-        gcs_prefix = gcs_object.rstrip(local_path)
-        target_path = os.path.join(workspace_dir, gcs_prefix)
-        os.makedirs(target_path)
+        target_path = os.path.join(workspace_dir, gcs_uri)
+        os.makedirs(os.path.dirname(target_path))
         shutil.copy(source_path, target_path)
 
 
