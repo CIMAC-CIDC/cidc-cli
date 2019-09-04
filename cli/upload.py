@@ -38,11 +38,16 @@ def upload_assay(assay_type: str, xlsx_path: str):
         with open(xlsx_path, 'rb') as xlsx_file:
             upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
 
+    except (Exception, KeyboardInterrupt) as e:
+        _handle_upload_exc(e)
+
+    try:
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
+        # we need to notify api of a faild upload
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
-        _handle_upload_exc(e)
+        raise e
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
         click.echo("Upload succeeded.")

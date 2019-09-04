@@ -114,6 +114,22 @@ def test_upload_assay_exception(runner: CliRunner, monkeypatch):
 
     mocks.assert_expected_calls(failure=True)
 
+def test_upload_assay_api_initiate_exception(runner: CliRunner, monkeypatch):
+    """
+    Check that a failed upload call alerts the API that the job errored.
+    """
+    mocks = UploadMocks(monkeypatch)
+
+    # Simulate an exception
+    initiate_failure = MagicMock()
+    initiate_failure.side_effect = api.ApiError("bad upload")
+    monkeypatch.setattr(api, "initiate_assay_upload", initiate_failure)
+
+    with pytest.raises(Exception, match="bad upload"):
+        run_isolated_upload(runner)
+
+    mocks.gcloud_login.assert_called_once()
+
 
 def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
     """
