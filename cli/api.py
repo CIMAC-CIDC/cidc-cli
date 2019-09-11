@@ -23,12 +23,15 @@ def _error_message(response: requests.Response):
         message = response.json()['_error']['message']
         if response.status_code >= 500:
             message = f"API server error: {message}"
-        return message
+        if type(message) == dict and "errors" in message:
+            return 'Multiple errors:\n  ' + '\n  '.join(map(str, message["errors"]))
+        else:
+            return str(message) 
     except:
         if response.status_code >= 500:
             return "API server encountered an error processing your request"
         else:
-            return response.status_code
+            return str(response.status_code)
 
 
 def _with_auth(headers: dict = None, id_token: str = None) -> dict:
