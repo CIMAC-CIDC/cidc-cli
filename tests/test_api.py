@@ -2,19 +2,20 @@ from io import BytesIO
 
 import pytest
 from unittest.mock import MagicMock
+from typing import Union
 
 from cli import api, config
 
 
-def make_response(body={}) -> MagicMock:
+def make_json_response(body={}) -> MagicMock:
     response = MagicMock()
     response.json.return_value = body
     response.status_code = 200
     return response
 
 
-def make_error_response(msg: str, code: int = 400) -> MagicMock:
-    response = make_response({'_error': {'message': msg}})
+def make_error_response(msg: Union[str, list], code: int = 400) -> MagicMock:
+    response = make_json_response({'_error': {'message': msg}})
     response.status_code = code
     return response
 
@@ -36,10 +37,22 @@ def test_error_message_extractor():
     response = make_error_response(MSG)
     assert api._error_message(response) == MSG
 
-    # Error response without message
+
+    MSG = ["first", "another"]
+    response = make_error_response(MSG)
+    for m in MSG:
+        assert m in api._error_message(response)
+
+    # Error response without proper json _error message
     response = MagicMock()
     response.json.side_effect = Exception()
     response.status_code = 503
+    assert 'API server encountered an error' in api._error_message(response)
+    
+    # Error response without proper json _error and 4xx code
+    response = MagicMock()
+    response.json.side_effect = Exception()
+    response.status_code = 403
     assert 'API server encountered an error' in api._error_message(response)
 
 
@@ -78,14 +91,14 @@ def test_check_auth(monkeypatch):
         api.check_auth('foo_token')
 
     # Successful authorization
-    success = make_response()
+    success = make_json_response()
     patch_request('get', success, monkeypatch)
     assert api.check_auth('foo_token') is None
 
 
 def test_list_assays(monkeypatch):
     assays = ['wes', 'pbmc']
-    response = make_response(assays)
+    response = make_json_response(assays)
     patch_request('get', response, monkeypatch)
     assert api.list_assays() == assays
 
@@ -106,7 +119,7 @@ def test_initiate_assay_upload(monkeypatch):
     def good_request(url, headers, data, files):
         assert data.get('schema') == 'wes'
         assert files.get('template') == XLSX
-        return make_response({
+        return make_json_response({
             'job_id': JOB_ID,
             'job_etag': JOB_ETAG,
             'gcs_bucket': GCS_BUCKET,
@@ -122,7 +135,13 @@ def test_initiate_assay_upload(monkeypatch):
     with pytest.raises(api.ApiError, match=ERR):
         api.initiate_assay_upload(ASSAY, XLSX)
 
-    cant_decode = make_response({'foo': 'bar'})
+    BADLY_TYPED_ERR = [ERR]
+    bad_request = make_error_response(BADLY_TYPED_ERR, 400)
+    patch_request('post', bad_request, monkeypatch)
+    with pytest.raises(api.ApiError, match=ERR):
+        api.initiate_assay_upload(ASSAY, XLSX)
+
+    cant_decode = make_json_response({'foo': 'bar'})
     patch_request('post', cant_decode, monkeypatch)
     with pytest.raises(api.ApiError, match='Cannot decode API response'):
         api.initiate_assay_upload(ASSAY, XLSX)
@@ -137,7 +156,7 @@ def test_update_job_status(monkeypatch):
             assert url.endswith(str(JOB_ID))
             assert json == {'status': status}
             assert headers.get('If-Match') == JOB_ETAG
-            return make_response()
+            return make_json_response()
         return request
 
     monkeypatch.setattr('requests.patch', test_status('completed'))

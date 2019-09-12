@@ -28,10 +28,7 @@ def _error_message(response: requests.Response):
         else:
             return str(message) 
     except:
-        if response.status_code >= 500:
-            return "API server encountered an error processing your request"
-        else:
-            return str(response.status_code)
+        return f"API server encountered an error processing your request {response.status_code}"
 
 
 def _with_auth(headers: dict = None, id_token: str = None) -> dict:
