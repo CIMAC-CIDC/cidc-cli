@@ -1,12 +1,24 @@
 from click.testing import CliRunner
 
 from cli import cli, consent
+from functools import wraps
 
 
 def skip_consent(monkeypatch):
     monkeypatch.setattr('cli.consent.check_consent', lambda: True)
 
 
+def with_default_env(fn):
+    @wraps(fn)
+    def wrap(runner: CliRunner, *args, **kwds):
+        env = runner.invoke(cli.cidc, ['config', 'get-env'])
+        try:
+            return fn(runner, *args, **kwds)
+        finally:
+            runner.invoke(cli.cidc, ['config', 'set-env', env.output])
+
+
+@with_default_env
 def test_cidc_structure(runner: CliRunner, monkeypatch):
     """
     Check that the interface is wired up correctly, and that
@@ -30,6 +42,7 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
     assert "Usage: cidc login" in res.output
 
 
+@with_default_env
 def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
     """
     Check that running `cidc [subcommand]` without a gcloud installation prompts
@@ -46,6 +59,7 @@ def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
     assert_gcloud_message(runner.invoke(cli.cidc, ['login']))
 
 
+@with_default_env
 def test_assays_list(runner: CliRunner, monkeypatch):
     """
     Check that assay_list displays supported assays as expected.
@@ -56,6 +70,7 @@ def test_assays_list(runner: CliRunner, monkeypatch):
     assert '* pbmc' in res.output
 
 
+@with_default_env
 def test_env_config(runner: CliRunner, monkeypatch):
     """
     Test setting and getting the current environment.

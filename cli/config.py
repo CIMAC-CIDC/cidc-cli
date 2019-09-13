@@ -1,4 +1,5 @@
 import os
+from time import sleep
 from pathlib import Path
 
 from . import cache
@@ -22,6 +23,51 @@ def get_env():
     """Get the current CLI environment"""
     return cache.get(_ENV_KEY) or 'prod'
 
+_WARNING = '\n'.join([
+ '##      ##    ###    ########  ##    ## #### ##    ##  ######   ',
+ '##  ##  ##   ## ##   ##     ## ###   ##  ##  ###   ## ##    ##  ',
+ '##  ##  ##  ##   ##  ##     ## ####  ##  ##  ####  ## ##        ',
+ '##  ##  ## ##     ## ########  ## ## ##  ##  ## ## ## ##   #### ',
+ '##  ##  ## ######### ##   ##   ##  ####  ##  ##  #### ##    ##  ',
+ '##  ##  ## ##     ## ##    ##  ##   ###  ##  ##   ### ##    ##  ',
+ ' ###  ###  ##     ## ##     ## ##    ## #### ##    ##  ######   ',
+ ''
+])
+_STRIKE = '*'*64
+
+def check_env_warning(ignore_env):
+    """Get the current CLI environment"""
+    if get_env() != 'prod':
+    	print(_STRIKE)
+    	print(_WARNING)
+    	print(_STRIKE)
+    	print(f'You are using DEVELOPMENT environment ({get_env()}).')
+    	if ignore_env != None and ignore_env == get_env():
+	    	print(_STRIKE)
+	    	return
+
+    	print('If you are not sure what that means, stop now.')
+    	print(_STRIKE)
+    	sleep(1)
+    	reply = str(input('Proceed anyways (y/n): ')).lower().strip()
+    	print(_STRIKE)
+    	if reply != 'y':
+	    	q = ('Do you want to set default environment')
+    		reply = str(input(q + ' (y/n): ')).lower().strip()
+    		if reply == 'y':
+    			set_env('prod')
+		    	print(_STRIKE)
+		    	print('Environment set to default, you can retry now.')
+    		exit(0)
+
+    if ignore_env != None and ignore_env != get_env():
+    	print(_STRIKE)
+    	print(_WARNING)
+    	print(_STRIKE)
+    	print(f'You are using PRODUCTION environment, not {ignore_env}')
+    	print(f'Remove `--ignore {ignore_env}` and retry.')
+    	print(_STRIKE)
+    	exit(0)
 
 # Environment-specific config
 _current_env = get_env()
