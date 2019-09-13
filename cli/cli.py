@@ -22,7 +22,7 @@ def login(portal_token):
     click.echo("You are now logged in.")
 
 #### $ cidc config ####
-@click.group('config')
+@click.group('config', hidden=True)
 def config_():
     """Manage CLI configuration."""
 
@@ -40,15 +40,12 @@ def get_env():
     """Get the current CLI environment."""
     click.echo(config.get_env())
 
-#### $ cidc manifests ####
-@click.group()
-def manifests():
-    """Manage manifest data."""
-
 #### $ cidc assays ####
 @click.group()
-def assays():
+@click.option('-i', '--ignore', default=None, hidden=True)
+def assays(ignore):
     """Manage assay data."""
+    config.check_env_warning(ignore)
 
 #### $ cidc assays list ####
 @click.command("list")
@@ -71,7 +68,6 @@ def upload_assay(assay, xlsx):
 
 # Wire up the interface
 cidc.add_command(login)
-cidc.add_command(manifests)
 cidc.add_command(assays)
 cidc.add_command(config_)
 
