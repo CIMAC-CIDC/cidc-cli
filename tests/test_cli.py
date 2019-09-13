@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from cli import cli, consent
+from cli import cli, consent, config
 from functools import wraps
 
 
@@ -9,16 +9,19 @@ def skip_consent(monkeypatch):
 
 
 def with_default_env(fn):
+    """Ensures that a test run icurrent CLI config isn't overwritten by a test run"""
     @wraps(fn)
-    def wrap(runner: CliRunner, *args, **kwds):
-        env = runner.invoke(cli.cidc, ['config', 'get-env'])
+    def wrap(*args, **kwds):
+        prev_env = config.get_env()
+        config.set_env('prod')
         try:
-            return fn(runner, *args, **kwds)
+            return fn(*args, **kwds)
         finally:
-            runner.invoke(cli.cidc, ['config', 'set-env', env.output])
+            config.set_env(prev_env)
 
+    return wrap
+            
 
-@with_default_env
 def test_cidc_structure(runner: CliRunner, monkeypatch):
     """
     Check that the interface is wired up correctly, and that
@@ -28,9 +31,6 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
 
     res = runner.invoke(cli.cidc)
     assert "Usage: cidc" in res.output
-
-    res = runner.invoke(cli.cidc, ['manifests'])
-    assert "Usage: cidc manifests" in res.output
 
     res = runner.invoke(cli.cidc, ['assays'])
     assert "Usage: cidc assays" in res.output
@@ -42,7 +42,6 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
     assert "Usage: cidc login" in res.output
 
 
-@with_default_env
 def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
     """
     Check that running `cidc [subcommand]` without a gcloud installation prompts
@@ -54,7 +53,6 @@ def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
         assert 'requires an installation of the gcloud SDK' in res.output
 
     monkeypatch.setattr('shutil.which', lambda *args: False)
-    assert_gcloud_message(runner.invoke(cli.cidc, ['manifests']))
     assert_gcloud_message(runner.invoke(cli.cidc, ['assays']))
     assert_gcloud_message(runner.invoke(cli.cidc, ['login']))
 
@@ -70,7 +68,6 @@ def test_assays_list(runner: CliRunner, monkeypatch):
     assert '* pbmc' in res.output
 
 
-@with_default_env
 def test_env_config(runner: CliRunner, monkeypatch):
     """
     Test setting and getting the current environment.
