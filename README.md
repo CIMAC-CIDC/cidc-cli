@@ -19,3 +19,7 @@ To display the help message for the CLI, run:
 ```bash
 cidc 
 ```
+To authenticate with the CIDC API, run:
+```bash
+cidc login [token]
+```
