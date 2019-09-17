@@ -5,7 +5,7 @@
 
 ## CIDC-CLI
 
-Command line tool for interfacing with the CIDC workflow pipeline
+Command line tool for interfacing with the CIDC API.
 
 ## Setup
 
