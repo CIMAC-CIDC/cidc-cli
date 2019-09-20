@@ -120,9 +120,9 @@ def _update_assay_upload_status(job_id: int, etag: str, status: str):
 
 def assay_upload_succeeded(job_id: int, etag: str):
     """Tell the API that an assay upload job succeeded"""
-    _update_assay_upload_status(job_id, etag, 'completed')
+    _update_assay_upload_status(job_id, etag, 'upload-completed')
 
 
 def assay_upload_failed(job_id: int, etag: str):
     """Tell the API that an assay upload job failed"""
-    _update_assay_upload_status(job_id, etag, 'errored')
+    _update_assay_upload_status(job_id, etag, 'upload-failed')
