@@ -109,7 +109,7 @@ def _cleanup_workspace(workspace_dir: str):
         shutil.rmtree(workspace_dir)
 
 
-def _poll_for_upload_completion(job_id: int, timeout: int = 60):
+def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_test_impl=None):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
 
@@ -117,10 +117,15 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60):
 
     def did_timeout(): return datetime.now().timestamp() >= cutoff
 
+    if _did_timeout_test_impl:
+        did_timeout = _did_timeout_test_impl
+
     while not did_timeout():
         status = api.poll_upload_merge_status(job_id)
         if status.retry_in:
-            for _ in range(status.retry_in):
+            # Loop in one second increments, checking
+            # for a timeout on each iteration.
+            for _ in range(status.retry_in - 1):
                 if did_timeout():
                     break
                 click.echo(".", nl=False)
@@ -129,7 +134,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60):
             if 'complete' in status.status:
                 click.echo(click.style("✓", fg="green", bold=True))
                 click.echo(
-                    "Upload succeeeded. Visit the CIDC Portal "
+                    "Upload succeeded. Visit the CIDC Portal "
                     "file browser to view your upload.")
             else:
                 click.echo(click.style("✗", fg="red", bold=True))

@@ -1,12 +1,14 @@
-from .util import ExceptionCatchingThread
+import time
 from unittest.mock import MagicMock
 
 import pytest
+import click
 from click.testing import CliRunner
 
 from cli import api
 from cli import upload
 
+from .util import ExceptionCatchingThread
 
 JOB_ID = 1
 JOB_ETAG = 'abcd'
@@ -135,6 +137,77 @@ def test_upload_assay_api_initiate_exception(runner: CliRunner, monkeypatch):
         run_isolated_upload(runner)
 
     mocks.gcloud_login.assert_called_once()
+
+
+def test_poll_for_upload_completion(monkeypatch):
+    """
+    Check that the _poll_for_upload loop follows retry directions,
+    times out, succeeds, and fails as expected.
+    """
+    _timeout_check = 0
+
+    def get_did_timeout(n_tries=5):
+        global _timeout_check
+        _timeout_check = 0
+
+        def did_timeout():
+            global _timeout_check
+            if _timeout_check == n_tries:
+                return True
+            _timeout_check += 1
+            return False
+
+        return did_timeout
+
+    click_echo = MagicMock()
+    monkeypatch.setattr(click, "echo", click_echo)
+
+    def stdout():
+        print(click_echo.call_args_list)
+        stdout = '\n'.join([args[0][0]
+                            for args in click_echo.call_args_list if len(args[0])])
+        return stdout
+
+    job_id = 1
+
+    # Simulate a retry with timeout
+    retry_in = 2
+    retry_upload = MagicMock()
+    retry_upload.return_value = api.MergeStatus(None, None, retry_in)
+    monkeypatch.setattr(api, "poll_upload_merge_status", retry_upload)
+    sleep = MagicMock()
+    monkeypatch.setattr(time, 'sleep', sleep)
+    upload._poll_for_upload_completion(
+        job_id, _did_timeout_test_impl=get_did_timeout(4))
+    retry_upload.assert_called_with(job_id)
+    sleep.assert_called_with(1)
+    assert len(sleep.call_args_list) == retry_in
+    assert "timed out" in stdout()
+
+    click_echo.reset_mock()
+
+    # Simulate a success
+    completed = MagicMock()
+    completed.return_value = api.MergeStatus('upload-completed', None, None)
+    monkeypatch.setattr(api, "poll_upload_merge_status", completed)
+    upload._poll_for_upload_completion(
+        job_id, _did_timeout_test_impl=get_did_timeout(1))
+    completed.assert_called_once_with(job_id)
+    assert "succeeded" in stdout()
+
+    click_echo.reset_mock()
+
+    # Simulate a success
+    failed = MagicMock()
+    failed.return_value = api.MergeStatus(
+        'upload-failed', 'some error details', None)
+    monkeypatch.setattr(api, "poll_upload_merge_status", failed)
+    upload._poll_for_upload_completion(
+        job_id, _did_timeout_test_impl=get_did_timeout(1))
+    failed.assert_called_once_with(job_id)
+    failure_stdout = stdout()
+    assert "failed" in failure_stdout
+    assert "some error details" in failure_stdout
 
 
 def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
