@@ -159,7 +159,7 @@ def test_update_job_status(monkeypatch):
     def test_status(status):
         def request(url, json, headers):
             assert url.endswith(str(JOB_ID))
-            assert json == {'status': status}
+            assert json == {'id': JOB_ID, 'status': status}
             assert headers.get('If-Match') == JOB_ETAG
             return make_json_response()
         return request
@@ -169,3 +169,41 @@ def test_update_job_status(monkeypatch):
 
     monkeypatch.setattr('requests.patch', test_status('upload-failed'))
     api.assay_upload_failed(JOB_ID, JOB_ETAG)
+
+
+def test_poll_upload_merge_status(monkeypatch):
+    """Check that poll_upload_merge status handles various responses as expected"""
+    def not_found_get(*args, **kwargs):
+        return make_error_response("", code=404)
+
+    monkeypatch.setattr('requests.get', not_found_get)
+    with pytest.raises(api.ApiError):
+        api.poll_upload_merge_status(1)
+
+    def bad_response_get(*args, **kwargs):
+        return make_json_response({})
+
+    monkeypatch.setattr('requests.get', bad_response_get)
+    with pytest.raises(api.ApiError, match='unexpected upload status message'):
+        api.poll_upload_merge_status(1)
+
+    def good_retry_get(*args, **kwargs):
+        return make_json_response({'retry_in': 5})
+
+    monkeypatch.setattr('requests.get', good_retry_get)
+    upload_status = api.poll_upload_merge_status(1)
+    assert upload_status.retry_in == 5
+    assert upload_status.status is None
+    assert upload_status.status_details is None
+
+    status_res = {'status': 'merge-failed',
+                  'status_details': 'error message here'}
+
+    def good_status_get(*args, **kwargs):
+        return make_json_response(status_res)
+
+    monkeypatch.setattr('requests.get', good_status_get)
+    upload_status = api.poll_upload_merge_status(1)
+    assert upload_status.retry_in is None
+    assert upload_status.status == status_res['status']
+    assert upload_status.status_details == status_res['status_details']

@@ -37,6 +37,10 @@ class UploadMocks:
         monkeypatch.setattr(api, "assay_upload_failed",
                             self.assay_upload_failed)
 
+        self._poll_for_upload_completion = MagicMock()
+        monkeypatch.setattr(upload, "_poll_for_upload_completion",
+                            self._poll_for_upload_completion)
+
         monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
     def assert_expected_calls(self, failure=False):
@@ -47,6 +51,7 @@ class UploadMocks:
         else:
             self.assay_upload_succeeded.assert_called_once_with(
                 JOB_ID, JOB_ETAG)
+            self._poll_for_upload_completion.assert_called_once_with(JOB_ID)
 
 
 def run_isolated_upload(runner: CliRunner):
@@ -113,6 +118,7 @@ def test_upload_assay_exception(runner: CliRunner, monkeypatch):
         run_isolated_upload(runner)
 
     mocks.assert_expected_calls(failure=True)
+
 
 def test_upload_assay_api_initiate_exception(runner: CliRunner, monkeypatch):
     """

@@ -130,6 +130,7 @@ def assay_upload_failed(job_id: int, etag: str):
 
 class MergeStatus(NamedTuple):
     status: Optional[str]
+    status_details: Optional[str]
     retry_in: Optional[int]
 
 
@@ -144,10 +145,11 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
 
     merge_status = response.json()
     status = merge_status.get("status")
+    status_details = merge_status.get("status_details")
     retry_in = merge_status.get("retry_in")
 
     if not (status or retry_in):
         raise ApiError(
-            "The server responded with an unexpected message.")
+            "The server responded with an unexpected upload status message.")
 
-    return MergeStatus(status, retry_in)
+    return MergeStatus(status, status_details, retry_in)

@@ -109,15 +109,20 @@ def _cleanup_workspace(workspace_dir: str):
         shutil.rmtree(workspace_dir)
 
 
-def _poll_for_upload_completion(job_id: int, timeout: int = 120000):
+def _poll_for_upload_completion(job_id: int, timeout: int = 60):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
 
     cutoff = datetime.now().timestamp() + timeout
-    while datetime.now().timestamp() < cutoff:
+
+    def did_timeout(): return datetime.now().timestamp() >= cutoff
+
+    while not did_timeout():
         status = api.poll_upload_merge_status(job_id)
         if status.retry_in:
             for _ in range(status.retry_in):
+                if did_timeout():
+                    break
                 click.echo(".", nl=False)
                 time.sleep(1)
         elif status.status:
@@ -128,9 +133,17 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 120000):
                     "file browser to view your upload.")
             else:
                 click.echo(click.style("✗", fg="red", bold=True))
-                click.echo(
-                    "Upload failed. Please contact a CIDC administrator "
-                    "(cidc@jimmy.harvard.edu) for assistance.")
+                if status.status_details:
+                    click.echo(
+                        "Upload failed with the following message:")
+                    click.echo()
+                    click.echo(click.style(
+                        status.status_details, fg="red", bold=True))
+                    click.echo()
+                else:
+                    click.echo("Upload failed. ", nl=False)
+                click.echo("Please contact a CIDC administrator "
+                           "(cidc@jimmy.harvard.edu) if you need assistance.")
             return
         else:
             # we should never reach this code block
