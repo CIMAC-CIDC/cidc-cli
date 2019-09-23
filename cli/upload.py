@@ -55,7 +55,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
 
-    _poll_for_upload_completion()
+    _poll_for_upload_completion(upload_info.job_id)
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -109,13 +109,13 @@ def _cleanup_workspace(workspace_dir: str):
         shutil.rmtree(workspace_dir)
 
 
-def _poll_for_upload_completion(timeout: int = 120000):
+def _poll_for_upload_completion(job_id: int, timeout: int = 120000):
     """Repeatedly check if upload finalization either failed or succeed"""
-    click.echo("Finalizing upload")
+    click.echo("Finalizing upload", nl=False)
 
     cutoff = datetime.now().timestamp() + timeout
     while datetime.now().timestamp() < cutoff:
-        status = api.poll_upload_merge_status()
+        status = api.poll_upload_merge_status(job_id)
         if status.retry_in:
             for _ in range(status.retry_in):
                 click.echo(".", nl=False)
@@ -131,11 +131,15 @@ def _poll_for_upload_completion(timeout: int = 120000):
                 click.echo(
                     "Upload failed. Please contact a CIDC administrator "
                     "(cidc@jimmy.harvard.edu) for assistance.")
+            return
         else:
             # we should never reach this code block
             raise
 
     click.echo(click.style('!!!', fg="yellow", bold=True))
+    click.echo(
+        "Upload timed out. Please contact a CIDC administrator "
+        "(cidc@jimmy.harvard.edu) for assistance.")
 
 
 def _handle_upload_exc(e: Exception):

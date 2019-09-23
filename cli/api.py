@@ -110,7 +110,7 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
 def _update_assay_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing assay upload job"""
     url = _url(f'/assay_uploads/{job_id}')
-    data = {'status': status}
+    data = {'id': job_id, 'status': status}
     if_match = {'If-Match': etag}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
 
@@ -128,7 +128,7 @@ def assay_upload_failed(job_id: int, etag: str):
     _update_assay_upload_status(job_id, etag, 'upload-failed')
 
 
-class MergeStatus:
+class MergeStatus(NamedTuple):
     status: Optional[str]
     retry_in: Optional[int]
 
