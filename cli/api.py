@@ -126,3 +126,28 @@ def assay_upload_succeeded(job_id: int, etag: str):
 def assay_upload_failed(job_id: int, etag: str):
     """Tell the API that an assay upload job failed"""
     _update_assay_upload_status(job_id, etag, 'upload-failed')
+
+
+class MergeStatus:
+    status: Optional[str]
+    retry_in: Optional[int]
+
+
+def poll_upload_merge_status(job_id: int) -> MergeStatus:
+    """Check the merge status of an upload job"""
+    url = _url(f'/ingestion/poll_upload_merge_status')
+    params = dict(id=job_id)
+    response = requests.get(url, params=params, headers=_with_auth())
+
+    if response.status_code != 200:
+        raise ApiError(_error_message(response))
+
+    merge_status = response.json()
+    status = merge_status.get("status")
+    retry_in = merge_status.get("retry_in")
+
+    if not (status or retry_in):
+        raise ApiError(
+            "The server responded with an unexpected message.")
+
+    return MergeStatus(status, retry_in)
