@@ -173,6 +173,8 @@ def test_update_job_status(monkeypatch):
 
 def test_poll_upload_merge_status(monkeypatch):
     """Check that poll_upload_merge status handles various responses as expected"""
+    monkeypatch.setattr(api, '_with_auth', lambda: {})
+
     def not_found_get(*args, **kwargs):
         return make_error_response("", code=404)
 
