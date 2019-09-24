@@ -110,7 +110,7 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
 def _update_assay_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing assay upload job"""
     url = _url(f'/assay_uploads/{job_id}')
-    data = {'id': job_id, 'status': status}
+    data = {'status': status}
     if_match = {'If-Match': etag}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
 

@@ -159,7 +159,7 @@ def test_update_job_status(monkeypatch):
     def test_status(status):
         def request(url, json, headers):
             assert url.endswith(str(JOB_ID))
-            assert json == {'id': JOB_ID, 'status': status}
+            assert json == {'status': status}
             assert headers.get('If-Match') == JOB_ETAG
             return make_json_response()
         return request
