@@ -26,7 +26,7 @@ def _error_message(response: requests.Response):
         if type(message) == dict and "errors" in message:
             return 'Multiple errors:\n  ' + '\n  '.join(map(str, message["errors"]))
         else:
-            return str(message) 
+            return str(message)
     except:
         return f"API server encountered an error processing your request {response.status_code}"
 
@@ -120,9 +120,36 @@ def _update_assay_upload_status(job_id: int, etag: str, status: str):
 
 def assay_upload_succeeded(job_id: int, etag: str):
     """Tell the API that an assay upload job succeeded"""
-    _update_assay_upload_status(job_id, etag, 'completed')
+    _update_assay_upload_status(job_id, etag, 'upload-completed')
 
 
 def assay_upload_failed(job_id: int, etag: str):
     """Tell the API that an assay upload job failed"""
-    _update_assay_upload_status(job_id, etag, 'errored')
+    _update_assay_upload_status(job_id, etag, 'upload-failed')
+
+
+class MergeStatus(NamedTuple):
+    status: Optional[str]
+    status_details: Optional[str]
+    retry_in: Optional[int]
+
+
+def poll_upload_merge_status(job_id: int) -> MergeStatus:
+    """Check the merge status of an upload job"""
+    url = _url(f'/ingestion/poll_upload_merge_status')
+    params = dict(id=job_id)
+    response = requests.get(url, params=params, headers=_with_auth())
+
+    if response.status_code != 200:
+        raise ApiError(_error_message(response))
+
+    merge_status = response.json()
+    status = merge_status.get("status")
+    status_details = merge_status.get("status_details")
+    retry_in = merge_status.get("retry_in")
+
+    if not (status or retry_in):
+        raise ApiError(
+            "The server responded with an unexpected upload status message.")
+
+    return MergeStatus(status, status_details, retry_in)

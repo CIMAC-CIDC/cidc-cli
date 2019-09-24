@@ -37,6 +37,11 @@ def test_error_message_extractor():
     response = make_error_response(MSG)
     assert api._error_message(response) == MSG
 
+    # Error response without message
+    response = MagicMock()
+    response.json.side_effect = Exception()
+    response.status_code = 503
+    assert 'API server encountered an error' in api._error_message(response)
 
     MSG = ["first", "another"]
     response = make_error_response(MSG)
@@ -48,7 +53,7 @@ def test_error_message_extractor():
     response.json.side_effect = Exception()
     response.status_code = 503
     assert 'API server encountered an error' in api._error_message(response)
-    
+
     # Error response without proper json _error and 4xx code
     response = MagicMock()
     response.json.side_effect = Exception()
@@ -159,8 +164,48 @@ def test_update_job_status(monkeypatch):
             return make_json_response()
         return request
 
-    monkeypatch.setattr('requests.patch', test_status('completed'))
+    monkeypatch.setattr('requests.patch', test_status('upload-completed'))
     api.assay_upload_succeeded(JOB_ID, JOB_ETAG)
 
-    monkeypatch.setattr('requests.patch', test_status('errored'))
+    monkeypatch.setattr('requests.patch', test_status('upload-failed'))
     api.assay_upload_failed(JOB_ID, JOB_ETAG)
+
+
+def test_poll_upload_merge_status(monkeypatch):
+    """Check that poll_upload_merge status handles various responses as expected"""
+    monkeypatch.setattr(api, '_with_auth', lambda: {})
+
+    def not_found_get(*args, **kwargs):
+        return make_error_response("", code=404)
+
+    monkeypatch.setattr('requests.get', not_found_get)
+    with pytest.raises(api.ApiError):
+        api.poll_upload_merge_status(1)
+
+    def bad_response_get(*args, **kwargs):
+        return make_json_response({})
+
+    monkeypatch.setattr('requests.get', bad_response_get)
+    with pytest.raises(api.ApiError, match='unexpected upload status message'):
+        api.poll_upload_merge_status(1)
+
+    def good_retry_get(*args, **kwargs):
+        return make_json_response({'retry_in': 5})
+
+    monkeypatch.setattr('requests.get', good_retry_get)
+    upload_status = api.poll_upload_merge_status(1)
+    assert upload_status.retry_in == 5
+    assert upload_status.status is None
+    assert upload_status.status_details is None
+
+    status_res = {'status': 'merge-failed',
+                  'status_details': 'error message here'}
+
+    def good_status_get(*args, **kwargs):
+        return make_json_response(status_res)
+
+    monkeypatch.setattr('requests.get', good_status_get)
+    upload_status = api.poll_upload_merge_status(1)
+    assert upload_status.retry_in is None
+    assert upload_status.status == status_res['status']
+    assert upload_status.status_details == status_res['status_details']

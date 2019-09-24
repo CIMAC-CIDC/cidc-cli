@@ -1,5 +1,6 @@
 """Upload local files to CIDC's upload bucket"""
 import os
+import time
 import shutil
 import subprocess
 from datetime import datetime
@@ -25,8 +26,8 @@ def upload_assay(assay_type: str, xlsx_path: str):
        carry out the gsutil upload (like a mapping from local file paths
        to GCS URIs).
     3. Carry out the gsutil upload using the returned upload info.
-    4. If the gsutil upload fails, alert the api that the job failed. 
-       Else, if the upload succeeds, alert the api that the job was 
+    4. If the gsutil upload fails, alert the api that the job failed.
+       Else, if the upload succeeds, alert the api that the job was
        successful.
     """
     # Log in to gcloud (required for gsutil to work)
@@ -47,10 +48,14 @@ def upload_assay(assay_type: str, xlsx_path: str):
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a faild upload
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
-        raise e
+        _handle_upload_exc(e)
+        # _handle_upload_exc should raise, but raise for good measure
+        # to guarantee execution stops here
+        raise
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
-        click.echo("Upload succeeded.")
+
+    _poll_for_upload_completion(upload_info.job_id)
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -102,6 +107,59 @@ def _cleanup_workspace(workspace_dir: str):
     """Delete the upload workspace directory if it exists."""
     if os.path.exists(workspace_dir):
         shutil.rmtree(workspace_dir)
+
+
+def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_test_impl=None):
+    """Repeatedly check if upload finalization either failed or succeed"""
+    click.echo("Finalizing upload", nl=False)
+
+    cutoff = datetime.now().timestamp() + timeout
+
+    did_timeout = _did_timeout_test_impl or (
+        lambda: datetime.now().timestamp() >= cutoff)
+
+    debug_info_message = f"Please include this info in your inquiry: (job_id={job_id})"
+
+    while not did_timeout():
+        status = api.poll_upload_merge_status(job_id)
+        if status.retry_in:
+            # Loop in one second increments, checking
+            # for a timeout on each iteration.
+            for _ in range(status.retry_in - 1):
+                if did_timeout():
+                    break
+                click.echo(".", nl=False)
+                time.sleep(1)
+        elif status.status:
+            if 'merge-completed' == status.status:
+                click.echo(click.style("✓", fg="green", bold=True))
+                click.echo(
+                    "Upload succeeded. Visit the CIDC Portal "
+                    "file browser to view your upload.")
+            else:
+                click.echo(click.style("✗", fg="red", bold=True))
+                if status.status_details:
+                    click.echo(
+                        "Upload failed with the following message:")
+                    click.echo()
+                    click.echo(click.style(
+                        status.status_details, fg="red", bold=True))
+                    click.echo()
+                else:
+                    click.echo("Upload failed. ", nl=False)
+                click.echo("Please contact a CIDC administrator "
+                           "(cidc@jimmy.harvard.edu) if you need assistance.")
+                click.echo(debug_info_message)
+            return
+        else:
+            # we should never reach this code block
+            raise
+
+    click.echo(click.style('!!!', fg="yellow", bold=True))
+    click.echo(
+        "Upload timed out. Please contact a CIDC administrator "
+        "(cidc@jimmy.harvard.edu) for assistance.")
+    click.echo(debug_info_message)
 
 
 def _handle_upload_exc(e: Exception):
