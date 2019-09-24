@@ -115,7 +115,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
 
     cutoff = datetime.now().timestamp() + timeout
 
-    def did_timeout(): return datetime.now().timestamp() >= cutoff
+   did_timeout = _did_timeout_test_impl or lambda: datetime.now().timestamp() >= cutoff
 
     if _did_timeout_test_impl:
         did_timeout = _did_timeout_test_impl
