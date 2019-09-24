@@ -188,7 +188,7 @@ def test_poll_for_upload_completion(monkeypatch):
 
     # Simulate a success
     completed = MagicMock()
-    completed.return_value = api.MergeStatus('upload-completed', None, None)
+    completed.return_value = api.MergeStatus('merge-completed', None, None)
     monkeypatch.setattr(api, "poll_upload_merge_status", completed)
     upload._poll_for_upload_completion(
         job_id, _did_timeout_test_impl=get_did_timeout(1))

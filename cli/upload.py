@@ -120,6 +120,8 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
     if _did_timeout_test_impl:
         did_timeout = _did_timeout_test_impl
 
+    debug_info_message = f"Please include this info in your inquiry: (job_id={job_id})"
+
     while not did_timeout():
         status = api.poll_upload_merge_status(job_id)
         if status.retry_in:
@@ -131,7 +133,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
                 click.echo(".", nl=False)
                 time.sleep(1)
         elif status.status:
-            if 'complete' in status.status:
+            if 'merge-completed' in status.status:
                 click.echo(click.style("✓", fg="green", bold=True))
                 click.echo(
                     "Upload succeeded. Visit the CIDC Portal "
@@ -149,6 +151,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
                     click.echo("Upload failed. ", nl=False)
                 click.echo("Please contact a CIDC administrator "
                            "(cidc@jimmy.harvard.edu) if you need assistance.")
+                click.echo(debug_info_message)
             return
         else:
             # we should never reach this code block
@@ -158,6 +161,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
     click.echo(
         "Upload timed out. Please contact a CIDC administrator "
         "(cidc@jimmy.harvard.edu) for assistance.")
+    click.echo(debug_info_message)
 
 
 def _handle_upload_exc(e: Exception):
