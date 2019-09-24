@@ -118,9 +118,6 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
     did_timeout = _did_timeout_test_impl or (
         lambda: datetime.now().timestamp() >= cutoff)
 
-    if _did_timeout_test_impl:
-        did_timeout = _did_timeout_test_impl
-
     debug_info_message = f"Please include this info in your inquiry: (job_id={job_id})"
 
     while not did_timeout():
@@ -134,7 +131,7 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_tes
                 click.echo(".", nl=False)
                 time.sleep(1)
         elif status.status:
-            if 'merge-completed' in status.status:
+            if 'merge-completed' == status.status:
                 click.echo(click.style("✓", fg="green", bold=True))
                 click.echo(
                     "Upload succeeded. Visit the CIDC Portal "
