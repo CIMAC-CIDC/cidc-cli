@@ -109,7 +109,7 @@ def _cleanup_workspace(workspace_dir: str):
         shutil.rmtree(workspace_dir)
 
 
-def _poll_for_upload_completion(job_id: int, timeout: int = 60, _did_timeout_test_impl=None):
+def _poll_for_upload_completion(job_id: int, timeout: int = 120, _did_timeout_test_impl=None):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
 
