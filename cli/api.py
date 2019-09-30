@@ -125,6 +125,11 @@ def assay_upload_succeeded(job_id: int, etag: str):
     _update_assay_upload_status(job_id, etag, 'upload-completed')
 
 
+def assay_with_metadata_upload_succeeded(job_id: int, etag: str, extra_metadata: dict):
+    """Tell the API that an assay with extra metadata upload job succeeded"""
+    _update_assay_upload_status(job_id, etag, extra_metadata, 'upload-completed')
+
+
 def assay_upload_failed(job_id: int, etag: str):
     """Tell the API that an assay upload job failed"""
     _update_assay_upload_status(job_id, etag, 'upload-failed')

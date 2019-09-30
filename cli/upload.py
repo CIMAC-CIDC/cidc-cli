@@ -54,6 +54,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
         raise
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
+        api.assay_with_metadata_upload_succeeded(upload_info.job_id, upload_info.job_etag, upload_info.extra_metadata)
 
     _poll_for_upload_completion(upload_info.job_id)
 
