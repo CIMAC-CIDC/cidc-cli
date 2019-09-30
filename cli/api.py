@@ -70,7 +70,7 @@ class UploadInfo(NamedTuple):
     job_etag: str
     gcs_bucket: str
     url_mapping: dict
-    extra_metadata: dict
+    extra_metadata: list
 
 
 def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
@@ -101,7 +101,7 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             upload_info['job_id'],
             upload_info['job_etag'],
             upload_info['gcs_bucket'],
-            upload_info['url_mapping']
+            upload_info['url_mapping'],
             upload_info['extra_metadata']
         )
     except:
@@ -109,11 +109,12 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             "Cannot decode API response. You may need to update the CIDC CLI.")
 
 
-def _update_assay_upload_status(job_id: int, etag: str, status: str):
+def _update_assay_upload_status(job_id: int, etag: str, extra_metadata: list, status: str):
     """Update the status for an existing assay upload job"""
     url = _url(f'/assay_uploads/{job_id}')
     data = {'status': status}
     if_match = {'If-Match': etag}
+    extra_metadata = {'extra_metadata': extra_metadata}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
 
     if response.status_code != 200:
@@ -125,7 +126,7 @@ def assay_upload_succeeded(job_id: int, etag: str):
     _update_assay_upload_status(job_id, etag, 'upload-completed')
 
 
-def assay_with_metadata_upload_succeeded(job_id: int, etag: str, extra_metadata: dict):
+def assay_with_metadata_upload_succeeded(job_id: int, etag: str, extra_metadata: list):
     """Tell the API that an assay with extra metadata upload job succeeded"""
     _update_assay_upload_status(job_id, etag, extra_metadata, 'upload-completed')
 

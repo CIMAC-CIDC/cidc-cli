@@ -18,7 +18,7 @@ URL_MAPPING = {
     'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
 }
 UPLOAD_WORKSPACE = 'workspace'
-
+EXTRA_METADATA = [1, 2]
 
 class UploadMocks:
     def __init__(self, monkeypatch):
@@ -27,7 +27,7 @@ class UploadMocks:
 
         self.api_initiate_assay_upload = MagicMock()
         self.api_initiate_assay_upload.return_value = api.UploadInfo(
-            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING)
+            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA)
         monkeypatch.setattr(api, "initiate_assay_upload",
                             self.api_initiate_assay_upload)
 
