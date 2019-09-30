@@ -70,6 +70,7 @@ class UploadInfo(NamedTuple):
     job_etag: str
     gcs_bucket: str
     url_mapping: dict
+    extra_metadata: dict
 
 
 def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
@@ -101,6 +102,7 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             upload_info['job_etag'],
             upload_info['gcs_bucket'],
             upload_info['url_mapping']
+            upload_info['extra_metadata']
         )
     except:
         raise ApiError(

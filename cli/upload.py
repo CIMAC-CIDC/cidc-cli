@@ -46,7 +46,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
-        # we need to notify api of a faild upload
+        # we need to notify api of a failed upload
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
         _handle_upload_exc(e)
         # _handle_upload_exc should raise, but raise for good measure
