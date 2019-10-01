@@ -45,6 +45,8 @@ class UploadMocks:
 
         monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
+        monkeypatch.setattr("cli.api.assay_with_metadata_upload_succeeded", lambda: 'test-token')
+
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
         self.api_initiate_assay_upload.assert_called_once()
@@ -220,6 +222,8 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
 
     gsutil_command = MagicMock()
     monkeypatch.setattr("subprocess.check_output", gsutil_command)
+
+    monkeypatch.setattr("cli.auth.get_id_token", lambda: "test-token")
 
     def do_upload():
         run_upload(runner)
