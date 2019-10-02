@@ -118,7 +118,8 @@ def test_initiate_assay_upload(monkeypatch):
     XLSX = BytesIO(b'abcd')
     GCS_BUCKET = 'bucket'
     URL_MAPPING = {'foo': 'bar'}
-    EXTRA_METADATA = [1,2]
+    EXTRA_METADATA = {'uuid': 'lp1'}
+
 
     monkeypatch.setattr(api, '_with_auth', lambda: {})
 
@@ -163,12 +164,11 @@ def test_update_job_status(monkeypatch):
             assert url.endswith(str(JOB_ID))
             assert json == {'status': status}
             assert headers.get('If-Match') == JOB_ETAG
-            assert json == {'extra_metadata': EXTRA_METADATA}
             return make_json_response()
         return request
 
     monkeypatch.setattr('requests.patch', test_status('upload-completed'))
-    api.assay_upload_succeeded(JOB_ID, JOB_ETAG, EXTRA_METADATA)
+    api.assay_upload_succeeded(JOB_ID, JOB_ETAG)
 
     monkeypatch.setattr('requests.patch', test_status('upload-failed'))
     api.assay_upload_failed(JOB_ID, JOB_ETAG)

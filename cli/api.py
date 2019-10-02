@@ -1,5 +1,5 @@
 """Implements a client for the CIDC API running on Google App Engine"""
-from typing import Optional, List, BinaryIO, NamedTuple
+from typing import Optional, List, BinaryIO, NamedTuple, Dict
 
 import click
 import requests
@@ -109,12 +109,11 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             "Cannot decode API response. You may need to update the CIDC CLI.")
 
 
-def _update_assay_upload_status(job_id: int, etag: str, extra_metadata: list, status: str):
+def _update_assay_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing assay upload job"""
     url = _url(f'/assay_uploads/{job_id}')
     data = {'status': status}
     if_match = {'If-Match': etag}
-    extra_metadata = {'extra_metadata': extra_metadata}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
 
     if response.status_code != 200:
@@ -126,10 +125,15 @@ def assay_upload_succeeded(job_id: int, etag: str):
     _update_assay_upload_status(job_id, etag, 'upload-completed')
 
 
-def assay_with_metadata_upload_succeeded(job_id: int, etag: str, extra_metadata: list):
-    """Tell the API that an assay with extra metadata upload job succeeded"""
-    _update_assay_upload_status(job_id, etag, extra_metadata, 'upload-completed')
+def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
+    """Insert extra metadata into the patch for the given job"""
+    data = {'job_id': job_id}
 
+    response = requests.post(_url('/ingestion/extra-assay-metadata'),
+                             headers=_with_auth(), data=data, files=extra_metadata)
+
+    if response.status_code != 200:
+        raise ApiError(_error_message(response))
 
 
 def assay_upload_failed(job_id: int, etag: str):

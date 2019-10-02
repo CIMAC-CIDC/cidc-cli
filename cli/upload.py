@@ -3,7 +3,9 @@ import os
 import time
 import shutil
 import subprocess
+from contextlib import contextmanager
 from datetime import datetime
+from typing import Dict, BinaryIO
 
 import click
 
@@ -45,6 +47,12 @@ def upload_assay(assay_type: str, xlsx_path: str):
     try:
         # Actually upload the assay
         _gsutil_assay_upload(upload_info, xlsx_path)
+
+        # Insert extra metadata for the upload, if any
+        if upload_info.extra_metadata:
+            with _open_file_mapping(upload_info.extra_metadata) as open_files:
+                api.insert_extra_metadata(upload_info.job_id, open_files)
+
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
         api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
@@ -54,9 +62,25 @@ def upload_assay(assay_type: str, xlsx_path: str):
         raise
     else:
         api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
-        api.assay_with_metadata_upload_succeeded(upload_info.job_id, upload_info.job_etag, upload_info.extra_metadata)
 
     _poll_for_upload_completion(upload_info.job_id)
+
+@contextmanager
+def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
+    """
+    Given a dictionary mapping local paths to artifact uuids, return
+    a dictionary mapping artifact uuids to open files.
+    """
+    open_files = {}
+    for local_path, uuid in extra_metadata.items():
+        open_files[uuid] = open(local_path, 'rb')
+    try:
+        yield open_files
+    except:
+        raise
+    finally:
+        for f in open_files.values():
+            f.close()
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):

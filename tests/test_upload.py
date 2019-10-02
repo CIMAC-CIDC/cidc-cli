@@ -18,7 +18,7 @@ URL_MAPPING = {
     'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
 }
 UPLOAD_WORKSPACE = 'workspace'
-EXTRA_METADATA = [1, 2]
+EXTRA_METADATA = {'lp1': 'uuid1'}
 
 class UploadMocks:
     def __init__(self, monkeypatch):
@@ -45,7 +45,11 @@ class UploadMocks:
 
         monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
-        monkeypatch.setattr("cli.api.assay_with_metadata_upload_succeeded", lambda: 'test-token')
+        self._open_file_mapping = MagicMock()
+        monkeypatch.setattr(upload, '_open_file_mapping', self._open_file_mapping)
+
+        self.insert_extra_metadata = MagicMock()
+        monkeypatch.setattr("cli.api.insert_extra_metadata", self.insert_extra_metadata)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
