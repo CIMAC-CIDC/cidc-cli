@@ -18,7 +18,7 @@ URL_MAPPING = {
     'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
 }
 UPLOAD_WORKSPACE = 'workspace'
-
+EXTRA_METADATA = {'lp1': 'uuid1'}
 
 class UploadMocks:
     def __init__(self, monkeypatch):
@@ -27,7 +27,7 @@ class UploadMocks:
 
         self.api_initiate_assay_upload = MagicMock()
         self.api_initiate_assay_upload.return_value = api.UploadInfo(
-            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING)
+            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA)
         monkeypatch.setattr(api, "initiate_assay_upload",
                             self.api_initiate_assay_upload)
 
@@ -44,6 +44,12 @@ class UploadMocks:
                             self._poll_for_upload_completion)
 
         monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
+
+        self._open_file_mapping = MagicMock()
+        monkeypatch.setattr(upload, '_open_file_mapping', self._open_file_mapping)
+
+        self.insert_extra_metadata = MagicMock()
+        monkeypatch.setattr("cli.api.insert_extra_metadata", self.insert_extra_metadata)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
@@ -220,6 +226,8 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
 
     gsutil_command = MagicMock()
     monkeypatch.setattr("subprocess.check_output", gsutil_command)
+
+    monkeypatch.setattr("cli.auth.get_id_token", lambda: "test-token")
 
     def do_upload():
         run_upload(runner)

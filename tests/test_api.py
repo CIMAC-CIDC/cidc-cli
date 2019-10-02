@@ -118,6 +118,8 @@ def test_initiate_assay_upload(monkeypatch):
     XLSX = BytesIO(b'abcd')
     GCS_BUCKET = 'bucket'
     URL_MAPPING = {'foo': 'bar'}
+    EXTRA_METADATA = {'uuid': 'lp1'}
+
 
     monkeypatch.setattr(api, '_with_auth', lambda: {})
 
@@ -128,7 +130,8 @@ def test_initiate_assay_upload(monkeypatch):
             'job_id': JOB_ID,
             'job_etag': JOB_ETAG,
             'gcs_bucket': GCS_BUCKET,
-            'url_mapping': URL_MAPPING
+            'url_mapping': URL_MAPPING,
+            'extra_metadata': EXTRA_METADATA
         })
 
     monkeypatch.setattr('requests.post', good_request)

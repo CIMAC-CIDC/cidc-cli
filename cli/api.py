@@ -1,5 +1,5 @@
 """Implements a client for the CIDC API running on Google App Engine"""
-from typing import Optional, List, BinaryIO, NamedTuple
+from typing import Optional, List, BinaryIO, NamedTuple, Dict
 
 import click
 import requests
@@ -70,6 +70,7 @@ class UploadInfo(NamedTuple):
     job_etag: str
     gcs_bucket: str
     url_mapping: dict
+    extra_metadata: list
 
 
 def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
@@ -100,7 +101,8 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
             upload_info['job_id'],
             upload_info['job_etag'],
             upload_info['gcs_bucket'],
-            upload_info['url_mapping']
+            upload_info['url_mapping'],
+            upload_info['extra_metadata']
         )
     except:
         raise ApiError(
@@ -121,6 +123,17 @@ def _update_assay_upload_status(job_id: int, etag: str, status: str):
 def assay_upload_succeeded(job_id: int, etag: str):
     """Tell the API that an assay upload job succeeded"""
     _update_assay_upload_status(job_id, etag, 'upload-completed')
+
+
+def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
+    """Insert extra metadata into the patch for the given job"""
+    data = {'job_id': job_id}
+
+    response = requests.post(_url('/ingestion/extra-assay-metadata'),
+                             headers=_with_auth(), data=data, files=extra_metadata)
+
+    if response.status_code != 200:
+        raise ApiError(_error_message(response))
 
 
 def assay_upload_failed(job_id: int, etag: str):
