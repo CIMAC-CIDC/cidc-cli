@@ -4,7 +4,7 @@ from typing import Optional, List, BinaryIO, NamedTuple, Dict
 import click
 import requests
 
-from . import auth
+from . import auth, __version__
 from .config import API_V2_URL
 
 
@@ -31,13 +31,19 @@ def _error_message(response: requests.Response):
         return f"API server encountered an error processing your request {response.status_code}"
 
 
+_USER_AGENT = f"cidc-cli/{__version__}"
+
+
 def _with_auth(headers: dict = None, id_token: str = None) -> dict:
     """Add an id token to the given headers"""
     if not id_token:
         id_token = auth.get_id_token()
-    if not headers:
-        headers = {}
-    return {**headers, 'Authorization': f'Bearer {id_token}'}
+    return {
+        **(headers or {}),
+        'Authorization': f'Bearer {id_token}',
+        # Also, include user agent with info about the CLI version
+        'User-Agent': _USER_AGENT
+    }
 
 
 def check_auth(id_token: str) -> Optional[str]:
