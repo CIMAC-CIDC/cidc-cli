@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import MagicMock
 from typing import Union
 
-from cli import api, config
+from cli import api, config, __version__
 
 
 def make_json_response(body={}) -> MagicMock:
@@ -65,7 +65,8 @@ def test_with_auth(monkeypatch):
     """Test the authorization header builder"""
     TOKEN = 'tok'
     AUTH_HEADER = {
-        'Authorization': f'Bearer {TOKEN}'
+        'Authorization': f'Bearer {TOKEN}',
+        'User-Agent': f'cidc-cli/{__version__}'
     }
     OTHER_HEADERS = {
         'If-Match': 'blah blah blah',
@@ -119,7 +120,6 @@ def test_initiate_assay_upload(monkeypatch):
     GCS_BUCKET = 'bucket'
     URL_MAPPING = {'foo': 'bar'}
     EXTRA_METADATA = {'uuid': 'lp1'}
-
 
     monkeypatch.setattr(api, '_with_auth', lambda: {})
 
