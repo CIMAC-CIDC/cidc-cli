@@ -88,12 +88,7 @@ def test_check_auth(monkeypatch):
     ERR = 'signature expired'
     not_authorized = make_error_response(ERR, 401)
     patch_request('get', not_authorized, monkeypatch)
-    assert api.check_auth('foo_token') == ERR
-
-    # Unexpected error
-    other_error = make_error_response(ERR, 500)
-    patch_request('get', other_error, monkeypatch)
-    with pytest.raises(api.ApiError, match="unexpected error"):
+    with pytest.raises(api.ApiError, match=ERR):
         api.check_auth('foo_token')
 
     # Successful authorization
