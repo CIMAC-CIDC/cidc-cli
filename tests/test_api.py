@@ -90,6 +90,12 @@ def test_check_auth(monkeypatch):
     patch_request('get', not_authorized, monkeypatch)
     assert api.check_auth('foo_token') == ERR
 
+    # Outdated CLI error
+    ERR = 'CLI out-of-date'
+    out_of_date = make_error_response(ERR, 412)
+    patch_request('get', out_of_date, monkeypatch)
+    assert api.check_auth('foo_token') == ERR
+
     # Unexpected error
     other_error = make_error_response(ERR, 500)
     patch_request('get', other_error, monkeypatch)
