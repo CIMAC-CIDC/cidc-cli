@@ -50,15 +50,8 @@ def check_auth(id_token: str) -> Optional[str]:
     """Check if an id_token is valid by making a request to the base API URL."""
     response = requests.get(_url('/'), headers=_with_auth(id_token=id_token))
 
-    # 401 Unauthorized: token is invalid
-    # 412 Precondition Failed: CLI is out-of-date
-    if response.status_code == 401 or response.status_code == 412:
-        return _error_message(response)
-
-    # We got some other, unexpected HTTP error
     if response.status_code != 200:
-        raise ApiError(
-            f"Auth check resulted in an unexpected error: Status Code {response.status_code}")
+        raise ApiError(_error_message(response))
 
     # No errors, so the token is valid
     return None
