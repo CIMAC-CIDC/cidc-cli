@@ -26,7 +26,7 @@ cidc login [token]
 
 ## Development
 
-For local development, first install the development dependencies
+For local development, first install the development dependencies:
 ```bash
 pip install -r requirements.dev.txt
 ```
