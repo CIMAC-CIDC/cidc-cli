@@ -1,6 +1,6 @@
 language: python
 install:
-  - pip install -r requirements.txt -r requirements.dev.txt
+  - pip install -r requirements.dev.txt
 script:
   # Only run the tests for the new CLI
   - pytest tests
