@@ -225,7 +225,12 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
     UploadMocks(monkeypatch)
 
     gsutil_command = MagicMock()
-    monkeypatch.setattr("subprocess.check_output", gsutil_command)
+    gsutil_command.return_value = MagicMock("subprocess")
+    gsutil_command.return_value.poll = lambda : 0
+    gsutil_command.return_value.returncode = 0
+    gsutil_command.return_value.stderr = MagicMock('stderr')
+    gsutil_command.return_value.stderr.readline = lambda: 'gsutil progress'
+    monkeypatch.setattr("subprocess.Popen", gsutil_command)
 
     monkeypatch.setattr("cli.auth.get_id_token", lambda: "test-token")
 
