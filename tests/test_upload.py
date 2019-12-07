@@ -10,7 +10,7 @@ from cli import upload
 
 from .util import ExceptionCatchingThread
 
-JOB_ID = 1
+JOB_ID = -1
 JOB_ETAG = 'abcd'
 GCS_BUCKET = 'upload-bucket'
 URL_MAPPING = {

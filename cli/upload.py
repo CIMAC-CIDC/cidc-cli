@@ -38,7 +38,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
     try:
         # Read the .xlsx file and make the API call
         # that initiates the upload job and grants object-level GCS access.
-        with open(xlsx_path, 'rb') as xlsx_file:
+        with open(xlsx_path, "rb") as xlsx_file:
             upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
 
     except (Exception, KeyboardInterrupt) as e:
@@ -65,6 +65,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
 
     _poll_for_upload_completion(upload_info.job_id)
 
+
 @contextmanager
 def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
     """
@@ -73,7 +74,7 @@ def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
     """
     open_files = {}
     for local_path, uuid in extra_metadata.items():
-        open_files[uuid] = open(local_path, 'rb')
+        open_files[uuid] = open(local_path, "rb")
     try:
         yield open_files
     except:
@@ -83,65 +84,153 @@ def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
             f.close()
 
 
+_IGNORED_WARN_LINES = set(
+    map(
+        str.strip,
+        """==> NOTE: You are uploading one or more large file(s), which would run
+significantly faster if you enable parallel composite uploads. This
+feature can be enabled by editing the
+"parallel_composite_upload_threshold" value in your .boto
+configuration file. However, note that if you do this large files will
+be uploaded as `composite objects
+<https://cloud.google.com/storage/docs/composite-objects>`_,which
+means that any user who downloads such objects will need to have a
+compiled crcmod installed (see "gsutil help crcmod"). This is because
+without a compiled crcmod, computing checksums on composite objects is
+so slow that gsutil disables downloads of composite objects.""".split(
+            "\n"
+        ),
+    )
+)
+
+
+def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
+    """
+    Starts multiple "gsutil cp" subprocesses.
+    Returns a list of subprocess.Popen objects
+    """
+    procs = []
+
+    for src, dst in _compose_file_mapping(upload_info, xlsx):
+
+        # Construct the upload command
+        gsutil_args = ["gsutil", "-m", "cp", src, dst]
+
+        try:
+            # Run the upload command
+            procs.append(
+                subprocess.Popen(
+                    gsutil_args,
+                    universal_newlines=True,
+                    bufsize=1,  # line buffered so we can read output line by line
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.PIPE,
+                )
+            )
+
+        except OSError as e:
+
+            # stopping already created processes
+            for p in procs:
+                p.kill()
+
+            _handle_upload_exc(e)
+    return procs
+
+
+def _wait_for_upload(procs: list) -> bool:
+    """
+    Waits for all subprocesses and prints their stderr streams.
+    Returns bool - if an error has occurred during any if uploads
+    """
+
+    finished = set()
+    errored = False
+    while len(finished) != len(procs) and not errored:
+        for i, p in enumerate(procs):
+
+            if p not in finished and p.poll() != None:
+                finished.add(p.pid)
+
+                if p.returncode != 0:
+                    errored = True
+
+            errline = p.stderr.readline()
+
+            # skipping "large file" warnings
+            if errline.strip() in _IGNORED_WARN_LINES:
+                continue
+
+            if errline and len(errline) > 2:  # skipping '* ' spinner lines
+
+                # changing output from always "[0/1 files]" - due to manual
+                # parallelization of gsutil to "[x/y files]"
+                if errline.split("]", 1)[0].endswith("/1 files"):
+                    errline = errline.split("]", 1)[1]
+                print(f"[{len(finished)}/{len(procs)} files] {i+1}: " + errline, end="")
+
+    return errored
+
+
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     """
     Upload local assay data to GCS using gsutil.
     """
-    workspace = _get_workspace_path()
 
-    try:
-        # Create the required local directory structure
-        # to support parallel uploads with gsutil
-        _populate_workspace(upload_info, xlsx, workspace)
+    procs = _start_procs(upload_info, xlsx)
 
-        # Construct the upload command
-        gcs_bucket_uri = 'gs://%s' % upload_info.gcs_bucket
-        gsutil_args = ["gsutil", "-m", "cp", "-r",
-                       f'{workspace}/*', gcs_bucket_uri]
+    err = _wait_for_upload(procs)
 
-        # Run the upload command
-        subprocess.check_output(gsutil_args)
-    except (Exception, KeyboardInterrupt) as e:
-        _cleanup_workspace(workspace)
-        _handle_upload_exc(e)
-    else:
-        _cleanup_workspace(workspace)
+    if err:
+        for p in procs:
+
+            if p.poll() != 0:
+
+                print(f"\nFailed uploading {p.args[3]}.")
+
+                print(f"Stopping other uploads...")
+                # stopping all other processes
+                for other_p in procs:
+                    if p != other_p:
+                        other_p.kill()
+
+                e = Exception(f"Couldn't upload all files.")
+                _handle_upload_exc(e)
+                # _handle_upload_exc should raise, but raise for good measure
+                # to guarantee execution stops here
+                raise e
 
 
-def _get_workspace_path():
-    """Generate a unique upload workspace path"""
-    return '%s.%s' % (UPLOAD_WORKSPACE, datetime.now().isoformat())
-
-
-def _populate_workspace(upload_info: api.UploadInfo, xlsx: str, workspace_dir: str):
+def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
     """
-    Copy the local files into a nested file structure equivalent
-    to the structure we want to create in GCS, rooted in the `workspace_dir`
-    directory. Having the files organized in this manner allows
-    us to upload all files in parallel using the "gsutil -m ...".
+    Returns a list of (local_path, target uri) pairs for all 
+    the files from the upload info relative to the `work dir` 
+    that is xlsx file locaction. 
     """
+    res = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for local_path, gcs_uri in upload_info.url_mapping.items():
         source_path = os.path.join(xlsx_dir, local_path)
-        target_path = os.path.join(workspace_dir, gcs_uri)
-        os.makedirs(os.path.dirname(target_path))
-        shutil.copy(source_path, target_path)
+
+        if not os.path.isfile(source_path):
+            raise Exception(f"Couldn't locate file {source_path}")
+
+        res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
+
+    return res
 
 
-def _cleanup_workspace(workspace_dir: str):
-    """Delete the upload workspace directory if it exists."""
-    if os.path.exists(workspace_dir):
-        shutil.rmtree(workspace_dir)
-
-
-def _poll_for_upload_completion(job_id: int, timeout: int = 120, _did_timeout_test_impl=None):
+def _poll_for_upload_completion(
+    job_id: int, timeout: int = 120, _did_timeout_test_impl=None
+):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
 
     cutoff = datetime.now().timestamp() + timeout
 
     did_timeout = _did_timeout_test_impl or (
-        lambda: datetime.now().timestamp() >= cutoff)
+        lambda: datetime.now().timestamp() >= cutoff
+    )
 
     debug_info_message = f"Please include this info in your inquiry: (job_id={job_id})"
 
@@ -156,34 +245,36 @@ def _poll_for_upload_completion(job_id: int, timeout: int = 120, _did_timeout_te
                 click.echo(".", nl=False)
                 time.sleep(1)
         elif status.status:
-            if 'merge-completed' == status.status:
+            if "merge-completed" == status.status:
                 click.echo(click.style("✓", fg="green", bold=True))
                 click.echo(
                     "Upload succeeded. Visit the CIDC Portal "
-                    "file browser to view your upload.")
+                    "file browser to view your upload."
+                )
             else:
                 click.echo(click.style("✗", fg="red", bold=True))
                 if status.status_details:
-                    click.echo(
-                        "Upload failed with the following message:")
+                    click.echo("Upload failed with the following message:")
                     click.echo()
-                    click.echo(click.style(
-                        status.status_details, fg="red", bold=True))
+                    click.echo(click.style(status.status_details, fg="red", bold=True))
                     click.echo()
                 else:
                     click.echo("Upload failed. ", nl=False)
-                click.echo("Please contact a CIDC administrator "
-                           "(cidc@jimmy.harvard.edu) if you need assistance.")
+                click.echo(
+                    "Please contact a CIDC administrator "
+                    "(cidc@jimmy.harvard.edu) if you need assistance."
+                )
                 click.echo(debug_info_message)
             return
         else:
             # we should never reach this code block
             raise
 
-    click.echo(click.style('!!!', fg="yellow", bold=True))
+    click.echo(click.style("!!!", fg="yellow", bold=True))
     click.echo(
         "Upload timed out. Please contact a CIDC administrator "
-        "(cidc@jimmy.harvard.edu) for assistance.")
+        "(cidc@jimmy.harvard.edu) for assistance."
+    )
     click.echo(debug_info_message)
 
 
