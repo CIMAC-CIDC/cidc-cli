@@ -17,7 +17,6 @@ URL_MAPPING = {
     'local_path1.fastq.gz': 'gcs/path/1234/fastq/2019-09-04T18:59:45.224099',
     'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
 }
-UPLOAD_WORKSPACE = 'workspace'
 EXTRA_METADATA = {'lp1': 'uuid1'}
 
 class UploadMocks:
@@ -43,7 +42,6 @@ class UploadMocks:
         monkeypatch.setattr(upload, "_poll_for_upload_completion",
                             self._poll_for_upload_completion)
 
-        monkeypatch.setattr(upload, 'UPLOAD_WORKSPACE', UPLOAD_WORKSPACE)
 
         self._open_file_mapping = MagicMock()
         monkeypatch.setattr(upload, '_open_file_mapping', self._open_file_mapping)
@@ -226,6 +224,7 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
 
     gsutil_command = MagicMock()
     gsutil_command.return_value = MagicMock("subprocess")
+    gsutil_command.return_value.args = ["gsutil", 'arg1', 'arg2']
     gsutil_command.return_value.poll = lambda : 0
     gsutil_command.return_value.returncode = 0
     gsutil_command.return_value.stderr = MagicMock('stderr')

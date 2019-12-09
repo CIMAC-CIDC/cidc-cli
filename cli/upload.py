@@ -11,7 +11,6 @@ import click
 
 from . import api
 from . import gcloud
-from .config import UPLOAD_WORKSPACE
 
 
 def upload_assay(assay_type: str, xlsx_path: str):
@@ -84,6 +83,10 @@ def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
             f.close()
 
 
+# This is how `gsutil` warns user when s/he sends large files.
+# We don't want them to see that or enable `parallel_composite_upload_threshold`
+# because composite files are problematic to download - see:
+# https://cloud.google.com/storage/docs/gsutil/commands/cp#parallel-composite-uploads
 _IGNORED_WARN_LINES = set(
     map(
         str.strip,
@@ -147,10 +150,13 @@ def _wait_for_upload(procs: list) -> bool:
     finished = set()
     errored = False
     while len(finished) != len(procs) and not errored:
-        for i, p in enumerate(procs):
+        for p in procs:
 
-            if p not in finished and p.poll() != None:
-                finished.add(i)
+            if p in finished:
+                continue
+
+            if p.poll() != None:
+                finished.add(p)
 
                 if p.returncode != 0:
                     errored = True
@@ -167,9 +173,12 @@ def _wait_for_upload(procs: list) -> bool:
                 # parallelization of gsutil to "[x/y files]"
                 if errline.split("]", 1)[0].endswith("/1 files"):
                     errline = errline.split("]", 1)[1]
-                print(f"[{len(finished)}/{len(procs)} files] {i+1}: " + errline, end="")
+                print(
+                    f"[{len(finished)}/{len(procs)} done] {p.args[-2]}: " + errline,
+                    end="",
+                )
 
-    print(f"[{len(finished)}/{len(procs)} files]")
+    print(f"[{len(finished)}/{len(procs)} done]")
     return errored
 
 
