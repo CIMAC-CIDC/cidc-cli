@@ -150,13 +150,13 @@ def _wait_for_upload(procs: list) -> bool:
     finished = set()
     errored = False
     while len(finished) != len(procs) and not errored:
-        for p in procs:
+        for i, p in enumerate(procs):
 
-            if p in finished:
+            if i in finished:
                 continue
 
             if p.poll() != None:
-                finished.add(p)
+                finished.add(i)
 
                 if p.returncode != 0:
                     errored = True
@@ -174,7 +174,8 @@ def _wait_for_upload(procs: list) -> bool:
                 if errline.split("]", 1)[0].endswith("/1 files"):
                     errline = errline.split("]", 1)[1]
                 print(
-                    f"[{len(finished)}/{len(procs)} done] {p.args[-2]}: " + errline,
+                    f"[{len(finished)}/{len(procs)} done] {i+1}: {p.args[-2]}: "
+                    + errline,
                     end="",
                 )
 
