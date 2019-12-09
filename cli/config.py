@@ -8,7 +8,6 @@ from . import cache
 # General config
 CIDC_WORKING_DIR = os.path.join(Path.home(), '.cidc')
 TOKEN_CACHE_PATH = os.path.join(CIDC_WORKING_DIR, 'id_token')
-UPLOAD_WORKSPACE = os.path.join(CIDC_WORKING_DIR, 'upload-workspace')
 
 
 # Environment management
