@@ -49,7 +49,9 @@ def upload_assay(assay_type: str, xlsx_path: str):
 
         # Insert extra metadata for the upload, if any
         if upload_info.extra_metadata:
-            with _open_file_mapping(upload_info.extra_metadata) as open_files:
+            with _open_file_mapping(
+                upload_info.extra_metadata, xlsx_path
+            ) as open_files:
                 api.insert_extra_metadata(upload_info.job_id, open_files)
 
     except (Exception, KeyboardInterrupt) as e:
@@ -66,14 +68,17 @@ def upload_assay(assay_type: str, xlsx_path: str):
 
 
 @contextmanager
-def _open_file_mapping(extra_metadata: dict) -> Dict[str, BinaryIO]:
+def _open_file_mapping(extra_metadata: dict, base_path: str) -> Dict[str, BinaryIO]:
     """
     Given a dictionary mapping local paths to artifact uuids, return
     a dictionary mapping artifact uuids to open files.
     """
+    base_dir = os.path.abspath(os.path.dirname(base_path))
+
     open_files = {}
     for local_path, uuid in extra_metadata.items():
-        open_files[uuid] = open(local_path, "rb")
+        source_path = os.path.join(base_dir, local_path)
+        open_files[uuid] = open(source_path, "rb")
     try:
         yield open_files
     except:
