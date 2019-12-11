@@ -5,8 +5,10 @@ from . import api, auth, gcloud, upload, config, consent
 
 #### $ cidc ####
 @click.group()
-def cidc():
+@click.option("-i", "--ignore", default=None, hidden=True)
+def cidc(ignore):
     """The CIDC command-line interface."""
+    config.check_env_warning(ignore)
     if not consent.check_consent():
         exit(0)
     gcloud.check_installed()
@@ -48,10 +50,8 @@ def get_env():
 
 #### $ cidc assays ####
 @click.group()
-@click.option("-i", "--ignore", default=None, hidden=True)
-def assays(ignore):
+def assays():
     """Manage assay data."""
-    config.check_env_warning(ignore)
 
 
 #### $ cidc assays list ####
@@ -76,10 +76,8 @@ def upload_assay(assay, xlsx):
 
 #### $ cidc analyses ####
 @click.group()
-@click.option("-i", "--ignore", default=None, hidden=True)
-def analyses(ignore):
+def analyses():
     """Manage analysis data."""
-    config.check_env_warning(ignore)
 
 
 #### $ cidc analyses list ####
