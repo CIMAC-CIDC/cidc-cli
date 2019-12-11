@@ -23,6 +23,7 @@ def with_default_env(fn):
     return wrap
 
 
+@with_default_env
 def test_cidc_structure(runner: CliRunner, monkeypatch):
     """
     Check that the interface is wired up correctly, and that
@@ -43,6 +44,7 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
     assert "Usage: cidc login" in res.output
 
 
+@with_default_env
 def test_no_gcloud_installation(runner: CliRunner, monkeypatch):
     """
     Check that running `cidc [subcommand]` without a gcloud installation prompts

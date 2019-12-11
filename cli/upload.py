@@ -75,8 +75,19 @@ def _open_file_mapping(extra_metadata: dict, base_path: str) -> Dict[str, Binary
     base_dir = os.path.abspath(os.path.dirname(base_path))
 
     open_files = {}
-    for local_path, uuid in extra_metadata.items():
-        source_path = os.path.join(base_dir, local_path)
+    for source_path, uuid in extra_metadata.items():
+
+        # if user wants us to get file from GCS
+        # and we want it to be analysed for extra_md
+        # we say we don't support it
+        if source_path.startswith("gs://"):
+            raise Exception(
+                "File transfers from Google Cloud Storage are not supported for this assay type."
+                f" Please download locally the files that you wish to upload ({source_path}),"
+                " update the file paths in your metadata Excel file, and try again"
+            )
+
+        source_path = os.path.join(base_dir, source_path)
         open_files[uuid] = open(source_path, "rb")
     try:
         yield open_files
@@ -218,17 +229,22 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
     """
-    Returns a list of (local_path, target uri) pairs for all 
+    Returns a list of (source_path, target uri) pairs for all 
     the files from the upload info relative to the `work dir` 
-    that is xlsx file locaction. 
+    that is xlsx file locaction. If s source_path is a GCS uri,
+    it will return it w/o change.
     """
     res = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
-    for local_path, gcs_uri in upload_info.url_mapping.items():
-        source_path = os.path.join(xlsx_dir, local_path)
+    for source_path, gcs_uri in upload_info.url_mapping.items():
 
-        if not os.path.isfile(source_path):
-            raise Exception(f"Couldn't locate file {source_path}")
+        # if we're not copying from GCS to GCS, then
+        # resolve local path against .xslx file dir
+        if not source_path.startswith("gs://"):
+            source_path = os.path.join(xlsx_dir, source_path)
+
+            if not os.path.isfile(source_path):
+                raise Exception(f"Couldn't locate file {source_path}")
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
