@@ -43,12 +43,10 @@ class UploadMocks:
         )
 
         self._open_file_mapping = MagicMock()
-        monkeypatch.setattr(upload, "_open_file_mapping",
-                            self._open_file_mapping)
+        monkeypatch.setattr(upload, "_open_file_mapping", self._open_file_mapping)
 
         self.insert_extra_metadata = MagicMock()
-        monkeypatch.setattr("cli.api.insert_extra_metadata",
-                            self.insert_extra_metadata)
+        monkeypatch.setattr("cli.api.insert_extra_metadata", self.insert_extra_metadata)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
@@ -72,9 +70,7 @@ def run_upload(runner: CliRunner):
     for fname in files:
         with open(fname, "wb") as f:
             f.write(b"blah blah metadata")
-
-
-upload.run_upload("wes", "wes.xlsx")
+    upload.run_upload("wes", "wes.xlsx")
 
 
 def test_upload_success(runner: CliRunner, monkeypatch):
@@ -208,8 +204,7 @@ def test_poll_for_upload_completion(monkeypatch):
 
     # Simulate a success
     failed = MagicMock()
-    failed.return_value = api.MergeStatus(
-        "upload-failed", "some error details", None)
+    failed.return_value = api.MergeStatus("upload-failed", "some error details", None)
     monkeypatch.setattr(api, "poll_upload_merge_status", failed)
     upload._poll_for_upload_completion(
         job_id, _did_timeout_test_impl=get_did_timeout(1)
