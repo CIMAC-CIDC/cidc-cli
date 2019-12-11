@@ -64,6 +64,13 @@ def list_assays() -> List[str]:
     return assays
 
 
+def list_analyses() -> List[str]:
+    """Get a list of all supported analyses."""
+    response = requests.get(_url("/info/analyses"))
+    assays = response.json()
+    return assays
+
+
 class UploadInfo(NamedTuple):
     """Container for data we expect to get back from an initiate upload request"""
 
@@ -74,24 +81,29 @@ class UploadInfo(NamedTuple):
     extra_metadata: list
 
 
-def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
+def initiate_upload(
+    upload_type: str, xlsx_file: BinaryIO, is_analysis: bool = False
+) -> UploadInfo:
     """
-    Initiate an assay upload.
+    Initiate an upload.
 
-    Args:
-        assay_name: the name of the API-supported assay
+    Args:x
+        upload_type: the name of the API-supported assay
         xlsx_file: an open .xlsx file
+        is_analysis: whether this is an analysis upload. If `False`,
+                     then it's assumed to be an assay upload.
 
     Returns:
         UploadInfo: a mapping from local filepaths to GCS upload URIs,
         along with an upload job ID.
     """
-    data = {"schema": assay_name}
+    data = {"schema": upload_type}
 
     files = {"template": xlsx_file}
 
+    endpoint = "upload_analysis" if is_analysis else "upload_assay"
     response = requests.post(
-        _url("/ingestion/upload_assay"), headers=_with_auth(), data=data, files=files
+        _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
     )
 
     if response.status_code != 200:
@@ -112,8 +124,8 @@ def initiate_assay_upload(assay_name: str, xlsx_file: BinaryIO) -> UploadInfo:
         )
 
 
-def _update_assay_upload_status(job_id: int, etag: str, status: str):
-    """Update the status for an existing assay upload job"""
+def _update_upload_status(job_id: int, etag: str, status: str):
+    """Update the status for an existing upload job"""
     url = _url(f"/assay_uploads/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
@@ -123,9 +135,9 @@ def _update_assay_upload_status(job_id: int, etag: str, status: str):
         raise ApiError(_error_message(response))
 
 
-def assay_upload_succeeded(job_id: int, etag: str):
-    """Tell the API that an assay upload job succeeded"""
-    _update_assay_upload_status(job_id, etag, "upload-completed")
+def upload_succeeded(job_id: int, etag: str):
+    """Tell the API that an upload job succeeded"""
+    _update_upload_status(job_id, etag, "upload-completed")
 
 
 def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
@@ -143,9 +155,9 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
         raise ApiError(_error_message(response))
 
 
-def assay_upload_failed(job_id: int, etag: str):
-    """Tell the API that an assay upload job failed"""
-    _update_assay_upload_status(job_id, etag, "upload-failed")
+def upload_failed(job_id: int, etag: str):
+    """Tell the API that an upload job failed"""
+    _update_upload_status(job_id, etag, "upload-failed")
 
 
 class MergeStatus(NamedTuple):

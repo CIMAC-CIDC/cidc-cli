@@ -25,19 +25,17 @@ class UploadMocks:
         self.gcloud_login = MagicMock()
         monkeypatch.setattr("cli.gcloud.login", self.gcloud_login)
 
-        self.api_initiate_assay_upload = MagicMock()
-        self.api_initiate_assay_upload.return_value = api.UploadInfo(
+        self.api_initiate_upload = MagicMock()
+        self.api_initiate_upload.return_value = api.UploadInfo(
             JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA
         )
-        monkeypatch.setattr(
-            api, "initiate_assay_upload", self.api_initiate_assay_upload
-        )
+        monkeypatch.setattr(api, "initiate_upload", self.api_initiate_upload)
 
-        self.assay_upload_succeeded = MagicMock()
-        monkeypatch.setattr(api, "assay_upload_succeeded", self.assay_upload_succeeded)
+        self.upload_succeeded = MagicMock()
+        monkeypatch.setattr(api, "upload_succeeded", self.upload_succeeded)
 
-        self.assay_upload_failed = MagicMock()
-        monkeypatch.setattr(api, "assay_upload_failed", self.assay_upload_failed)
+        self.upload_failed = MagicMock()
+        monkeypatch.setattr(api, "upload_failed", self.upload_failed)
 
         self._poll_for_upload_completion = MagicMock()
         monkeypatch.setattr(
@@ -45,18 +43,20 @@ class UploadMocks:
         )
 
         self._open_file_mapping = MagicMock()
-        monkeypatch.setattr(upload, "_open_file_mapping", self._open_file_mapping)
+        monkeypatch.setattr(upload, "_open_file_mapping",
+                            self._open_file_mapping)
 
         self.insert_extra_metadata = MagicMock()
-        monkeypatch.setattr("cli.api.insert_extra_metadata", self.insert_extra_metadata)
+        monkeypatch.setattr("cli.api.insert_extra_metadata",
+                            self.insert_extra_metadata)
 
     def assert_expected_calls(self, failure=False):
         self.gcloud_login.assert_called_once()
-        self.api_initiate_assay_upload.assert_called_once()
+        self.api_initiate_upload.assert_called_once()
         if failure:
-            self.assay_upload_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
+            self.upload_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
         else:
-            self.assay_upload_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
+            self.upload_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
             self._poll_for_upload_completion.assert_called_once_with(JOB_ID)
 
 
@@ -72,10 +72,12 @@ def run_upload(runner: CliRunner):
     for fname in files:
         with open(fname, "wb") as f:
             f.write(b"blah blah metadata")
-    upload.upload_assay("wes", "wes.xlsx")
 
 
-def test_upload_assay_success(runner: CliRunner, monkeypatch):
+upload.run_upload("wes", "wes.xlsx")
+
+
+def test_upload_success(runner: CliRunner, monkeypatch):
     """
     Check that a successful upload call follows the expected execution flow.
     """
@@ -91,7 +93,7 @@ def test_upload_assay_success(runner: CliRunner, monkeypatch):
     mocks.assert_expected_calls()
 
 
-def test_upload_assay_interrupt(runner: CliRunner, monkeypatch):
+def test_upload_interrupt(runner: CliRunner, monkeypatch):
     """
     Check that a KeyboardInterrupt-ed upload call alerts the API that the job errored.
     """
@@ -109,7 +111,7 @@ def test_upload_assay_interrupt(runner: CliRunner, monkeypatch):
     mocks.assert_expected_calls(failure=True)
 
 
-def test_upload_assay_exception(runner: CliRunner, monkeypatch):
+def test_upload_exception(runner: CliRunner, monkeypatch):
     """
     Check that a failed upload call alerts the API that the job errored.
     """
@@ -126,7 +128,7 @@ def test_upload_assay_exception(runner: CliRunner, monkeypatch):
     mocks.assert_expected_calls(failure=True)
 
 
-def test_upload_assay_api_initiate_exception(runner: CliRunner, monkeypatch):
+def test_upload_api_initiate_exception(runner: CliRunner, monkeypatch):
     """
     Check that a failed upload call alerts the API that the job errored.
     """
@@ -135,7 +137,7 @@ def test_upload_assay_api_initiate_exception(runner: CliRunner, monkeypatch):
     # Simulate an exception
     initiate_failure = MagicMock()
     initiate_failure.side_effect = api.ApiError("bad upload")
-    monkeypatch.setattr(api, "initiate_assay_upload", initiate_failure)
+    monkeypatch.setattr(api, "initiate_upload", initiate_failure)
 
     with pytest.raises(Exception, match="bad upload"):
         run_isolated_upload(runner)
@@ -206,7 +208,8 @@ def test_poll_for_upload_completion(monkeypatch):
 
     # Simulate a success
     failed = MagicMock()
-    failed.return_value = api.MergeStatus("upload-failed", "some error details", None)
+    failed.return_value = api.MergeStatus(
+        "upload-failed", "some error details", None)
     monkeypatch.setattr(api, "poll_upload_merge_status", failed)
     upload._poll_for_upload_completion(
         job_id, _did_timeout_test_impl=get_did_timeout(1)

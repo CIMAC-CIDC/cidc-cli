@@ -13,14 +13,14 @@ from . import api
 from . import gcloud
 
 
-def upload_assay(assay_type: str, xlsx_path: str):
+def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
     """
-    Upload data for an assay.
+    Upload data.
 
     Orchestrator execution flow:
     1. Log in to gcloud. The CLI user must be authenticated with
        gcloud to be able to upload to GCS.
-    2. Make an initiate_assay_upload request to the API. The API adds a
+    2. Make an initiate_upload request to the API. The API adds a
        record to the database tracking that the CLI user started an
        upload job, grants the CLI user write permissions to the CIDC
        upload bucket in GCS, and returns information needed to
@@ -38,7 +38,7 @@ def upload_assay(assay_type: str, xlsx_path: str):
         # Read the .xlsx file and make the API call
         # that initiates the upload job and grants object-level GCS access.
         with open(xlsx_path, "rb") as xlsx_file:
-            upload_info = api.initiate_assay_upload(assay_type, xlsx_file)
+            upload_info = api.initiate_upload(upload_type, xlsx_file, is_analysis)
 
     except (Exception, KeyboardInterrupt) as e:
         _handle_upload_exc(e)
@@ -56,13 +56,12 @@ def upload_assay(assay_type: str, xlsx_path: str):
 
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
-        api.assay_upload_failed(upload_info.job_id, upload_info.job_etag)
+        api.upload_failed(upload_info.job_id, upload_info.job_etag)
         _handle_upload_exc(e)
         # _handle_upload_exc should raise, but raise for good measure
-        # to guarantee execution stops here
         raise
     else:
-        api.assay_upload_succeeded(upload_info.job_id, upload_info.job_etag)
+        api.upload_succeeded(upload_info.job_id, upload_info.job_etag)
 
     _poll_for_upload_completion(upload_info.job_id)
 

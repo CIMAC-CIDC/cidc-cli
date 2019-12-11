@@ -104,7 +104,7 @@ JOB_ID = 1
 JOB_ETAG = "abcd"
 
 
-def test_initiate_assay_upload(monkeypatch):
+def test_initiate_upload(monkeypatch):
     """Test upload initation builds a request and parses a response correctly"""
     ASSAY = "wes"
     XLSX = BytesIO(b"abcd")
@@ -128,24 +128,24 @@ def test_initiate_assay_upload(monkeypatch):
         )
 
     monkeypatch.setattr("requests.post", good_request)
-    api.initiate_assay_upload(ASSAY, XLSX)
+    api.initiate_upload(ASSAY, XLSX)
 
     ERR = "bad request or something"
     bad_request = make_error_response(ERR, 400)
     patch_request("post", bad_request, monkeypatch)
     with pytest.raises(api.ApiError, match=ERR):
-        api.initiate_assay_upload(ASSAY, XLSX)
+        api.initiate_upload(ASSAY, XLSX)
 
     BADLY_TYPED_ERR = [ERR]
     bad_request = make_error_response(BADLY_TYPED_ERR, 400)
     patch_request("post", bad_request, monkeypatch)
     with pytest.raises(api.ApiError, match=ERR):
-        api.initiate_assay_upload(ASSAY, XLSX)
+        api.initiate_upload(ASSAY, XLSX)
 
     cant_decode = make_json_response({"foo": "bar"})
     patch_request("post", cant_decode, monkeypatch)
     with pytest.raises(api.ApiError, match="Cannot decode API response"):
-        api.initiate_assay_upload(ASSAY, XLSX)
+        api.initiate_upload(ASSAY, XLSX)
 
 
 def test_update_job_status(monkeypatch):
@@ -162,10 +162,10 @@ def test_update_job_status(monkeypatch):
         return request
 
     monkeypatch.setattr("requests.patch", test_status("upload-completed"))
-    api.assay_upload_succeeded(JOB_ID, JOB_ETAG)
+    api.upload_succeeded(JOB_ID, JOB_ETAG)
 
     monkeypatch.setattr("requests.patch", test_status("upload-failed"))
-    api.assay_upload_failed(JOB_ID, JOB_ETAG)
+    api.upload_failed(JOB_ID, JOB_ETAG)
 
 
 def test_poll_upload_merge_status(monkeypatch):
