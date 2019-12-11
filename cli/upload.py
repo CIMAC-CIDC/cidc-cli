@@ -76,6 +76,17 @@ def _open_file_mapping(extra_metadata: dict, base_path: str) -> Dict[str, Binary
 
     open_files = {}
     for local_path, uuid in extra_metadata.items():
+
+        # if user wants us to get file from GCS
+        # and we want it to be analysed for extra_md
+        # we say we don't support it
+        if local_path.startswith("gs://"):
+            raise Exception(
+                "Google Storage files are not supported for this assay."
+                f"\nConsider downloading {local_path} locally and retrying"
+                "Don't forget to change this file path in the .xlsx"
+            )
+
         source_path = os.path.join(base_dir, local_path)
         open_files[uuid] = open(source_path, "rb")
     try:
@@ -225,12 +236,16 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
     res = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for local_path, gcs_uri in upload_info.url_mapping.items():
-        source_path = os.path.join(xlsx_dir, local_path)
 
-        if not os.path.isfile(source_path):
-            raise Exception(f"Couldn't locate file {source_path}")
+        # if we're not copying from GCS to GCS, then
+        # resolve local path against .xslx file dir
+        if not local_path.startswith("gs://"):
+            local_path = os.path.join(xlsx_dir, local_path)
 
-        res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
+            if not os.path.isfile(local_path):
+                raise Exception(f"Couldn't locate file {local_path}")
+
+        res.append([local_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
     return res
 
