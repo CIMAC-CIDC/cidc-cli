@@ -14,25 +14,30 @@ def cidc():
 
 #### $ cidc login ####
 @click.command()
-@click.argument('portal_token', required=True, type=str)
+@click.argument("portal_token", required=True, type=str)
 def login(portal_token):
     """Validate and cache the given token"""
     click.echo("Validating token...")
     auth.cache_token(portal_token)
     click.echo("You are now logged in.")
 
+
 #### $ cidc config ####
-@click.group('config', hidden=True)
+@click.group("config", hidden=True)
 def config_():
     """Manage CLI configuration."""
 
+
 #### $ cidc config set-env ####
 @click.command()
-@click.argument('environment', required=True, type=click.Choice(['prod', 'staging', 'dev']))
+@click.argument(
+    "environment", required=True, type=click.Choice(["prod", "staging", "dev"])
+)
 def set_env(environment):
     """Set the CLI environment."""
     config.set_env(environment)
     click.echo(f"Updated CLI environment to {environment}")
+
 
 #### $ cidc config get-env ####
 @click.command()
@@ -40,12 +45,14 @@ def get_env():
     """Get the current CLI environment."""
     click.echo(config.get_env())
 
+
 #### $ cidc assays ####
 @click.group()
-@click.option('-i', '--ignore', default=None, hidden=True)
+@click.option("-i", "--ignore", default=None, hidden=True)
 def assays(ignore):
     """Manage assay data."""
     config.check_env_warning(ignore)
+
 
 #### $ cidc assays list ####
 @click.command("list")
@@ -53,7 +60,8 @@ def list_assays():
     """List all supported assay types."""
     assay_list = api.list_assays()
     for assay in assay_list:
-        click.echo(f'* {assay}')
+        click.echo(f"* {assay}")
+
 
 #### $ cidc assays upload ####
 @click.command("upload")

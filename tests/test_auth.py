@@ -8,16 +8,16 @@ def test_get_user_email(monkeypatch):
     # This is a JWT with payload {"email": "test@email.com"}
     TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6InRlc3RAZW1haWwuY29tIn0.jTck01ns477JzZY-KLMM82OOZcc6ctJA11HKE8sXiq4"
 
-    monkeypatch.setattr(auth, 'get_id_token', lambda: TOKEN)
+    monkeypatch.setattr(auth, "get_id_token", lambda: TOKEN)
 
     email = auth.get_user_email()
 
-    assert email == 'test@email.com'
+    assert email == "test@email.com"
 
 
 def test_valid_token_flow(monkeypatch, runner):
     """Check that caching works as expected for a valid token"""
-    monkeypatch.setattr(auth, 'validate_token', lambda token: None)
+    monkeypatch.setattr(auth, "validate_token", lambda token: None)
 
     TOKEN = "test-token"
 
@@ -33,17 +33,17 @@ def test_invalid_token_flow(monkeypatch, runner):
     """Check that errors are thrown as expected for an invalid token"""
 
     def auth_error(*args):
-        raise auth.AuthError('uh oh')
+        raise auth.AuthError("uh oh")
 
-    monkeypatch.setattr(auth, 'validate_token', auth_error)
+    monkeypatch.setattr(auth, "validate_token", auth_error)
 
     with runner.isolated_filesystem():
         # Invalid tokens shouldn't be cached
         with pytest.raises(auth.AuthError):
-            auth.cache_token('blah')
+            auth.cache_token("blah")
 
         # If a cached token is now invalid, the user should
         # be prompted to log in.
-        monkeypatch.setattr('cli.cache.get', lambda key: 'blah')
-        with pytest.raises(auth.AuthError, match='Please login'):
+        monkeypatch.setattr("cli.cache.get", lambda key: "blah")
+        with pytest.raises(auth.AuthError, match="Please login"):
             auth.get_id_token()

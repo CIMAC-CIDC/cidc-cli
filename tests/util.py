@@ -17,13 +17,13 @@ class ExceptionCatchingThread(Thread):
             self.target()
         except:
             import sys
+
             self.exc = sys.exc_info()
 
     def join(self):
         Thread.join(self)
         if self.exc:
-            msg = "Thread '%s' threw an exception: %s" % (
-                self.getName(), self.exc[1])
+            msg = "Thread '%s' threw an exception: %s" % (self.getName(), self.exc[1])
             new_exc = self.exc[0](msg)
             new_exc.with_traceback(self.exc[2])
             raise new_exc

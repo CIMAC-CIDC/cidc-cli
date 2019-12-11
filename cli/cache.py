@@ -26,7 +26,7 @@ def store(key: str, value: str):
         os.mkdir(cdir)
 
     # Save the provided value in a file named key
-    with open(_key_path(key), 'w') as cache:
+    with open(_key_path(key), "w") as cache:
         cache.write(value)
 
 
@@ -39,5 +39,5 @@ def get(key: str) -> Optional[str]:
         return None
 
     # Get the value
-    with open(key_path, 'r') as value:
+    with open(key_path, "r") as value:
         return value.read()
