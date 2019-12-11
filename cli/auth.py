@@ -15,8 +15,9 @@ class AuthError(click.ClickException):
 
 def unauthenticated() -> AuthError:
     return AuthError(
-        'You are not authenticated. Please login with:\n'
-        '   $ cidc login [YOUR PORTAL TOKEN]')
+        "You are not authenticated. Please login with:\n"
+        "   $ cidc login [YOUR PORTAL TOKEN]"
+    )
 
 
 def validate_token(id_token: str):
@@ -70,4 +71,4 @@ def get_user_email() -> str:
     # with the API (this includes signature verification).
     claims = jwt.get_unverified_claims(token)
 
-    return claims['email']
+    return claims["email"]

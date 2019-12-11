@@ -6,7 +6,7 @@ import click
 
 from . import auth
 
-GCLOUD = 'gcloud'
+GCLOUD = "gcloud"
 
 
 def check_installed():
@@ -24,6 +24,9 @@ def login():
 
     # Try to log the user in to gcloud with their CIDC email
     click.echo("Authenticating with gcloud...", nl=False)
-    subprocess.call([GCLOUD, 'auth', 'login', email],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.call(
+        [GCLOUD, "auth", "login", email],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
     click.echo("done.")

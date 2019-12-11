@@ -11,13 +11,14 @@ from cli import upload
 from .util import ExceptionCatchingThread
 
 JOB_ID = -1
-JOB_ETAG = 'abcd'
-GCS_BUCKET = 'upload-bucket'
+JOB_ETAG = "abcd"
+GCS_BUCKET = "upload-bucket"
 URL_MAPPING = {
-    'local_path1.fastq.gz': 'gcs/path/1234/fastq/2019-09-04T18:59:45.224099',
-    'local_path2.fastq.gz': 'gcs/path/4321/fastq/2019-09-04T18:59:45.224099',
+    "local_path1.fastq.gz": "gcs/path/1234/fastq/2019-09-04T18:59:45.224099",
+    "local_path2.fastq.gz": "gcs/path/4321/fastq/2019-09-04T18:59:45.224099",
 }
-EXTRA_METADATA = {'lp1': 'uuid1'}
+EXTRA_METADATA = {"lp1": "uuid1"}
+
 
 class UploadMocks:
     def __init__(self, monkeypatch):
@@ -26,25 +27,25 @@ class UploadMocks:
 
         self.api_initiate_assay_upload = MagicMock()
         self.api_initiate_assay_upload.return_value = api.UploadInfo(
-            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA)
-        monkeypatch.setattr(api, "initiate_assay_upload",
-                            self.api_initiate_assay_upload)
+            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA
+        )
+        monkeypatch.setattr(
+            api, "initiate_assay_upload", self.api_initiate_assay_upload
+        )
 
         self.assay_upload_succeeded = MagicMock()
-        monkeypatch.setattr(api, "assay_upload_succeeded",
-                            self.assay_upload_succeeded)
+        monkeypatch.setattr(api, "assay_upload_succeeded", self.assay_upload_succeeded)
 
         self.assay_upload_failed = MagicMock()
-        monkeypatch.setattr(api, "assay_upload_failed",
-                            self.assay_upload_failed)
+        monkeypatch.setattr(api, "assay_upload_failed", self.assay_upload_failed)
 
         self._poll_for_upload_completion = MagicMock()
-        monkeypatch.setattr(upload, "_poll_for_upload_completion",
-                            self._poll_for_upload_completion)
-
+        monkeypatch.setattr(
+            upload, "_poll_for_upload_completion", self._poll_for_upload_completion
+        )
 
         self._open_file_mapping = MagicMock()
-        monkeypatch.setattr(upload, '_open_file_mapping', self._open_file_mapping)
+        monkeypatch.setattr(upload, "_open_file_mapping", self._open_file_mapping)
 
         self.insert_extra_metadata = MagicMock()
         monkeypatch.setattr("cli.api.insert_extra_metadata", self.insert_extra_metadata)
@@ -55,8 +56,7 @@ class UploadMocks:
         if failure:
             self.assay_upload_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
         else:
-            self.assay_upload_succeeded.assert_called_once_with(
-                JOB_ID, JOB_ETAG)
+            self.assay_upload_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
             self._poll_for_upload_completion.assert_called_once_with(JOB_ID)
 
 
@@ -68,11 +68,11 @@ def run_isolated_upload(runner: CliRunner):
 
 def run_upload(runner: CliRunner):
     """Run a test upload"""
-    files = ['wes.xlsx'] + list(URL_MAPPING.keys())
+    files = ["wes.xlsx"] + list(URL_MAPPING.keys())
     for fname in files:
-        with open(fname, 'wb') as f:
-            f.write(b'blah blah metadata')
-    upload.upload_assay('wes', 'wes.xlsx')
+        with open(fname, "wb") as f:
+            f.write(b"blah blah metadata")
+    upload.upload_assay("wes", "wes.xlsx")
 
 
 def test_upload_assay_success(runner: CliRunner, monkeypatch):
@@ -168,8 +168,9 @@ def test_poll_for_upload_completion(monkeypatch):
 
     def stdout():
         print(click_echo.call_args_list)
-        stdout = '\n'.join([args[0][0]
-                            for args in click_echo.call_args_list if len(args[0])])
+        stdout = "\n".join(
+            [args[0][0] for args in click_echo.call_args_list if len(args[0])]
+        )
         return stdout
 
     job_id = 1
@@ -180,9 +181,10 @@ def test_poll_for_upload_completion(monkeypatch):
     retry_upload.return_value = api.MergeStatus(None, None, retry_in)
     monkeypatch.setattr(api, "poll_upload_merge_status", retry_upload)
     sleep = MagicMock()
-    monkeypatch.setattr(time, 'sleep', sleep)
+    monkeypatch.setattr(time, "sleep", sleep)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(4))
+        job_id, _did_timeout_test_impl=get_did_timeout(4)
+    )
     retry_upload.assert_called_with(job_id)
     sleep.assert_called_with(1)
     assert len(sleep.call_args_list) == retry_in
@@ -192,10 +194,11 @@ def test_poll_for_upload_completion(monkeypatch):
 
     # Simulate a success
     completed = MagicMock()
-    completed.return_value = api.MergeStatus('merge-completed', None, None)
+    completed.return_value = api.MergeStatus("merge-completed", None, None)
     monkeypatch.setattr(api, "poll_upload_merge_status", completed)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(1))
+        job_id, _did_timeout_test_impl=get_did_timeout(1)
+    )
     completed.assert_called_once_with(job_id)
     assert "succeeded" in stdout()
 
@@ -203,11 +206,11 @@ def test_poll_for_upload_completion(monkeypatch):
 
     # Simulate a success
     failed = MagicMock()
-    failed.return_value = api.MergeStatus(
-        'upload-failed', 'some error details', None)
+    failed.return_value = api.MergeStatus("upload-failed", "some error details", None)
     monkeypatch.setattr(api, "poll_upload_merge_status", failed)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(1))
+        job_id, _did_timeout_test_impl=get_did_timeout(1)
+    )
     failed.assert_called_once_with(job_id)
     failure_stdout = stdout()
     assert "failed" in failure_stdout
@@ -224,11 +227,11 @@ def test_simultaneous_uploads(runner: CliRunner, monkeypatch):
 
     gsutil_command = MagicMock()
     gsutil_command.return_value = MagicMock("subprocess")
-    gsutil_command.return_value.args = ["gsutil", 'arg1', 'arg2']
-    gsutil_command.return_value.poll = lambda : 0
+    gsutil_command.return_value.args = ["gsutil", "arg1", "arg2"]
+    gsutil_command.return_value.poll = lambda: 0
     gsutil_command.return_value.returncode = 0
-    gsutil_command.return_value.stderr = MagicMock('stderr')
-    gsutil_command.return_value.stderr.readline = lambda: 'gsutil progress'
+    gsutil_command.return_value.stderr = MagicMock("stderr")
+    gsutil_command.return_value.stderr.readline = lambda: "gsutil progress"
     monkeypatch.setattr("subprocess.Popen", gsutil_command)
 
     monkeypatch.setattr("cli.auth.get_id_token", lambda: "test-token")

@@ -34,7 +34,7 @@ AGREEMENT = "Do you agree to the above terms and conditions?"
 
 BOUNDARY = "=" * (len(AGREEMENT) + 10)
 
-CONSENT_KEY = 'consent'
+CONSENT_KEY = "consent"
 
 
 def check_consent() -> bool:
