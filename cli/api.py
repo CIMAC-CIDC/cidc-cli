@@ -87,7 +87,7 @@ def initiate_upload(
     """
     Initiate an upload.
 
-    Args:x
+    Args:
         upload_type: the name of the API-supported assay
         xlsx_file: an open .xlsx file
         is_analysis: whether this is an analysis upload. If `False`,
