@@ -54,9 +54,6 @@ def check_auth(id_token: str) -> Optional[str]:
     if response.status_code != 200:
         raise ApiError(_error_message(response))
 
-    # No errors, so the token is valid
-    return None
-
 
 def retry_with_reauth(api_request):
     """
@@ -74,7 +71,7 @@ def retry_with_reauth(api_request):
                 break
             # Prompt the user for a new ID token.
             id_token = click.prompt(
-                "CIDC reauthentication required. Please obtain a fresh identity token from the Portal and paste it here:",
+                "CIDC reauthentication required. Please obtain a fresh identity token from the Portal and paste it here",
                 type=str,
             )
             # Validate and cache the user's ID token. If the token is invalid,

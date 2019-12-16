@@ -24,10 +24,10 @@ def validate_token(id_token: str):
     """
     Raises AuthError if id_token is not valid
     """
-    error = api.check_auth(id_token)
-
-    if error:
-        raise AuthError(error)
+    try:
+        error = api.check_auth(id_token)
+    except api.ApiError as e:
+        raise AuthError(str(e))
 
 
 def cache_token(id_token: str):
