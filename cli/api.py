@@ -1,4 +1,5 @@
 """Implements a client for the CIDC API running on Google App Engine"""
+from tkinter import Tk
 from functools import wraps
 from typing import Optional, List, BinaryIO, NamedTuple, Dict
 
@@ -6,11 +7,18 @@ import click
 import requests
 
 from . import auth, __version__
-from .config import API_V2_URL
+from .config import API_V2_URL, get_env
 
 
 class ApiError(click.ClickException):
     pass
+
+
+def _read_clipboard() -> str:
+    widget = Tk()
+    txt = widget.clipboard_get()
+    widget.destroy()
+    return txt
 
 
 def _url(endpoint: str) -> str:
@@ -62,6 +70,8 @@ def retry_with_reauth(api_request):
     and retry the request.
     """
 
+    TOKEN_URL = f'https://{"staging" if get_env() != "prod" else ""}portal.cimac-network.org/assays/cli-instructions'
+
     @wraps(api_request)
     def wrapped(*args, **kwargs):
         while True:
@@ -69,20 +79,30 @@ def retry_with_reauth(api_request):
             # If the error isn't auth-related, break out of the retry loop.
             if res.status_code != 403:
                 break
-            # Prompt the user for a new ID token.
-            id_token = click.prompt(
-                "CIDC reauthentication required. Please obtain a fresh identity token from the Portal and paste it here",
-                type=str,
-            )
-            # Validate and cache the user's ID token. If the token is invalid,
-            # just ignore it - the user will be prompted to enter a new token
-            # on the next iteration of this loop.
-            try:
-                auth.cache_token(id_token)
-            except auth.AuthError:
-                pass
 
-        # Handle non-auth error responses
+            # Prompt the user for a new ID token.
+            while True:
+                click.prompt(
+                    (
+                        "\nCIDC reauthentication required. Please copy a fresh identity token from the Portal "
+                        f"to your clipboard here:\n\n\t{TOKEN_URL}\n\n"
+                        "Then, press 'enter' to paste your copied token below"
+                    ),
+                    default="enter",
+                    show_default=False,
+                )
+                id_token = _read_clipboard()
+                click.echo(f"\n{id_token}\n")
+
+                # Validate and cache the user's ID token. If the token is invalid,
+                # inform the user as such, and re-prompt for an identity token.
+                try:
+                    auth.cache_token(id_token)
+                    break
+                except auth.AuthError:
+                    click.echo("The token you entered is invalid.")
+
+        # Handle error responses
         if res.status_code != 200:
             raise ApiError(_error_message(res))
 
@@ -136,11 +156,14 @@ def initiate_upload(
     files = {"template": xlsx_file}
 
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
-    response = retry_with_reauth(
-        lambda: requests.post(
+
+    @retry_with_reauth
+    def make_request():
+        return requests.post(
             _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
         )
-    )()
+
+    response = make_request()
 
     try:
         upload_info = response.json()
@@ -202,9 +225,12 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
     """Check the merge status of an upload job"""
     url = _url(f"/ingestion/poll_upload_merge_status")
     params = dict(id=job_id)
-    response = retry_with_reauth(
-        lambda: requests.get(url, params=params, headers=_with_auth())
-    )()
+
+    @retry_with_reauth
+    def make_request():
+        return requests.get(url, params=params, headers=_with_auth())
+
+    response = make_request()
 
     merge_status = response.json()
     status = merge_status.get("status")

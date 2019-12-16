@@ -246,27 +246,32 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
             pass
 
         # Simulate a user entering a fresh, valid token
-        monkeypatch.setattr("sys.stdin", StringIO(good_token))
+        monkeypatch.setattr(api, "_read_clipboard", lambda: good_token)
+        monkeypatch.setattr("sys.stdin", StringIO("\n"))
         monkeypatch.setattr(api, "check_auth", successful_reauth)
 
         res = req_403()
         stdout = capsys.readouterr().out
         assert res.json() == "successful reauth"
-        # User is re-prompted 1 time
-        assert stdout.count("paste it here:") == 1
+        # User is prompted once, and their token is displayed once
+        assert stdout.count("paste your copied token below") == 1
+        assert stdout.count(good_token) == 1
 
         def unsuccessful_reauth(*args):
             raise api.ApiError("signature expired")
 
         # Simulate a user entering 3 invalid tokens
         bad_token = "bad_token\n"
-        monkeypatch.setattr("sys.stdin", StringIO(bad_token * 3))
+        monkeypatch.setattr(api, "_read_clipboard", lambda: bad_token)
+        monkeypatch.setattr("sys.stdin", StringIO("\n" * 3))
         monkeypatch.setattr(api, "check_auth", unsuccessful_reauth)
 
-        # This will be raised when stdin runs out
+        # This will be raised when mocked stdin runs out
         with pytest.raises(click.exceptions.Abort):
             req_403()
 
         stdout = capsys.readouterr().out
+        # User enters bad_token 3 times
+        assert stdout.count(bad_token) == 3
         # User is re-prompted 4 times
-        assert stdout.count("paste it here:") == 4
+        assert stdout.count("paste your copied token below") == 4
