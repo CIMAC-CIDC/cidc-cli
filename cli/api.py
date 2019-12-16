@@ -1,4 +1,5 @@
 """Implements a client for the CIDC API running on Google App Engine"""
+from functools import wraps
 from typing import Optional, List, BinaryIO, NamedTuple, Dict
 
 import click
@@ -57,6 +58,42 @@ def check_auth(id_token: str) -> Optional[str]:
     return None
 
 
+def retry_with_reauth(api_request):
+    """
+    For a function `api_request` that returns a `Response` object, if that response
+    has status code 403, prompt the user to enter a fresh ID token from the portal,
+    and retry the request.
+    """
+
+    @wraps(api_request)
+    def wrapped(*args, **kwargs):
+        while True:
+            res = api_request(*args, **kwargs)
+            # If the error isn't auth-related, break out of the retry loop.
+            if res.status_code != 403:
+                break
+            # Prompt the user for a new ID token.
+            id_token = click.prompt(
+                "CIDC reauthentication required. Please obtain a fresh identity token from the Portal and paste it here:",
+                type=str,
+            )
+            # Validate and cache the user's ID token. If the token is invalid,
+            # just ignore it - the user will be prompted to enter a new token
+            # on the next iteration of this loop.
+            try:
+                auth.cache_token(id_token)
+            except auth.AuthError:
+                pass
+
+        # Handle non-auth error responses
+        if res.status_code != 200:
+            raise ApiError(_error_message(res))
+
+        return res
+
+    return wrapped
+
+
 def list_assays() -> List[str]:
     """Get a list of all supported assays."""
     response = requests.get(_url("/info/assays"))
@@ -102,12 +139,11 @@ def initiate_upload(
     files = {"template": xlsx_file}
 
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
-    response = requests.post(
-        _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
-    )
-
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    response = retry_with_reauth(
+        lambda: requests.post(
+            _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
+        )
+    )()
 
     try:
         upload_info = response.json()
@@ -124,15 +160,14 @@ def initiate_upload(
         )
 
 
+@retry_with_reauth
 def _update_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing upload job"""
     url = _url(f"/assay_uploads/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
     response = requests.patch(url, json=data, headers=_with_auth(if_match))
-
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    return response
 
 
 def upload_succeeded(job_id: int, etag: str):
@@ -140,6 +175,7 @@ def upload_succeeded(job_id: int, etag: str):
     _update_upload_status(job_id, etag, "upload-completed")
 
 
+@retry_with_reauth
 def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     """Insert extra metadata into the patch for the given job"""
     data = {"job_id": job_id}
@@ -151,8 +187,7 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
         files=extra_metadata,
     )
 
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    return response
 
 
 def upload_failed(job_id: int, etag: str):
@@ -170,10 +205,9 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
     """Check the merge status of an upload job"""
     url = _url(f"/ingestion/poll_upload_merge_status")
     params = dict(id=job_id)
-    response = requests.get(url, params=params, headers=_with_auth())
-
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    response = retry_with_reauth(
+        lambda: requests.get(url, params=params, headers=_with_auth())
+    )()
 
     merge_status = response.json()
     status = merge_status.get("status")
