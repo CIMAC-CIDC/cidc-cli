@@ -1,7 +1,8 @@
 """Implements a client for the CIDC API running on Google App Engine"""
 from tkinter import Tk
 from functools import wraps
-from typing import Optional, List, BinaryIO, NamedTuple, Dict
+from collections import namedtuple
+from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
 
 import click
 import requests
@@ -86,7 +87,7 @@ def retry_with_reauth(api_request):
                 click.prompt(
                     (
                         "\nCIDC reauthentication required. Please copy a fresh identity token from the Portal "
-                        f"to your clipboard here:\n\n\t{TOKEN_URL}\n\n"
+                        f"to your clipboard at this URL:\n\n\t{TOKEN_URL}\n\n"
                         "Then, press 'enter' to paste your copied token below"
                     ),
                     default="enter",
@@ -110,6 +111,18 @@ def retry_with_reauth(api_request):
         return res
 
     return wrapped
+
+
+class RequestsWithReauth:
+    def __init__(self):
+        """Build a `request` instance with all methods wrapped in the `retry_with_reauth` decorator."""
+        pass
+
+    def __getattribute__(self, name):
+        return retry_with_reauth(getattr(requests, name))
+
+
+requests_with_reauth = RequestsWithReauth()
 
 
 def list_assays() -> List[str]:
@@ -158,13 +171,9 @@ def initiate_upload(
 
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
 
-    @retry_with_reauth
-    def make_request():
-        return requests.post(
-            _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
-        )
-
-    response = make_request()
+    response = requests_with_reauth.post(
+        _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
+    )
 
     try:
         upload_info = response.json()
@@ -181,13 +190,12 @@ def initiate_upload(
         )
 
 
-@retry_with_reauth
 def _update_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing upload job"""
     url = _url(f"/assay_uploads/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
-    response = requests.patch(url, json=data, headers=_with_auth(if_match))
+    response = requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
     return response
 
 
@@ -196,12 +204,11 @@ def upload_succeeded(job_id: int, etag: str):
     _update_upload_status(job_id, etag, "upload-completed")
 
 
-@retry_with_reauth
 def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     """Insert extra metadata into the patch for the given job"""
     data = {"job_id": job_id}
 
-    response = requests.post(
+    response = requests_with_reauth.post(
         _url("/ingestion/extra-assay-metadata"),
         headers=_with_auth(),
         data=data,
@@ -227,11 +234,7 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
     url = _url(f"/ingestion/poll_upload_merge_status")
     params = dict(id=job_id)
 
-    @retry_with_reauth
-    def make_request():
-        return requests.get(url, params=params, headers=_with_auth())
-
-    response = make_request()
+    response = requests_with_reauth.get(url, params=params, headers=_with_auth())
 
     merge_status = response.json()
     status = merge_status.get("status")
