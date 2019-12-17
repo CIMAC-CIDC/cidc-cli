@@ -125,7 +125,7 @@ def retry_with_reauth(api_request):
     return wrapped
 
 
-class RequestsWithReauth:
+class _RequestsWithReauth:
     def __init__(self):
         """Build a `request` instance with all methods wrapped in the `retry_with_reauth` decorator."""
         pass
@@ -134,7 +134,7 @@ class RequestsWithReauth:
         return retry_with_reauth(getattr(requests, name))
 
 
-requests_with_reauth = RequestsWithReauth()
+_requests_with_reauth = _RequestsWithReauth()
 
 
 def list_assays() -> List[str]:
@@ -183,7 +183,7 @@ def initiate_upload(
 
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
 
-    response = requests_with_reauth.post(
+    response = _requests_with_reauth.post(
         _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
     )
 
@@ -207,7 +207,7 @@ def _update_upload_status(job_id: int, etag: str, status: str):
     url = _url(f"/assay_uploads/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
-    response = requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
+    response = _requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
     return response
 
 
@@ -220,7 +220,7 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     """Insert extra metadata into the patch for the given job"""
     data = {"job_id": job_id}
 
-    response = requests_with_reauth.post(
+    response = _requests_with_reauth.post(
         _url("/ingestion/extra-assay-metadata"),
         headers=_with_auth(),
         data=data,
@@ -246,7 +246,7 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
     url = _url(f"/ingestion/poll_upload_merge_status")
     params = dict(id=job_id)
 
-    response = requests_with_reauth.get(url, params=params, headers=_with_auth())
+    response = _requests_with_reauth.get(url, params=params, headers=_with_auth())
 
     merge_status = response.json()
     status = merge_status.get("status")
