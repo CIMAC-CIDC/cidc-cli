@@ -1,15 +1,26 @@
 """Implements a client for the CIDC API running on Google App Engine"""
-from typing import Optional, List, BinaryIO, NamedTuple, Dict
+from tkinter import Tk
+from functools import wraps
+from collections import namedtuple
+from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
 
 import click
 import requests
 
 from . import auth, __version__
-from .config import API_V2_URL
+from .config import API_V2_URL, get_env
 
 
 class ApiError(click.ClickException):
     pass
+
+
+def _read_clipboard() -> str:
+    """Read the current contents of the user's clipboard."""
+    widget = Tk()
+    txt = widget.clipboard_get()
+    widget.destroy()
+    return txt
 
 
 def _url(endpoint: str) -> str:
@@ -53,8 +64,77 @@ def check_auth(id_token: str) -> Optional[str]:
     if response.status_code != 200:
         raise ApiError(_error_message(response))
 
-    # No errors, so the token is valid
-    return None
+
+def retry_with_reauth(api_request):
+    """
+    For a function `api_request` that returns a `Response` object, if that response
+    has status code 403, prompt the user to enter a fresh ID token from the portal,
+    and retry the request.
+    """
+
+    TOKEN_URL = f'https://{"staging" if get_env() != "prod" else ""}portal.cimac-network.org/assays/cli-instructions'
+
+    @wraps(api_request)
+    def wrapped(*args, **kwargs):
+        retry = True
+        while retry:
+            res = api_request(*args, **kwargs)
+            # If the error isn't auth-related, break out of the retry loop.
+            if res.status_code != 403:
+                break
+
+            # Prompt the user for a new ID token.
+            while True:
+                click.prompt(
+                    (
+                        "\nCIDC reauthentication required. Please copy a fresh identity token from the Portal "
+                        f"to your clipboard at this URL:\n\n\t{TOKEN_URL}\n\n"
+                        "Then, press 'enter' to paste your copied token below"
+                    ),
+                    default="enter",
+                    show_default=False,
+                )
+                try:
+                    id_token = _read_clipboard()
+                except:
+                    click.echo(
+                        f"\n\nError: could not read token from clipboard.\n",
+                        color="red",
+                    )
+                    retry = False
+                    break
+                click.echo(f"\n{id_token}\n")
+
+                # Validate and cache the user's ID token. If the token is invalid,
+                # inform the user, and re-prompt them for an identity token.
+                try:
+                    auth.cache_token(id_token)
+                    break
+                except auth.AuthError:
+                    click.echo("The token you entered is invalid.")
+
+            if not retry:
+                break
+
+        # Handle error responses
+        if res.status_code != 200:
+            raise ApiError(_error_message(res))
+
+        return res
+
+    return wrapped
+
+
+class _RequestsWithReauth:
+    def __init__(self):
+        """Build a `request` instance with all methods wrapped in the `retry_with_reauth` decorator."""
+        pass
+
+    def __getattribute__(self, name):
+        return retry_with_reauth(getattr(requests, name))
+
+
+_requests_with_reauth = _RequestsWithReauth()
 
 
 def list_assays() -> List[str]:
@@ -102,12 +182,10 @@ def initiate_upload(
     files = {"template": xlsx_file}
 
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
-    response = requests.post(
+
+    response = _requests_with_reauth.post(
         _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
     )
-
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
 
     try:
         upload_info = response.json()
@@ -129,10 +207,8 @@ def _update_upload_status(job_id: int, etag: str, status: str):
     url = _url(f"/assay_uploads/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
-    response = requests.patch(url, json=data, headers=_with_auth(if_match))
-
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    response = _requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
+    return response
 
 
 def upload_succeeded(job_id: int, etag: str):
@@ -144,15 +220,14 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     """Insert extra metadata into the patch for the given job"""
     data = {"job_id": job_id}
 
-    response = requests.post(
+    response = _requests_with_reauth.post(
         _url("/ingestion/extra-assay-metadata"),
         headers=_with_auth(),
         data=data,
         files=extra_metadata,
     )
 
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    return response
 
 
 def upload_failed(job_id: int, etag: str):
@@ -170,10 +245,8 @@ def poll_upload_merge_status(job_id: int) -> MergeStatus:
     """Check the merge status of an upload job"""
     url = _url(f"/ingestion/poll_upload_merge_status")
     params = dict(id=job_id)
-    response = requests.get(url, params=params, headers=_with_auth())
 
-    if response.status_code != 200:
-        raise ApiError(_error_message(response))
+    response = _requests_with_reauth.get(url, params=params, headers=_with_auth())
 
     merge_status = response.json()
     status = merge_status.get("status")

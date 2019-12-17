@@ -1,10 +1,12 @@
-from io import BytesIO
+import sys
+from io import BytesIO, StringIO
 
+import click
 import pytest
 from unittest.mock import MagicMock
 from typing import Union
 
-from cli import api, config, __version__
+from cli import api, auth, config, __version__
 
 
 def make_json_response(body={}) -> MagicMock:
@@ -205,3 +207,85 @@ def test_poll_upload_merge_status(monkeypatch):
     assert upload_status.retry_in is None
     assert upload_status.status == status_res["status"]
     assert upload_status.status_details == status_res["status_details"]
+
+
+def test_retry_with_reauth(runner, capsys, monkeypatch):
+    """Ensure retry-after-reauthentication decorator works as expected."""
+
+    @api.retry_with_reauth
+    def req_200():
+        return make_json_response({"foo": "bar"})
+
+    # No interference with a successful request
+    res = req_200()
+    assert res.json() == {"foo": "bar"}
+
+    @api.retry_with_reauth
+    def req_500():
+        return make_error_response("uhoh", code=500)
+
+    # Raises ApiError on request that fails for non-auth reasons
+    with pytest.raises(api.ApiError, match="uhoh"):
+        res = req_500()
+
+    good_token = "good_token"
+
+    @api.retry_with_reauth
+    def req_403():
+        try:
+            token = auth.get_id_token()
+            if token == good_token:
+                return make_json_response("successful reauth")
+        except:
+            pass
+        return make_error_response("auth error", code=403)
+
+    with runner.isolated_filesystem():
+
+        def successful_reauth(*args):
+            pass
+
+        # Simulate a user entering a fresh, valid token
+        monkeypatch.setattr(api, "_read_clipboard", lambda: good_token)
+        monkeypatch.setattr("sys.stdin", StringIO("\n"))
+        monkeypatch.setattr(api, "check_auth", successful_reauth)
+
+        res = req_403()
+        stdout = capsys.readouterr().out
+        assert res.json() == "successful reauth"
+        # User is prompted once, and their token is displayed once
+        assert stdout.count("paste your copied token below") == 1
+        assert stdout.count(good_token) == 1
+
+        def unsuccessful_reauth(*args):
+            raise api.ApiError("signature expired")
+
+        # Simulate a user entering 3 invalid tokens
+        bad_token = "bad_token"
+        monkeypatch.setattr(api, "_read_clipboard", lambda: bad_token)
+        monkeypatch.setattr("sys.stdin", StringIO("\n" * 3))
+        monkeypatch.setattr(api, "check_auth", unsuccessful_reauth)
+
+        # This will be raised when mocked stdin runs out
+        with pytest.raises(click.exceptions.Abort):
+            req_403()
+
+        stdout = capsys.readouterr().out
+        # User enters bad_token 3 times
+        assert stdout.count(bad_token) == 3
+        # User is re-prompted 4 times
+        assert stdout.count("paste your copied token below") == 4
+
+        # Simulate a user having tkinter issues
+        def throw():
+            raise Exception
+
+        monkeypatch.setattr(api, "_read_clipboard", throw)
+        monkeypatch.setattr("sys.stdin", StringIO("\n" * 2))
+        auth.cache.store(auth.TOKEN, bad_token)
+
+        with pytest.raises(api.ApiError, match="auth error"):
+            req_403()
+
+        stdout = capsys.readouterr().out
+        assert stdout.count("could not read token from clipboard") == 1
