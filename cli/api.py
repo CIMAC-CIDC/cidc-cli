@@ -76,7 +76,8 @@ def retry_with_reauth(api_request):
 
     @wraps(api_request)
     def wrapped(*args, **kwargs):
-        while True:
+        retry = True
+        while retry:
             res = api_request(*args, **kwargs)
             # If the error isn't auth-related, break out of the retry loop.
             if res.status_code != 403:
@@ -93,7 +94,15 @@ def retry_with_reauth(api_request):
                     default="enter",
                     show_default=False,
                 )
-                id_token = _read_clipboard()
+                try:
+                    id_token = _read_clipboard()
+                except:
+                    click.echo(
+                        f"\n\nError: could not read token from clipboard.\n",
+                        color="red",
+                    )
+                    retry = False
+                    break
                 click.echo(f"\n{id_token}\n")
 
                 # Validate and cache the user's ID token. If the token is invalid,
@@ -103,6 +112,9 @@ def retry_with_reauth(api_request):
                     break
                 except auth.AuthError:
                     click.echo("The token you entered is invalid.")
+
+            if not retry:
+                break
 
         # Handle error responses
         if res.status_code != 200:

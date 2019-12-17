@@ -275,3 +275,17 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         assert stdout.count(bad_token) == 3
         # User is re-prompted 4 times
         assert stdout.count("paste your copied token below") == 4
+
+        # Simulate a user having tkinter issues
+        def throw():
+            raise Exception
+
+        monkeypatch.setattr(api, "_read_clipboard", throw)
+        monkeypatch.setattr("sys.stdin", StringIO("\n" * 2))
+        auth.cache.store(auth.TOKEN, bad_token)
+
+        with pytest.raises(api.ApiError, match="auth error"):
+            req_403()
+
+        stdout = capsys.readouterr().out
+        assert stdout.count("could not read token from clipboard") == 1
