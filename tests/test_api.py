@@ -261,7 +261,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
             raise api.ApiError("signature expired")
 
         # Simulate a user entering 3 invalid tokens
-        bad_token = "bad_token\n"
+        bad_token = "bad_token"
         monkeypatch.setattr(api, "_read_clipboard", lambda: bad_token)
         monkeypatch.setattr("sys.stdin", StringIO("\n" * 3))
         monkeypatch.setattr(api, "check_auth", unsuccessful_reauth)

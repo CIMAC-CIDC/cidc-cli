@@ -15,6 +15,7 @@ class ApiError(click.ClickException):
 
 
 def _read_clipboard() -> str:
+    """Read the current contents of the user's clipboard."""
     widget = Tk()
     txt = widget.clipboard_get()
     widget.destroy()
@@ -95,7 +96,7 @@ def retry_with_reauth(api_request):
                 click.echo(f"\n{id_token}\n")
 
                 # Validate and cache the user's ID token. If the token is invalid,
-                # inform the user as such, and re-prompt for an identity token.
+                # inform the user, and re-prompt them for an identity token.
                 try:
                     auth.cache_token(id_token)
                     break
