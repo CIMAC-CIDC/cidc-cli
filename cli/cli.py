@@ -58,6 +58,7 @@ def assays():
 @click.command("list")
 def list_assays():
     """List all supported assay types."""
+    gcloud.login()
     assay_list = api.list_assays()
     for assay in assay_list:
         click.echo(f"* {assay}")
