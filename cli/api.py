@@ -204,7 +204,7 @@ def initiate_upload(
 
 def _update_upload_status(job_id: int, etag: str, status: str):
     """Update the status for an existing upload job"""
-    url = _url(f"/assay_uploads/{job_id}")
+    url = _url(f"/upload_jobs/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
     response = _requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
