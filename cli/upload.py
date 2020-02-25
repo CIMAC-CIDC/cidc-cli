@@ -252,7 +252,7 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
 
 
 def _poll_for_upload_completion(
-    job_id: int, timeout: int = 120, _did_timeout_test_impl=None
+    job_id: int, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
