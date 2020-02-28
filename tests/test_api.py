@@ -231,14 +231,14 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
     good_token = "good_token"
 
     @api.retry_with_reauth
-    def req_403():
+    def req_401():
         try:
             token = auth.get_id_token()
             if token == good_token:
                 return make_json_response("successful reauth")
         except:
             pass
-        return make_error_response("auth error", code=403)
+        return make_error_response("auth error", code=401)
 
     with runner.isolated_filesystem():
 
@@ -250,7 +250,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         monkeypatch.setattr("sys.stdin", StringIO("\n"))
         monkeypatch.setattr(api, "check_auth", successful_reauth)
 
-        res = req_403()
+        res = req_401()
         stdout = capsys.readouterr().out
         assert res.json() == "successful reauth"
         # User is prompted once, and their token is displayed once
@@ -285,7 +285,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         auth.cache.store(auth.TOKEN, bad_token)
 
         with pytest.raises(api.ApiError, match="auth error"):
-            req_403()
+            req_401()
 
         stdout = capsys.readouterr().out
         assert stdout.count("could not read token from clipboard") == 1
