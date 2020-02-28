@@ -62,7 +62,7 @@ def test_error_message_extractor():
     assert "API server encountered an error" in api._error_message(response)
 
 
-def test_with_auth(runner):
+def test_with_auth():
     """Test the authorization header builder"""
     TOKEN = "tok"
     AUTH_HEADER = {

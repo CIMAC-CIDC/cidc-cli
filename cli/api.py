@@ -136,7 +136,14 @@ class _RequestsWithReauth:
         method = getattr(requests, name)
 
         def req(*args, **kwargs):
-            headers = _with_auth(kwargs.pop("headers", None))
+            """
+            This function will reload the user's id token from the cache via _with_auth
+            before executing the request. This way, when the user provides a new id token for
+            reauthentication, that token will be included in the request headers.
+            """
+            passed_headers = kwargs.pop("headers", None)
+            # Update passed_headers to include the cached id token
+            headers = _with_auth(passed_headers)
             return method(*args, **kwargs, headers=headers)
 
         return retry_with_reauth(req)
