@@ -80,7 +80,7 @@ def retry_with_reauth(api_request):
         while retry:
             res = api_request(*args, **kwargs)
             # If the error isn't auth-related, break out of the retry loop.
-            if res.status_code != 403:
+            if res.status_code != 401:
                 break
 
             # Prompt the user for a new ID token.

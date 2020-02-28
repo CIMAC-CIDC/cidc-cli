@@ -268,7 +268,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
 
         # This will be raised when mocked stdin runs out
         with pytest.raises(click.exceptions.Abort):
-            req_403()
+            req_401()
 
         stdout = capsys.readouterr().out
         # User enters bad_token 3 times
