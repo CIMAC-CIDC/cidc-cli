@@ -5,12 +5,8 @@ import click
 
 from . import cache
 
-TESTING = os.environ.get("TESTING")
-
 # General config
 CIDC_WORKING_DIR = os.path.join(Path.home(), ".cidc")
-if TESTING:
-    CIDC_WORKING_DIR = os.path.join(CIDC_WORKING_DIR, ".tests")
 TOKEN_CACHE_PATH = os.path.join(CIDC_WORKING_DIR, "id_token")
 
 

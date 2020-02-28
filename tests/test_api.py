@@ -115,6 +115,8 @@ def test_initiate_upload(monkeypatch):
     URL_MAPPING = {"foo": "bar"}
     EXTRA_METADATA = {"uuid": "lp1"}
 
+    monkeypatch.setattr(api, "_with_auth", lambda: {})
+
     def good_request(url, headers, data, files):
         assert data.get("schema") == "wes"
         assert files.get("template") == XLSX
@@ -151,6 +153,7 @@ def test_initiate_upload(monkeypatch):
 
 def test_update_job_status(monkeypatch):
     """Test that _update_job_status builds a request with the expected structure"""
+    monkeypatch.setattr(api, "_with_auth", lambda headers: headers)
 
     def test_status(status):
         def request(url, json, headers):
@@ -170,6 +173,7 @@ def test_update_job_status(monkeypatch):
 
 def test_poll_upload_merge_status(monkeypatch):
     """Check that poll_upload_merge status handles various responses as expected"""
+    monkeypatch.setattr(api, "_with_auth", lambda: {})
 
     def not_found_get(*args, **kwargs):
         return make_error_response("", code=404)
@@ -238,8 +242,9 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         return make_error_response("auth error", code=401)
 
     with runner.isolated_filesystem():
+        bad_token = "bad_token"
         # Bypass auth.cache_token's validation functionality
-        cache.store(auth.TOKEN, "bad_token")
+        cache.store(auth.TOKEN, bad_token)
 
         def successful_reauth(*args):
             pass
@@ -260,8 +265,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
             raise api.ApiError("signature expired")
 
         # Simulate a user entering 3 invalid tokens
-        cache.store(auth.TOKEN, "bad_token")
-        bad_token = "bad_token"
+        cache.store(auth.TOKEN, bad_token)
         monkeypatch.setattr(api, "_read_clipboard", lambda: bad_token)
         monkeypatch.setattr("sys.stdin", StringIO("\n" * 3))
         monkeypatch.setattr(api, "check_auth", unsuccessful_reauth)
