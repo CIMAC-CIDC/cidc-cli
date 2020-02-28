@@ -1,6 +1,6 @@
 """Implements a client for the CIDC API running on Google App Engine"""
 from tkinter import Tk
-from functools import wraps, partial
+from functools import wraps
 from collections import namedtuple
 from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
 
