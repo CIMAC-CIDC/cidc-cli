@@ -20,7 +20,7 @@ def cidc(ignore):
 def login(portal_token):
     """Validate and cache the given token"""
     click.echo("Validating token...")
-    auth.cache_token(portal_token)
+    auth.validate_and_cache_token(portal_token)
     click.echo("You are now logged in.")
 
 

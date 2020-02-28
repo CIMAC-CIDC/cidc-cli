@@ -76,7 +76,7 @@ def test_with_auth(monkeypatch):
     assert api._with_auth(headers=OTHER_HEADERS, id_token=TOKEN) == HEADERS
 
     monkeypatch.setattr("cli.auth.validate_token", MagicMock())
-    auth.cache_token(TOKEN)
+    auth.validate_and_cache_token(TOKEN)
     assert api._with_auth() == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS) == HEADERS
 
@@ -243,7 +243,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
 
     with runner.isolated_filesystem():
         bad_token = "bad_token"
-        # Bypass auth.cache_token's validation functionality
+        # Bypass auth.validate_and_cache_token's validation functionality
         cache.store(auth.TOKEN, bad_token)
 
         def successful_reauth(*args):

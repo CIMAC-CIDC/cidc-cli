@@ -31,7 +31,7 @@ def validate_token(id_token: str):
         raise AuthError(str(e))
 
 
-def cache_token(id_token: str):
+def validate_and_cache_token(id_token: str):
     """
     If a token is valid, cache it for use in future commands.
     """

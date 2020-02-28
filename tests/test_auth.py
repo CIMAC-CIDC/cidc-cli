@@ -28,7 +28,7 @@ def test_valid_token_flow(monkeypatch, runner):
 
     with runner.isolated_filesystem():
         # Login
-        auth.cache_token(TOKEN)
+        auth.validate_and_cache_token(TOKEN)
 
         # Use the token
         assert auth.get_id_token() == TOKEN
@@ -45,7 +45,7 @@ def test_invalid_token_flow(monkeypatch, runner):
     with runner.isolated_filesystem():
         # Invalid tokens shouldn't be cached
         with pytest.raises(auth.AuthError):
-            auth.cache_token("blah")
+            auth.validate_and_cache_token("blah")
 
         # Invalid tokens *can* be read.
         monkeypatch.setattr("cli.cache.get", lambda key: "blah")
