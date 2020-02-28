@@ -1,6 +1,6 @@
 """Implements a client for the CIDC API running on Google App Engine"""
 from tkinter import Tk
-from functools import wraps
+from functools import wraps, partial
 from collections import namedtuple
 from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
 
@@ -45,10 +45,12 @@ def _error_message(response: requests.Response):
 _USER_AGENT = f"cidc-cli/{__version__}"
 
 
-def _with_auth(headers: dict = None, id_token: str = None) -> dict:
+def _with_auth(
+    headers: dict = None, id_token: str = None, validate: bool = False
+) -> dict:
     """Add an id token to the given headers"""
     if not id_token:
-        id_token = auth.get_id_token()
+        id_token = auth.get_id_token(validate=validate)
     return {
         **(headers or {}),
         "Authorization": f"Bearer {id_token}",
@@ -108,7 +110,7 @@ def retry_with_reauth(api_request):
                 # Validate and cache the user's ID token. If the token is invalid,
                 # inform the user, and re-prompt them for an identity token.
                 try:
-                    auth.cache_token(id_token)
+                    auth.cache_token(id_token, validate=False)
                     break
                 except auth.AuthError:
                     click.echo("The token you entered is invalid.")
@@ -131,7 +133,13 @@ class _RequestsWithReauth:
         pass
 
     def __getattribute__(self, name):
-        return retry_with_reauth(getattr(requests, name))
+        method = getattr(requests, name)
+
+        def req(*args, **kwargs):
+            headers = _with_auth(kwargs.pop("headers", None))
+            return method(*args, **kwargs, headers=headers)
+
+        return retry_with_reauth(req)
 
 
 _requests_with_reauth = _RequestsWithReauth()
@@ -184,7 +192,7 @@ def initiate_upload(
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
 
     response = _requests_with_reauth.post(
-        _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
+        _url(f"/ingestion/{endpoint}"), data=data, files=files
     )
 
     try:
@@ -221,10 +229,7 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     data = {"job_id": job_id}
 
     response = _requests_with_reauth.post(
-        _url("/ingestion/extra-assay-metadata"),
-        headers=_with_auth(),
-        data=data,
-        files=extra_metadata,
+        _url("/ingestion/extra-assay-metadata"), data=data, files=extra_metadata
     )
 
     return response

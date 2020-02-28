@@ -30,18 +30,19 @@ def validate_token(id_token: str):
         raise AuthError(str(e))
 
 
-def cache_token(id_token: str):
+def cache_token(id_token: str, validate: bool = True):
     """
     If a token is valid, cache it for use in future commands.
     """
     # Validate the id token
-    validate_token(id_token)
+    if validate:
+        validate_token(id_token)
 
     # Save the provided token
     cache.store(TOKEN, id_token)
 
 
-def get_id_token() -> str:
+def get_id_token(validate: bool = True) -> str:
     """
     Look for a cached id_token for this user. If one exists and is valid, return it.
     Otherwise, exit and prompt the user to log in.
@@ -53,11 +54,12 @@ def get_id_token() -> str:
     if not id_token:
         raise unauthenticated()
 
-    # Return the cached token if it is still valid
-    try:
-        validate_token(id_token)
-    except AuthError:
-        raise unauthenticated()
+    # Check if cached token is still valid
+    if validate:
+        try:
+            validate_token(id_token)
+        except AuthError:
+            raise unauthenticated()
 
     return id_token
 

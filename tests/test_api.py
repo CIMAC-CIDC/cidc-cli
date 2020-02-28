@@ -62,7 +62,7 @@ def test_error_message_extractor():
     assert "API server encountered an error" in api._error_message(response)
 
 
-def test_with_auth(monkeypatch):
+def test_with_auth(runner):
     """Test the authorization header builder"""
     TOKEN = "tok"
     AUTH_HEADER = {
@@ -75,7 +75,7 @@ def test_with_auth(monkeypatch):
     assert api._with_auth(id_token=TOKEN) == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS, id_token=TOKEN) == HEADERS
 
-    monkeypatch.setattr("cli.auth.get_id_token", lambda: TOKEN)
+    auth.cache_token(TOKEN, validate=False)
     assert api._with_auth() == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS) == HEADERS
 
@@ -114,8 +114,6 @@ def test_initiate_upload(monkeypatch):
     URL_MAPPING = {"foo": "bar"}
     EXTRA_METADATA = {"uuid": "lp1"}
 
-    monkeypatch.setattr(api, "_with_auth", lambda: {})
-
     def good_request(url, headers, data, files):
         assert data.get("schema") == "wes"
         assert files.get("template") == XLSX
@@ -152,7 +150,6 @@ def test_initiate_upload(monkeypatch):
 
 def test_update_job_status(monkeypatch):
     """Test that _update_job_status builds a request with the expected structure"""
-    monkeypatch.setattr(api, "_with_auth", lambda headers: headers)
 
     def test_status(status):
         def request(url, json, headers):
@@ -172,7 +169,6 @@ def test_update_job_status(monkeypatch):
 
 def test_poll_upload_merge_status(monkeypatch):
     """Check that poll_upload_merge status handles various responses as expected"""
-    monkeypatch.setattr(api, "_with_auth", lambda: {})
 
     def not_found_get(*args, **kwargs):
         return make_error_response("", code=404)
@@ -241,6 +237,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         return make_error_response("auth error", code=401)
 
     with runner.isolated_filesystem():
+        auth.cache_token("bad_token", validate=False)
 
         def successful_reauth(*args):
             pass
