@@ -32,7 +32,8 @@ def validate_token(id_token: str):
 
 def cache_token(id_token: str, validate: bool = True):
     """
-    If a token is valid, cache it for use in future commands.
+    Cache a token for use in future commands. If `validate` is True,
+    only cache the token if it is valid.
     """
     # Validate the id token
     if validate:
@@ -44,8 +45,8 @@ def cache_token(id_token: str, validate: bool = True):
 
 def get_id_token(validate: bool = True) -> str:
     """
-    Look for a cached id_token for this user. If one exists and is valid, return it.
-    Otherwise, exit and prompt the user to log in.
+    Look for a cached id_token for this user. If `validate` is True and the token is invalid, or
+    if no token is cached, exit and prompt the user to log in. Otherwise, return the cached token.
     """
     # Try to find a cached token
     id_token = cache.get(TOKEN)
