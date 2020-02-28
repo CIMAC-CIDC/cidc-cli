@@ -45,12 +45,10 @@ def _error_message(response: requests.Response):
 _USER_AGENT = f"cidc-cli/{__version__}"
 
 
-def _with_auth(
-    headers: dict = None, id_token: str = None, validate: bool = False
-) -> dict:
+def _with_auth(headers: dict = None, id_token: str = None) -> dict:
     """Add an id token to the given headers"""
     if not id_token:
-        id_token = auth.get_id_token(validate=validate)
+        id_token = auth.get_id_token()
     return {
         **(headers or {}),
         "Authorization": f"Bearer {id_token}",
@@ -110,7 +108,8 @@ def retry_with_reauth(api_request):
                 # Validate and cache the user's ID token. If the token is invalid,
                 # inform the user, and re-prompt them for an identity token.
                 try:
-                    auth.cache_token(id_token, validate=False)
+                    auth.cache_token(id_token)
+                    kwargs["headers"] = _with_auth(kwargs.get("headers"), id_token)
                     break
                 except auth.AuthError:
                     click.echo("The token you entered is invalid.")
@@ -133,20 +132,7 @@ class _RequestsWithReauth:
         pass
 
     def __getattribute__(self, name):
-        method = getattr(requests, name)
-
-        def req(*args, **kwargs):
-            """
-            This function will reload the user's id token from the cache via _with_auth
-            before executing the request. This way, when the user provides a new id token for
-            reauthentication, that token will be included in the request headers.
-            """
-            passed_headers = kwargs.pop("headers", None)
-            # Update passed_headers to include the cached id token
-            headers = _with_auth(passed_headers)
-            return method(*args, **kwargs, headers=headers)
-
-        return retry_with_reauth(req)
+        return retry_with_reauth(getattr(requests, name))
 
 
 _requests_with_reauth = _RequestsWithReauth()
@@ -199,7 +185,7 @@ def initiate_upload(
     endpoint = "upload_analysis" if is_analysis else "upload_assay"
 
     response = _requests_with_reauth.post(
-        _url(f"/ingestion/{endpoint}"), data=data, files=files
+        _url(f"/ingestion/{endpoint}"), headers=_with_auth(), data=data, files=files
     )
 
     try:
@@ -236,7 +222,10 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     data = {"job_id": job_id}
 
     response = _requests_with_reauth.post(
-        _url("/ingestion/extra-assay-metadata"), data=data, files=extra_metadata
+        _url("/ingestion/extra-assay-metadata"),
+        headers=_with_auth(),
+        data=data,
+        files=extra_metadata,
     )
 
     return response

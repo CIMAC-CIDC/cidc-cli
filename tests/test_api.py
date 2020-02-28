@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import MagicMock
 from typing import Union
 
-from cli import api, auth, config, __version__
+from cli import api, auth, config, cache, __version__
 
 
 def make_json_response(body={}) -> MagicMock:
@@ -62,7 +62,7 @@ def test_error_message_extractor():
     assert "API server encountered an error" in api._error_message(response)
 
 
-def test_with_auth():
+def test_with_auth(monkeypatch):
     """Test the authorization header builder"""
     TOKEN = "tok"
     AUTH_HEADER = {
@@ -75,7 +75,8 @@ def test_with_auth():
     assert api._with_auth(id_token=TOKEN) == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS, id_token=TOKEN) == HEADERS
 
-    auth.cache_token(TOKEN, validate=False)
+    monkeypatch.setattr("cli.auth.validate_token", MagicMock())
+    auth.cache_token(TOKEN)
     assert api._with_auth() == AUTH_HEADER
     assert api._with_auth(headers=OTHER_HEADERS) == HEADERS
 
@@ -227,7 +228,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
     good_token = "good_token"
 
     @api.retry_with_reauth
-    def req_401():
+    def req_401(*args, **kwargs):
         try:
             token = auth.get_id_token()
             if token == good_token:
@@ -237,7 +238,8 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         return make_error_response("auth error", code=401)
 
     with runner.isolated_filesystem():
-        auth.cache_token("bad_token", validate=False)
+        # Bypass auth.cache_token's validation functionality
+        cache.store(auth.TOKEN, "bad_token")
 
         def successful_reauth(*args):
             pass
@@ -258,6 +260,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
             raise api.ApiError("signature expired")
 
         # Simulate a user entering 3 invalid tokens
+        cache.store(auth.TOKEN, "bad_token")
         bad_token = "bad_token"
         monkeypatch.setattr(api, "_read_clipboard", lambda: bad_token)
         monkeypatch.setattr("sys.stdin", StringIO("\n" * 3))
