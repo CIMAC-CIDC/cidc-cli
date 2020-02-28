@@ -53,7 +53,6 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
                 upload_info.extra_metadata, xlsx_path
             ) as open_files:
                 api.insert_extra_metadata(upload_info.job_id, open_files)
-
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
         api.upload_failed(upload_info.job_id, upload_info.job_etag)

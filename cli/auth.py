@@ -1,6 +1,7 @@
 """Methods for working with id tokens"""
 import click
 from jose import jwt
+from jose.exceptions import JWTError
 
 from . import api
 from . import cache
@@ -30,7 +31,7 @@ def validate_token(id_token: str):
         raise AuthError(str(e))
 
 
-def cache_token(id_token: str):
+def validate_and_cache_token(id_token: str):
     """
     If a token is valid, cache it for use in future commands.
     """
@@ -43,20 +44,14 @@ def cache_token(id_token: str):
 
 def get_id_token() -> str:
     """
-    Look for a cached id_token for this user. If one exists and is valid, return it.
-    Otherwise, exit and prompt the user to log in.
+    Look for a cached id_token for this user. If no token is cached, 
+    exit and prompt the user to log in. Otherwise, return the cached token.
     """
     # Try to find a cached token
     id_token = cache.get(TOKEN)
 
     # If there's no cached token, the user needs to log in
     if not id_token:
-        raise unauthenticated()
-
-    # Return the cached token if it is still valid
-    try:
-        validate_token(id_token)
-    except AuthError:
         raise unauthenticated()
 
     return id_token
@@ -69,6 +64,9 @@ def get_user_email() -> str:
     # We don't need to check verifications here,
     # because get_id_token validates the token it returns
     # with the API (this includes signature verification).
-    claims = jwt.get_unverified_claims(token)
+    try:
+        claims = jwt.get_unverified_claims(token)
+    except JWTError:
+        raise unauthenticated()
 
     return claims["email"]

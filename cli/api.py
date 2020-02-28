@@ -80,7 +80,7 @@ def retry_with_reauth(api_request):
         while retry:
             res = api_request(*args, **kwargs)
             # If the error isn't auth-related, break out of the retry loop.
-            if res.status_code != 403:
+            if res.status_code != 401:
                 break
 
             # Prompt the user for a new ID token.
@@ -108,7 +108,8 @@ def retry_with_reauth(api_request):
                 # Validate and cache the user's ID token. If the token is invalid,
                 # inform the user, and re-prompt them for an identity token.
                 try:
-                    auth.cache_token(id_token)
+                    auth.validate_and_cache_token(id_token)
+                    kwargs["headers"] = _with_auth(kwargs.get("headers"), id_token)
                     break
                 except auth.AuthError:
                     click.echo("The token you entered is invalid.")
