@@ -33,8 +33,7 @@ def validate_token(id_token: str):
 
 def cache_token(id_token: str):
     """
-    Cache a token for use in future commands. If `validate` is True,
-    only cache the token if it is valid.
+    If a token is valid, cache it for use in future commands.
     """
     # Validate the id token
     validate_token(id_token)
