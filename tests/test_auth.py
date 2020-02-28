@@ -14,6 +14,11 @@ def test_get_user_email(monkeypatch):
 
     assert email == "test@email.com"
 
+    # Test that it handles invalid JWTs
+    monkeypatch.setattr(auth, "get_id_token", lambda: "uh oh")
+    with pytest.raises(auth.AuthError, match="not authenticated"):
+        auth.get_user_email()
+
 
 def test_valid_token_flow(monkeypatch, runner):
     """Check that caching works as expected for a valid token"""
