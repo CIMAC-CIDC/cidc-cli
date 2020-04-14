@@ -280,7 +280,7 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         # User is re-prompted 4 times
         assert stdout.count("paste your copied token below") == 4
 
-        # Simulate a user having tkinter issues
+        # Simulate a user having pyperclip issues
         def throw():
             raise Exception
 
