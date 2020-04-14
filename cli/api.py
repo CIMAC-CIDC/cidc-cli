@@ -1,11 +1,11 @@
 """Implements a client for the CIDC API running on Google App Engine"""
-from tkinter import Tk
 from functools import wraps
 from collections import namedtuple
 from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
 
 import click
 import requests
+import pyperclip
 
 from . import auth, __version__
 from .config import API_V2_URL, get_env
@@ -17,9 +17,7 @@ class ApiError(click.ClickException):
 
 def _read_clipboard() -> str:
     """Read the current contents of the user's clipboard."""
-    widget = Tk()
-    txt = widget.clipboard_get()
-    widget.destroy()
+    txt = pyperclip.paste()
     return txt
 
 
