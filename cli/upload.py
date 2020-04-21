@@ -234,6 +234,7 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
     it will return it w/o change.
     """
     res = []
+    missing_files = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for source_path, gcs_uri in upload_info.url_mapping.items():
 
@@ -243,9 +244,12 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
             source_path = os.path.join(xlsx_dir, source_path)
 
             if not os.path.isfile(source_path):
-                raise Exception(f"Couldn't locate file {source_path}")
+                missing_files.append(source_path)
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
+
+    if not missing_files:
+        raise Exception(f"Couldn't locate files {missing_files}")
 
     return res
 
