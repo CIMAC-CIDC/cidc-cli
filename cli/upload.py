@@ -249,7 +249,9 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
     if missing_files:
-        raise Exception(f"Couldn't locate files {missing_files}")
+        raise Exception(
+            f'Could not locate files: {", ".join(str(x) for x in missing_files)}'
+        )
 
     return res
 
