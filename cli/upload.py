@@ -249,15 +249,13 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
     if missing_files:
-        raise Exception(
-            f'Could not locate files: {", ".join(str(x) for x in missing_files)}'
-        )
+        raise Exception(f'Could not locate files: {", ".join(missing_files)}')
 
     return res
 
 
 def _poll_for_upload_completion(
-    job_id: int, timeout: int = 1200, _did_timeout_test_impl=None
+    job_id: int, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
