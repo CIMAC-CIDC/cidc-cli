@@ -248,7 +248,7 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
-    if not missing_files:
+    if missing_files:
         raise Exception(f"Couldn't locate files {missing_files}")
 
     return res
