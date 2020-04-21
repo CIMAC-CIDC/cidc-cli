@@ -234,6 +234,7 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
     it will return it w/o change.
     """
     res = []
+    missing_files = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for source_path, gcs_uri in upload_info.url_mapping.items():
 
@@ -243,15 +244,18 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
             source_path = os.path.join(xlsx_dir, source_path)
 
             if not os.path.isfile(source_path):
-                raise Exception(f"Couldn't locate file {source_path}")
+                missing_files.append(source_path)
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
+
+    if missing_files:
+        raise Exception(f'Could not locate files: {", ".join(missing_files)}')
 
     return res
 
 
 def _poll_for_upload_completion(
-    job_id: int, timeout: int = 1200, _did_timeout_test_impl=None
+    job_id: int, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
     click.echo("Finalizing upload", nl=False)
