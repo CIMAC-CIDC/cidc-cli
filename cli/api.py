@@ -57,7 +57,7 @@ def _with_auth(headers: dict = None, id_token: str = None) -> dict:
 
 def check_auth(id_token: str) -> Optional[str]:
     """Check if an id_token is valid by making a request to the base API URL."""
-    response = requests.get(_url("/"), headers=_with_auth(id_token=id_token))
+    response = requests.get(_url("/users/self"), headers=_with_auth(id_token=id_token))
 
     if response.status_code != 200:
         raise ApiError(_error_message(response))
