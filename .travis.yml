@@ -1,4 +1,7 @@
 language: python
+os:
+  - osx
+  - linux
 install:
   - pip install -r requirements.dev.txt
 script:
