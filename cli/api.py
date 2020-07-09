@@ -158,6 +158,7 @@ class UploadInfo(NamedTuple):
     gcs_bucket: str
     url_mapping: dict
     extra_metadata: list
+    token: str
 
 
 def initiate_upload(
@@ -194,6 +195,7 @@ def initiate_upload(
             upload_info["gcs_bucket"],
             upload_info["url_mapping"],
             upload_info["extra_metadata"],
+            upload_info["token"],
         )
     except:
         raise ApiError(
@@ -201,18 +203,20 @@ def initiate_upload(
         )
 
 
-def _update_upload_status(job_id: int, etag: str, status: str):
+def _update_upload_status(job_id: int, job_token: str, etag: str, status: str):
     """Update the status for an existing upload job"""
     url = _url(f"/upload_jobs/{job_id}")
     data = {"status": status}
     if_match = {"If-Match": etag}
-    response = _requests_with_reauth.patch(url, json=data, headers=_with_auth(if_match))
+    response = _requests_with_reauth.patch(
+        url, params={"token": job_token}, json=data, headers=_with_auth(if_match)
+    )
     return response
 
 
-def upload_succeeded(job_id: int, etag: str):
+def upload_succeeded(job_id: int, job_token: str, etag: str):
     """Tell the API that an upload job succeeded"""
-    _update_upload_status(job_id, etag, "upload-completed")
+    _update_upload_status(job_id, job_token, etag, "upload-completed")
 
 
 def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
@@ -229,9 +233,9 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
     return response
 
 
-def upload_failed(job_id: int, etag: str):
+def upload_failed(job_id: int, job_token: str, etag: str):
     """Tell the API that an upload job failed"""
-    _update_upload_status(job_id, etag, "upload-failed")
+    _update_upload_status(job_id, job_token, etag, "upload-failed")
 
 
 class MergeStatus(NamedTuple):
@@ -240,10 +244,10 @@ class MergeStatus(NamedTuple):
     retry_in: Optional[int]
 
 
-def poll_upload_merge_status(job_id: int) -> MergeStatus:
+def poll_upload_merge_status(job_id: int, job_token: str) -> MergeStatus:
     """Check the merge status of an upload job"""
-    url = _url(f"/ingestion/poll_upload_merge_status")
-    params = dict(id=job_id)
+    url = _url(f"/ingestion/poll_upload_merge_status/{job_id}")
+    params = {"token": job_token}
 
     response = _requests_with_reauth.get(url, params=params, headers=_with_auth())
 
