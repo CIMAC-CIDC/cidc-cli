@@ -18,6 +18,7 @@ URL_MAPPING = {
     "local_path2.fastq.gz": "gcs/path/4321/fastq/2019-09-04T18:59:45.224099",
 }
 EXTRA_METADATA = {"lp1": "uuid1"}
+UPLOAD_TOKEN = "test-upload-token"
 
 
 class UploadMocks:
@@ -27,7 +28,7 @@ class UploadMocks:
 
         self.api_initiate_upload = MagicMock()
         self.api_initiate_upload.return_value = api.UploadInfo(
-            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA
+            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA, UPLOAD_TOKEN
         )
         monkeypatch.setattr(api, "initiate_upload", self.api_initiate_upload)
 
@@ -52,10 +53,14 @@ class UploadMocks:
         self.gcloud_login.assert_called_once()
         self.api_initiate_upload.assert_called_once()
         if failure:
-            self.upload_failed.assert_called_once_with(JOB_ID, JOB_ETAG)
+            self.upload_failed.assert_called_once_with(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
         else:
-            self.upload_succeeded.assert_called_once_with(JOB_ID, JOB_ETAG)
-            self._poll_for_upload_completion.assert_called_once_with(JOB_ID)
+            self.upload_succeeded.assert_called_once_with(
+                JOB_ID, UPLOAD_TOKEN, JOB_ETAG
+            )
+            self._poll_for_upload_completion.assert_called_once_with(
+                JOB_ID, UPLOAD_TOKEN
+            )
 
 
 def run_isolated_upload(runner: CliRunner):
@@ -181,9 +186,9 @@ def test_poll_for_upload_completion(monkeypatch):
     sleep = MagicMock()
     monkeypatch.setattr(time, "sleep", sleep)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(4)
+        job_id, UPLOAD_TOKEN, _did_timeout_test_impl=get_did_timeout(4)
     )
-    retry_upload.assert_called_with(job_id)
+    retry_upload.assert_called_with(job_id, UPLOAD_TOKEN)
     sleep.assert_called_with(1)
     assert len(sleep.call_args_list) == retry_in
     assert "timed out" in stdout()
@@ -195,9 +200,9 @@ def test_poll_for_upload_completion(monkeypatch):
     completed.return_value = api.MergeStatus("merge-completed", None, None)
     monkeypatch.setattr(api, "poll_upload_merge_status", completed)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(1)
+        job_id, UPLOAD_TOKEN, _did_timeout_test_impl=get_did_timeout(1)
     )
-    completed.assert_called_once_with(job_id)
+    completed.assert_called_once_with(job_id, UPLOAD_TOKEN)
     assert "succeeded" in stdout()
 
     click_echo.reset_mock()
@@ -207,9 +212,9 @@ def test_poll_for_upload_completion(monkeypatch):
     failed.return_value = api.MergeStatus("upload-failed", "some error details", None)
     monkeypatch.setattr(api, "poll_upload_merge_status", failed)
     upload._poll_for_upload_completion(
-        job_id, _did_timeout_test_impl=get_did_timeout(1)
+        job_id, UPLOAD_TOKEN, _did_timeout_test_impl=get_did_timeout(1)
     )
-    failed.assert_called_once_with(job_id)
+    failed.assert_called_once_with(job_id, UPLOAD_TOKEN)
     failure_stdout = stdout()
     assert "failed" in failure_stdout
     assert "some error details" in failure_stdout

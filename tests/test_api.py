@@ -105,6 +105,7 @@ def test_list_assays(monkeypatch):
 
 JOB_ID = 1
 JOB_ETAG = "abcd"
+UPLOAD_TOKEN = "test-upload-token"
 
 
 def test_initiate_upload(monkeypatch):
@@ -127,6 +128,7 @@ def test_initiate_upload(monkeypatch):
                 "gcs_bucket": GCS_BUCKET,
                 "url_mapping": URL_MAPPING,
                 "extra_metadata": EXTRA_METADATA,
+                "token": UPLOAD_TOKEN,
             }
         )
 
@@ -156,19 +158,20 @@ def test_update_job_status(monkeypatch):
     monkeypatch.setattr(api, "_with_auth", lambda headers: headers)
 
     def test_status(status):
-        def request(url, json, headers):
+        def request(url, params, json, headers):
             assert url.endswith("/upload_jobs/" + str(JOB_ID))
             assert json == {"status": status}
             assert headers.get("If-Match") == JOB_ETAG
+            assert params["token"] == UPLOAD_TOKEN
             return make_json_response()
 
         return request
 
     monkeypatch.setattr("requests.patch", test_status("upload-completed"))
-    api.upload_succeeded(JOB_ID, JOB_ETAG)
+    api.upload_succeeded(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
 
     monkeypatch.setattr("requests.patch", test_status("upload-failed"))
-    api.upload_failed(JOB_ID, JOB_ETAG)
+    api.upload_failed(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
 
 
 def test_poll_upload_merge_status(monkeypatch):
@@ -180,20 +183,20 @@ def test_poll_upload_merge_status(monkeypatch):
 
     monkeypatch.setattr("requests.get", not_found_get)
     with pytest.raises(api.ApiError):
-        api.poll_upload_merge_status(1)
+        api.poll_upload_merge_status(1, UPLOAD_TOKEN)
 
     def bad_response_get(*args, **kwargs):
         return make_json_response({})
 
     monkeypatch.setattr("requests.get", bad_response_get)
     with pytest.raises(api.ApiError, match="unexpected upload status message"):
-        api.poll_upload_merge_status(1)
+        api.poll_upload_merge_status(1, UPLOAD_TOKEN)
 
     def good_retry_get(*args, **kwargs):
         return make_json_response({"retry_in": 5})
 
     monkeypatch.setattr("requests.get", good_retry_get)
-    upload_status = api.poll_upload_merge_status(1)
+    upload_status = api.poll_upload_merge_status(1, UPLOAD_TOKEN)
     assert upload_status.retry_in == 5
     assert upload_status.status is None
     assert upload_status.status_details is None
@@ -204,7 +207,7 @@ def test_poll_upload_merge_status(monkeypatch):
         return make_json_response(status_res)
 
     monkeypatch.setattr("requests.get", good_status_get)
-    upload_status = api.poll_upload_merge_status(1)
+    upload_status = api.poll_upload_merge_status(1, UPLOAD_TOKEN)
     assert upload_status.retry_in is None
     assert upload_status.status == status_res["status"]
     assert upload_status.status_details == status_res["status_details"]
