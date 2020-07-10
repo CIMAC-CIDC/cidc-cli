@@ -44,15 +44,15 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
         _handle_upload_exc(e)
 
     try:
-        # Actually upload the assay
-        _gsutil_assay_upload(upload_info, xlsx_path)
-
         # Insert extra metadata for the upload, if any
         if upload_info.extra_metadata:
             with _open_file_mapping(
                 upload_info.extra_metadata, xlsx_path
             ) as open_files:
                 api.insert_extra_metadata(upload_info.job_id, open_files)
+
+        # Actually upload the assay data
+        _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
         api.upload_failed(upload_info.job_id, upload_info.token, upload_info.job_etag)
