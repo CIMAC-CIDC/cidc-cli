@@ -123,45 +123,62 @@ so slow that gsutil disables downloads of composite objects.""".split(
 )
 
 
-def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
+def _start_procs(srs_dst_pairs: list) -> list:
     """
     Starts multiple "gsutil cp" subprocesses.
     Returns a list of subprocess.Popen objects
     """
     procs = []
 
-    for src, dst in _compose_file_mapping(upload_info, xlsx):
+    q = list(srs_dst_pairs)
+
+    while True:
+        try:
+            src, dst = q.pop()
+        except IndexError:
+            return
 
         # Construct the upload command
         gsutil_args = ["gsutil", "-m", "cp", src, dst]
 
         try:
             # Run the upload command
-            procs.append(
-                subprocess.Popen(
-                    gsutil_args,
-                    universal_newlines=True,
-                    bufsize=1,  # line buffered so we can read output line by line
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                )
+            p = subprocess.Popen(
+                gsutil_args,
+                universal_newlines=True,
+                bufsize=1,  # line buffered so we can read output line by line
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
             )
+            procs.append(p)
+            yield p
 
         except OSError as e:
+            if "temporarily" in str(e):
+                # will retry
+                q.push((src, dst))
+                yield None
 
+            else:
+                # stopping already created processes
+                for p in procs:
+                    p.kill()
+                _handle_upload_exc(e)
+
+        except Exception as e:
             # stopping already created processes
             for p in procs:
                 p.kill()
-
             _handle_upload_exc(e)
-    return procs
 
 
-def _wait_for_upload(procs: list) -> bool:
+def _wait_for_upload(procs: list, total: int = 0) -> bool:
     """
     Waits for all subprocesses and prints their stderr streams.
     Returns bool - if an error has occurred during any if uploads
     """
+
+    total = total or len(procs)
 
     finished = set()
     errored = False
@@ -177,26 +194,32 @@ def _wait_for_upload(procs: list) -> bool:
                 if p.returncode != 0:
                     errored = True
 
+                    for line in p.stderr:
+                        print(f"\t:\t{line}")
+
+                    break
+
             errline = p.stderr.readline()
 
             # skipping "large file" warnings
             if errline.strip() in _IGNORED_WARN_LINES:
                 continue
 
-            if errline and len(errline) > 2:  # skipping '* ' spinner lines
+            if errline.strip() and len(errline) > 2:  # skipping '* ' spinner lines
 
                 # changing output from always "[0/1 files]" - due to manual
                 # parallelization of gsutil to "[x/y files]"
                 if errline.split("]", 1)[0].endswith("/1 files"):
                     errline = errline.split("]", 1)[1]
                 print(
-                    f"[{len(finished)}/{len(procs)} done] {i+1}: {p.args[-2]}: "
-                    + errline,
-                    end="",
+                    f"[{len(finished)}/{total} done] {i+1}: " + errline, end="",
                 )
 
-    print(f"[{len(finished)}/{len(procs)} done]")
     return errored
+
+
+# default from `gsutil -m` but maybe better to load from env
+MAX_GSUTIL_PARALLEL_PROCESS = 12
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -204,28 +227,39 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     Upload local assay data to GCS using gsutil.
     """
 
-    procs = _start_procs(upload_info, xlsx)
+    upload_pairs = _compose_file_mapping(upload_info, xlsx)
 
-    err = _wait_for_upload(procs)
+    it = _start_procs(upload_pairs)
+    procs = []
+    while True:
 
-    if err:
-        for p in procs:
+        try:
+            for _ in range(min(len(procs) or 1, MAX_GSUTIL_PARALLEL_PROCESS)):
+                p = next(it)
+                procs.append(p)
+        except StopIteration:
+            break
 
-            if p.poll() != 0:
+        err = _wait_for_upload(procs, len(upload_pairs))
 
-                print(f"\nFailed uploading {p.args[3]}.")
+        if err:
+            for p in procs:
 
-                print(f"Stopping other uploads...")
-                # stopping all other processes
-                for other_p in procs:
-                    if p != other_p:
-                        other_p.kill()
+                if p.poll() != 0:
 
-                e = Exception(f"Couldn't upload all files.")
-                _handle_upload_exc(e)
-                # _handle_upload_exc should raise, but raise for good measure
-                # to guarantee execution stops here
-                raise e
+                    print(f"\nFailed uploading {p.args[3]} - {p.poll()}")
+
+                    print(f"Stopping other uploads...")
+                    # stopping all other processes
+                    for other_p in procs:
+                        if p != other_p:
+                            other_p.kill()
+
+                    e = Exception(f"Couldn't upload all files.")
+                    _handle_upload_exc(e)
+                    # _handle_upload_exc should raise, but raise for good measure
+                    # to guarantee execution stops here
+                    raise e
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
