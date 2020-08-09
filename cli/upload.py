@@ -35,6 +35,7 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
     gcloud.login()
 
     try:
+        click.secho("> preparing upload job via the CIDC API", dim=True)
         # Read the .xlsx file and make the API call
         # that initiates the upload job and grants object-level GCS access.
         with open(xlsx_path, "rb") as xlsx_file:
@@ -46,12 +47,16 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
     try:
         # Insert extra metadata for the upload, if any
         if upload_info.extra_metadata:
+            click.secho(
+                f"> pulling additional metadata from files staged for upload", dim=True
+            )
             with _open_file_mapping(
                 upload_info.extra_metadata, xlsx_path
             ) as open_files:
                 api.insert_extra_metadata(upload_info.job_id, open_files)
 
         # Actually upload the assay data
+        click.secho(f"> initiating GCS upload", dim=True)
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
@@ -142,7 +147,7 @@ def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
                     gsutil_args,
                     universal_newlines=True,
                     bufsize=1,  # line buffered so we can read output line by line
-                    stdout=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
             )
@@ -159,17 +164,24 @@ def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
 
 def _wait_for_upload(procs: list) -> bool:
     """
-    Waits for all subprocesses and prints their stderr streams.
+    Waits for all subprocesses and click.echos their stderr streams.
     Returns bool - if an error has occurred during any if uploads
     """
 
     finished = set()
     errored = False
+    progress_bar = "."
     while len(finished) != len(procs) and not errored:
-        for i, p in enumerate(procs):
 
+        click.secho(f"Uploading files ({len(finished)} / {len(procs)} done)", bold=True)
+        click.echo(progress_bar)
+        for i, p in enumerate(procs):
+            click.secho(f"(proc {i + 1}) ", nl=False, fg="bright_blue")
             if i in finished:
+                click.secho("uploaded ", nl=False, fg="green", bold=True)
                 continue
+            else:
+                click.echo("uploading ", nl=False)
 
             if p.poll() != None:
                 finished.add(i)
@@ -177,25 +189,17 @@ def _wait_for_upload(procs: list) -> bool:
                 if p.returncode != 0:
                     errored = True
 
-            errline = p.stderr.readline()
+            click.echo(p.args[-2])
 
-            # skipping "large file" warnings
-            if errline.strip() in _IGNORED_WARN_LINES:
-                continue
+        time.sleep(1)
+        click.secho("~" * 50, dim=True)
 
-            if errline and len(errline) > 2:  # skipping '* ' spinner lines
+        progress_bar += "."
 
-                # changing output from always "[0/1 files]" - due to manual
-                # parallelization of gsutil to "[x/y files]"
-                if errline.split("]", 1)[0].endswith("/1 files"):
-                    errline = errline.split("]", 1)[1]
-                print(
-                    f"[{len(finished)}/{len(procs)} done] {i+1}: {p.args[-2]}: "
-                    + errline,
-                    end="",
-                )
-
-    print(f"[{len(finished)}/{len(procs)} done]")
+    if errored:
+        click.secho(f"!!! encountered upload error !!!", fg="bright_yellow", bold=True)
+    else:
+        click.secho(f"Done uploading all files to GCS.", fg="bright_green", bold=True)
     return errored
 
 
@@ -213,19 +217,19 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
             if p.poll() != 0:
 
-                print(f"\nFailed uploading {p.args[3]}.")
-
-                print(f"Stopping other uploads...")
                 # stopping all other processes
                 for other_p in procs:
                     if p != other_p:
                         other_p.kill()
 
-                e = Exception(f"Couldn't upload all files.")
-                _handle_upload_exc(e)
+                click.echo("\nUpload failed on file ", nl=False)
+                click.secho(f"{p.args[3]}", fg="bright_white", bold=True)
+                click.secho("with the following message:\n")
+                click.secho(p.communicate()[1], fg="bright_red")
+
                 # _handle_upload_exc should raise, but raise for good measure
                 # to guarantee execution stops here
-                raise e
+                raise click.Abort()
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
@@ -260,7 +264,7 @@ def _poll_for_upload_completion(
     job_id: int, job_token: str, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
-    click.echo("Finalizing upload", nl=False)
+    click.secho("> Finalizing upload via the CIDC API", nl=False, dim=True)
 
     cutoff = datetime.now().timestamp() + timeout
 
@@ -292,7 +296,7 @@ def _poll_for_upload_completion(
                 if status.status_details:
                     click.echo("Upload failed with the following message:")
                     click.echo()
-                    click.echo(click.style(status.status_details, fg="red", bold=True))
+                    click.secho(status.status_details, fg="bright_red", bold=True)
                     click.echo()
                 else:
                     click.echo("Upload failed. ", nl=False)
@@ -306,7 +310,7 @@ def _poll_for_upload_completion(
             # we should never reach this code block
             raise
 
-    click.echo(click.style("!!!", fg="yellow", bold=True))
+    click.secho("!!!", fg="yellow", bold=True)
     click.echo(
         "Upload timed out. Please contact a CIDC administrator "
         "(cidc@jimmy.harvard.edu) for assistance."
