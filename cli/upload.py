@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Dict, BinaryIO
+from typing import Dict, BinaryIO, Optional
 
 import click
 
@@ -147,7 +147,7 @@ def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
                 subprocess.Popen(
                     gsutil_args,
                     universal_newlines=True,
-                    bufsize=1,  # line buffered so we can read output line by line
+                    # bufsize=1,  # line buffered so we can read output line by line
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
@@ -163,45 +163,54 @@ def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
     return procs
 
 
-def _wait_for_upload(procs: list) -> bool:
+def _wait_for_upload(procs: list) -> Optional[str]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
-    Returns bool - if an error has occurred during any if uploads
+    Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
 
     finished = set()
-    errored = False
-    progress_bar = "."
-    while len(finished) != len(procs) and not errored:
-
-        click.secho(f"Uploading files ({len(finished)} / {len(procs)} done)", bold=True)
-        click.echo(progress_bar)
+    error = None
+    prev_errlines = [""] * len(procs)
+    while len(finished) != len(procs) and not error:
         for i, p in enumerate(procs):
-            click.secho(f"(proc {i + 1}) ", nl=False, fg="bright_blue")
-            if i in finished:
-                click.secho("uploaded ", nl=False, fg="green", bold=True)
-                continue
-            else:
-                click.echo("uploading ", nl=False)
+            # start building user feedback for this process
+            message = f"[{len(finished)}/{len(procs)} done] "
+            message += click.style(f"(proc {i + 1}) ", fg="bright_blue")
+
+            # read stderr for this process
+            errline = p.stderr.readline()
 
             if p.poll() != None:
                 finished.add(i)
 
                 if p.returncode != 0:
-                    errored = True
+                    message += click.style(
+                        f"!!! upload error !!! ", fg="red", bold=True
+                    )
+                    message += p.args[-2]
+                    click.echo(message)
+                    error = f"{prev_errlines[i]}{errline}"
+                    break
 
-            click.echo(p.args[-2])
+            # skipping "large file" warnings
+            if errline.strip() in _IGNORED_WARN_LINES:
+                continue
 
-        time.sleep(1)
-        click.secho("~" * 50, dim=True)
+            if (
+                errline
+                and len(errline) > 2  # skip '* ' spinner lines
+                and errline.split("]", 1)[0].endswith(
+                    "/1 files"
+                )  # include gsutil output with upload progress
+            ):
+                message += errline.split("]", 1)[1].rstrip()
+                message += f" {p.args[-2]}"
+                click.echo(message)
+            else:
+                prev_errlines[i] = errline
 
-        progress_bar += "."
-
-    if errored:
-        click.secho(f"!!! encountered upload error !!!", fg="bright_yellow", bold=True)
-    else:
-        click.secho(f"Done uploading all files to GCS.", fg="bright_green", bold=True)
-    return errored
+    return error
 
 
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
@@ -216,20 +225,18 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     if err:
         for p in procs:
 
-            if p.poll() != 0:
+            if p.poll() == 1:
 
                 # stopping all other processes
                 for other_p in procs:
                     if p != other_p:
                         other_p.kill()
 
-                click.echo("\nUpload failed on file ", nl=False)
-                click.secho(f"{p.args[3]}", fg="bright_white", bold=True)
-                click.secho("with the following message:\n")
-                click.secho(p.communicate()[1], fg="bright_red")
+                click.echo(
+                    f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
+                )
+                click.secho(err, fg="red")
 
-                # _handle_upload_exc should raise, but raise for good measure
-                # to guarantee execution stops here
                 raise click.Abort()
 
 
@@ -294,7 +301,7 @@ def _poll_for_upload_completion(
                 if status.status_details:
                     click.echo("Upload failed with the following message:")
                     click.echo()
-                    click.secho(status.status_details, fg="bright_red", bold=True)
+                    click.secho(status.status_details, fg="red", bold=True)
                     click.echo()
                 else:
                     click.echo("Upload failed. ", nl=False)

@@ -36,8 +36,7 @@ def _error_message(response: requests.Response):
             message_lines = ["Multiple errors:"]
             message_lines.extend(
                 [
-                    click.style("* ", dim=True)
-                    + click.style(str(message), fg="bright_red")
+                    click.style("* ", fg="red", bold=True) + message
                     for message in message["errors"]
                 ]
             )

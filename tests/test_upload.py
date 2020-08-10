@@ -212,7 +212,6 @@ def test_poll_for_upload_completion(monkeypatch):
     failed = MagicMock()
     failed.return_value = api.MergeStatus("upload-failed", "some error details", None)
     monkeypatch.setattr(api, "poll_upload_merge_status", failed)
-    print("*******")
     upload._poll_for_upload_completion(
         job_id, UPLOAD_TOKEN, _did_timeout_test_impl=get_did_timeout(1)
     )
