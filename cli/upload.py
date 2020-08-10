@@ -147,7 +147,7 @@ def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
                 subprocess.Popen(
                     gsutil_args,
                     universal_newlines=True,
-                    # bufsize=1,  # line buffered so we can read output line by line
+                    bufsize=1,  # line buffered so we can read output line by line
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
                 )
