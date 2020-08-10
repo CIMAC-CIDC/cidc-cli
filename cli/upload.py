@@ -69,6 +69,7 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
             upload_info.job_id, upload_info.token, upload_info.job_etag
         )
 
+    click.secho("> finalizing upload via the CIDC API", dim=True)
     _poll_for_upload_completion(upload_info.job_id, upload_info.token)
 
 
@@ -264,8 +265,6 @@ def _poll_for_upload_completion(
     job_id: int, job_token: str, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
-    click.secho("> Finalizing upload via the CIDC API", nl=False, dim=True)
-
     cutoff = datetime.now().timestamp() + timeout
 
     did_timeout = _did_timeout_test_impl or (
@@ -292,7 +291,6 @@ def _poll_for_upload_completion(
                     "file browser to view your upload."
                 )
             else:
-                click.echo(click.style("✗", fg="red", bold=True))
                 if status.status_details:
                     click.echo("Upload failed with the following message:")
                     click.echo()
