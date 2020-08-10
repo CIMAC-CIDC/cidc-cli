@@ -174,6 +174,9 @@ def _wait_for_upload(procs: list) -> Optional[str]:
     prev_errlines = [""] * len(procs)
     while len(finished) != len(procs) and not error:
         for i, p in enumerate(procs):
+            if i in finished:
+                continue
+
             # start building user feedback for this process
             message = f"[{len(finished)}/{len(procs)} done] "
             message += click.style(f"(proc {i + 1}) ", fg="bright_blue")
