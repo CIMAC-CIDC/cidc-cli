@@ -256,5 +256,5 @@ def test_handle_upload_exc():
     with pytest.raises(KeyboardInterrupt, match="Upload canceled"):
         upload._handle_upload_exc(KeyboardInterrupt())
 
-    with pytest.raises(RuntimeError, match="failed: foo"):
+    with pytest.raises(RuntimeError, match="failed.\nfoo"):
         upload._handle_upload_exc(RuntimeError("foo"))
