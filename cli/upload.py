@@ -320,4 +320,4 @@ def _handle_upload_exc(e: Exception):
     """Handle an exception thrown during an upload attempt."""
     if isinstance(e, KeyboardInterrupt):
         raise KeyboardInterrupt(f"Upload canceled.")
-    raise type(e)(f"Upload failed: {e}") from e
+    raise type(e)(f"Upload failed.\n{e}") from e

@@ -33,7 +33,15 @@ def _error_message(response: requests.Response):
         if response.status_code >= 500:
             message = f"API server error: {message}"
         if type(message) == dict and "errors" in message:
-            return "Multiple errors:\n  " + "\n  ".join(map(str, message["errors"]))
+            message_lines = ["Multiple errors:"]
+            message_lines.extend(
+                [
+                    click.style("* ", dim=True)
+                    + click.style(str(message), fg="bright_red")
+                    for message in message["errors"]
+                ]
+            )
+            return "\n".join(message_lines)
         else:
             return str(message)
     except:
