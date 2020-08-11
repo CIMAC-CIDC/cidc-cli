@@ -171,7 +171,11 @@ def _wait_for_upload(procs: list) -> Optional[str]:
 
     finished = set()
     error = None
-    prev_errlines = [""] * len(procs)
+    # GCS upload errors are generally spread across two lines.
+    # Since we consume stderr one line at a time will polling upload processes,
+    # we need to save the previous stderr line for each process in order
+    # to reconstruct a full GCS upload error.
+    prev_errlines = {}
     while len(finished) != len(procs) and not error:
         for i, p in enumerate(procs):
             if i in finished:
@@ -193,7 +197,8 @@ def _wait_for_upload(procs: list) -> Optional[str]:
                     )
                     message += p.args[-2]
                     click.echo(message)
-                    error = f"{prev_errlines[i]}{errline}"
+                    # Reconstruct multiline GCS error message
+                    error = f"{prev_errlines.get(i, '')}{errline}"
                     break
 
             # skipping "large file" warnings
@@ -211,6 +216,8 @@ def _wait_for_upload(procs: list) -> Optional[str]:
                 message += f" {p.args[-2]}"
                 click.echo(message)
             else:
+                # This might be the first line of a multiline error message,
+                # so save it.
                 prev_errlines[i] = errline
 
     return error
