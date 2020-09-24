@@ -129,18 +129,21 @@ so slow that gsutil disables downloads of composite objects.""".split(
 )
 
 
-def _start_procs(srs_dst_pairs: list) -> list:
+def _start_procs(src_dst_pairs: list) -> list:
     """
     Starts multiple "gsutil cp" subprocesses.
-    Returns a list of subprocess.Popen objects
+    
+    src_dst_pairs: a list of tuples (local file path, target GCS path)
+
+    Yields subprocess.Popen objects
     """
     procs = []
 
-    q = list(srs_dst_pairs)
+    src_dst_stack = list(src_dst_pairs)
 
     while True:
         try:
-            src, dst = q.pop()
+            src, dst = src_dst_stack.pop()
         except IndexError:
             return
 
@@ -160,16 +163,10 @@ def _start_procs(srs_dst_pairs: list) -> list:
             yield p
 
         except OSError as e:
-            if "temporarily" in str(e):
-                # will retry
-                q.push((src, dst))
-                yield None
-
-            else:
-                # stopping already created processes
-                for p in procs:
-                    p.kill()
-                _handle_upload_exc(e)
+            # stopping already created processes
+            for p in procs:
+                p.kill()
+            _handle_upload_exc(e)
 
         except Exception as e:
             # stopping already created processes
@@ -178,16 +175,17 @@ def _start_procs(srs_dst_pairs: list) -> list:
             _handle_upload_exc(e)
 
 
-def _wait_for_upload(procs: list, total: int) -> Optional[str]:
+def _wait_for_upload(procs: list) -> Optional[str]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
 
-    total = total or len(procs)
+    # First we account all already successfully finished procs  
+    finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
 
-    finished = set()
     error = None
+
     # GCS upload errors are generally spread across two lines.
     # Since we consume stderr one line at a time will polling upload processes,
     # we need to save the previous stderr line for each process in order
@@ -251,18 +249,21 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
     upload_pairs = _compose_file_mapping(upload_info, xlsx)
 
-    it = _start_procs(upload_pairs)
+    proc_iter = _start_procs(upload_pairs)
     procs = []
     while True:
 
+        # Here we start with just 1 parallel process and gradually
+        # increase that to MAX_GSUTIL_PARALLEL_PROCESS doubling the number every time.
         try:
-            for _ in range(min(len(procs) or 1, MAX_GSUTIL_PARALLEL_PROCESS)):
-                p = next(it)
-                procs.append(p)
+            current_count = len(procs) or 1 # 1 is for starters
+            how_many_to_add = min(current_count, MAX_GSUTIL_PARALLEL_PROCESS)
+            for _ in range(how_many_to_add):
+                procs.append(next(proc_iter))
         except StopIteration:
             break
 
-        err = _wait_for_upload(procs, len(upload_pairs))
+        err = _wait_for_upload(procs)
 
         if err:
             for p in procs:
