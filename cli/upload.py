@@ -129,7 +129,7 @@ so slow that gsutil disables downloads of composite objects.""".split(
 )
 
 
-def _start_procs(src_dst_pairs: list) -> list:
+def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]:
     """
     Starts multiple "gsutil cp" subprocesses.
     
