@@ -129,38 +129,50 @@ so slow that gsutil disables downloads of composite objects.""".split(
 )
 
 
-def _start_procs(upload_info: api.UploadInfo, xlsx: str) -> list:
+def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]:
     """
     Starts multiple "gsutil cp" subprocesses.
-    Returns a list of subprocess.Popen objects
+    
+    src_dst_pairs: a list of tuples (local file path, target GCS path)
+
+    Yields subprocess.Popen objects
     """
     procs = []
 
-    for src, dst in _compose_file_mapping(upload_info, xlsx):
+    src_dst_stack = list(src_dst_pairs)
+
+    while True:
+        try:
+            src, dst = src_dst_stack.pop()
+        except IndexError:
+            return
 
         # Construct the upload command
         gsutil_args = ["gsutil", "-m", "cp", src, dst]
 
         try:
             # Run the upload command
-            procs.append(
-                subprocess.Popen(
-                    gsutil_args,
-                    universal_newlines=True,
-                    bufsize=1,  # line buffered so we can read output line by line
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.PIPE,
-                )
+            p = subprocess.Popen(
+                gsutil_args,
+                universal_newlines=True,
+                bufsize=1,  # line buffered so we can read output line by line
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
             )
+            procs.append(p)
+            yield p
 
         except OSError as e:
-
             # stopping already created processes
             for p in procs:
                 p.kill()
-
             _handle_upload_exc(e)
-    return procs
+
+        except Exception as e:
+            # stopping already created processes
+            for p in procs:
+                p.kill()
+            _handle_upload_exc(e)
 
 
 def _wait_for_upload(procs: list) -> Optional[str]:
@@ -169,8 +181,11 @@ def _wait_for_upload(procs: list) -> Optional[str]:
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
 
-    finished = set()
+    # First we account all already successfully finished procs  
+    finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
+
     error = None
+
     # GCS upload errors are generally spread across two lines.
     # Since we consume stderr one line at a time will polling upload processes,
     # we need to save the previous stderr line for each process in order
@@ -223,31 +238,49 @@ def _wait_for_upload(procs: list) -> Optional[str]:
     return error
 
 
+# default from `gsutil -m` but maybe better to load from env
+MAX_GSUTIL_PARALLEL_PROCESS = 12
+
+
 def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     """
     Upload local assay data to GCS using gsutil.
     """
 
-    procs = _start_procs(upload_info, xlsx)
+    upload_pairs = _compose_file_mapping(upload_info, xlsx)
 
-    err = _wait_for_upload(procs)
+    proc_iter = _start_procs(upload_pairs)
+    procs = []
+    while True:
 
-    if err:
-        for p in procs:
+        # Here we start with just 1 parallel process and gradually
+        # increase that to MAX_GSUTIL_PARALLEL_PROCESS doubling the number every time.
+        try:
+            current_count = len(procs) or 1 # 1 is for starters
+            how_many_to_add = min(current_count, MAX_GSUTIL_PARALLEL_PROCESS)
+            for _ in range(how_many_to_add):
+                procs.append(next(proc_iter))
+        except StopIteration:
+            break
 
-            if p.poll() == 1:
+        err = _wait_for_upload(procs)
 
-                # stopping all other processes
-                for other_p in procs:
-                    if p != other_p:
-                        other_p.kill()
+        if err:
+            for p in procs:
 
-                click.echo(
-                    f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
-                )
-                click.secho(err, fg="red")
+                if p.poll() != 0:
 
-                raise click.Abort()
+                    # stopping all other processes
+                    for other_p in procs:
+                        if p != other_p:
+                            other_p.kill()
+
+                    click.echo(
+                        f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
+                    )
+                    click.secho(err, fg="red")
+
+                    raise click.Abort()
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
