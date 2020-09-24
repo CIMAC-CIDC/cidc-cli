@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Dict, BinaryIO, Optional
+from typing import Dict, BinaryIO, Optional, Generator
 
 import click
 
