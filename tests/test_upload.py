@@ -168,6 +168,7 @@ def test_poll_for_upload_completion(monkeypatch):
 
     click_echo = MagicMock()
     monkeypatch.setattr(click, "echo", click_echo)
+    monkeypatch.setattr(click, "secho", click_echo)
 
     def stdout():
         print(click_echo.call_args_list)
@@ -254,5 +255,5 @@ def test_handle_upload_exc():
     with pytest.raises(KeyboardInterrupt, match="Upload canceled"):
         upload._handle_upload_exc(KeyboardInterrupt())
 
-    with pytest.raises(RuntimeError, match="failed: foo"):
+    with pytest.raises(RuntimeError, match="failed.\nfoo"):
         upload._handle_upload_exc(RuntimeError("foo"))

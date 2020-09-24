@@ -23,6 +23,5 @@ def login():
     email = auth.get_user_email()
 
     # Try to log the user in to gcloud with their CIDC email
-    click.echo("Authenticating with gcloud...")
+    click.secho("$ gcloud auth login --no-launch-browser --brief", dim=True)
     subprocess.call([GCLOUD, "auth", "login", email, "--no-launch-browser", "--brief"])
-    click.echo("Done authenticating.")

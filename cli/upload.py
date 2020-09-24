@@ -5,7 +5,7 @@ import shutil
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Dict, BinaryIO
+from typing import Dict, BinaryIO, Optional
 
 import click
 
@@ -35,6 +35,7 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
     gcloud.login()
 
     try:
+        click.secho("> preparing upload job via the CIDC API", dim=True)
         # Read the .xlsx file and make the API call
         # that initiates the upload job and grants object-level GCS access.
         with open(xlsx_path, "rb") as xlsx_file:
@@ -46,12 +47,16 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
     try:
         # Insert extra metadata for the upload, if any
         if upload_info.extra_metadata:
+            click.secho(
+                f"> pulling additional metadata from files staged for upload", dim=True
+            )
             with _open_file_mapping(
                 upload_info.extra_metadata, xlsx_path
             ) as open_files:
                 api.insert_extra_metadata(upload_info.job_id, open_files)
 
         # Actually upload the assay data
+        click.secho(f"> initiating GCS upload", dim=True)
         _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
@@ -64,6 +69,7 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
             upload_info.job_id, upload_info.token, upload_info.job_etag
         )
 
+    click.secho("> finalizing upload via the CIDC API", dim=True)
     _poll_for_upload_completion(upload_info.job_id, upload_info.token)
 
 
@@ -172,50 +178,66 @@ def _start_procs(srs_dst_pairs: list) -> list:
             _handle_upload_exc(e)
 
 
-def _wait_for_upload(procs: list, total: int = 0) -> bool:
+def _wait_for_upload(procs: list, total: int) -> Optional[str]:
     """
-    Waits for all subprocesses and prints their stderr streams.
-    Returns bool - if an error has occurred during any if uploads
+    Waits for all subprocesses and click.echos their stderr streams.
+    Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
 
     total = total or len(procs)
 
     finished = set()
-    errored = False
-    while len(finished) != len(procs) and not errored:
+    error = None
+    # GCS upload errors are generally spread across two lines.
+    # Since we consume stderr one line at a time will polling upload processes,
+    # we need to save the previous stderr line for each process in order
+    # to reconstruct a full GCS upload error.
+    prev_errlines = {}
+    while len(finished) != len(procs) and not error:
         for i, p in enumerate(procs):
-
             if i in finished:
                 continue
+
+            # start building user feedback for this process
+            message = f"[{len(finished)}/{len(procs)} done] "
+            message += click.style(f"(proc {i + 1}) ", fg="bright_blue")
+
+            # read stderr for this process
+            errline = p.stderr.readline()
 
             if p.poll() != None:
                 finished.add(i)
 
                 if p.returncode != 0:
-                    errored = True
-
-                    for line in p.stderr:
-                        print(f"\t:\t{line}")
-
+                    message += click.style(
+                        f"!!! upload error !!! ", fg="red", bold=True
+                    )
+                    message += p.args[-2]
+                    click.echo(message)
+                    # Reconstruct multiline GCS error message
+                    error = f"{prev_errlines.get(i, '')}{errline}"
                     break
-
-            errline = p.stderr.readline()
 
             # skipping "large file" warnings
             if errline.strip() in _IGNORED_WARN_LINES:
                 continue
 
-            if errline.strip() and len(errline) > 2:  # skipping '* ' spinner lines
+            if (
+                errline
+                and len(errline) > 2  # skip '* ' spinner lines
+                and errline.split("]", 1)[0].endswith(
+                    "/1 files"
+                )  # include gsutil output with upload progress
+            ):
+                message += errline.split("]", 1)[1].rstrip()
+                message += f" {p.args[-2]}"
+                click.echo(message)
+            else:
+                # This might be the first line of a multiline error message,
+                # so save it.
+                prev_errlines[i] = errline
 
-                # changing output from always "[0/1 files]" - due to manual
-                # parallelization of gsutil to "[x/y files]"
-                if errline.split("]", 1)[0].endswith("/1 files"):
-                    errline = errline.split("]", 1)[1]
-                print(
-                    f"[{len(finished)}/{total} done] {i+1}: " + errline, end="",
-                )
-
-    return errored
+    return error
 
 
 # default from `gsutil -m` but maybe better to load from env
@@ -247,19 +269,17 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
                 if p.poll() != 0:
 
-                    print(f"\nFailed uploading {p.args[3]} - {p.poll()}")
-
-                    print(f"Stopping other uploads...")
                     # stopping all other processes
                     for other_p in procs:
                         if p != other_p:
                             other_p.kill()
 
-                    e = Exception(f"Couldn't upload all files.")
-                    _handle_upload_exc(e)
-                    # _handle_upload_exc should raise, but raise for good measure
-                    # to guarantee execution stops here
-                    raise e
+                    click.echo(
+                        f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
+                    )
+                    click.secho(err, fg="red")
+
+                    raise click.Abort()
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
@@ -294,8 +314,6 @@ def _poll_for_upload_completion(
     job_id: int, job_token: str, timeout: int = 600, _did_timeout_test_impl=None
 ):
     """Repeatedly check if upload finalization either failed or succeed"""
-    click.echo("Finalizing upload", nl=False)
-
     cutoff = datetime.now().timestamp() + timeout
 
     did_timeout = _did_timeout_test_impl or (
@@ -322,11 +340,10 @@ def _poll_for_upload_completion(
                     "file browser to view your upload."
                 )
             else:
-                click.echo(click.style("✗", fg="red", bold=True))
                 if status.status_details:
                     click.echo("Upload failed with the following message:")
                     click.echo()
-                    click.echo(click.style(status.status_details, fg="red", bold=True))
+                    click.secho(status.status_details, fg="red", bold=True)
                     click.echo()
                 else:
                     click.echo("Upload failed. ", nl=False)
@@ -340,7 +357,7 @@ def _poll_for_upload_completion(
             # we should never reach this code block
             raise
 
-    click.echo(click.style("!!!", fg="yellow", bold=True))
+    click.secho("!!!", fg="yellow", bold=True)
     click.echo(
         "Upload timed out. Please contact a CIDC administrator "
         "(cidc@jimmy.harvard.edu) for assistance."
@@ -352,4 +369,4 @@ def _handle_upload_exc(e: Exception):
     """Handle an exception thrown during an upload attempt."""
     if isinstance(e, KeyboardInterrupt):
         raise KeyboardInterrupt(f"Upload canceled.")
-    raise type(e)(f"Upload failed: {e}") from e
+    raise type(e)(f"Upload failed.\n{e}") from e
