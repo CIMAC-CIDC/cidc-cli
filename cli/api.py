@@ -237,7 +237,10 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
         files=extra_metadata,
     )
 
-    return response
+    if response.ok:
+        return response
+    else:
+        raise ApiError(_error_message(response))
 
 
 def upload_failed(job_id: int, job_token: str, etag: str):
