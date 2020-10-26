@@ -1,4 +1,3 @@
-from cli.api import retry_with_reauth
 import sys
 from io import BytesIO, StringIO
 
