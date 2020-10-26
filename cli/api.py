@@ -122,6 +122,11 @@ def retry_with_reauth(api_request):
             if not retry:
                 break
 
+            # Rewind any file pointers to avoid sending empty files on retry
+            if "files" in kwargs:
+                for file in kwargs["files"].values():
+                    file.seek(0)
+
         # Handle error responses
         if res.status_code != 200:
             raise ApiError(_error_message(res))
