@@ -1,3 +1,4 @@
+from cli.api import retry_with_reauth
 import sys
 from io import BytesIO, StringIO
 
@@ -236,6 +237,10 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
 
     @api.retry_with_reauth
     def req_401(*args, **kwargs):
+        if "files" in kwargs:
+            # Ensure that files have been rewinded before retrying a request
+            for file in kwargs["files"].values():
+                assert len(file.read()) > 0
         try:
             token = auth.get_id_token()
             if token == good_token:
@@ -254,15 +259,24 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
 
         # Simulate a user entering a fresh, valid token
         monkeypatch.setattr(api, "_read_clipboard", lambda: good_token)
-        monkeypatch.setattr("sys.stdin", StringIO("\n"))
         monkeypatch.setattr(api, "check_auth", successful_reauth)
 
+        monkeypatch.setattr("sys.stdin", StringIO("\n"))
         res = req_401()
         stdout = capsys.readouterr().out
         assert res.json() == "successful reauth"
         # User is prompted once, and their token is displayed once
         assert stdout.count("paste your copied token below") == 1
         assert stdout.count(good_token) == 1
+
+        # Test that files are rewound before requests are retried
+        monkeypatch.setattr("sys.stdin", StringIO("\n"))
+        cache.store(auth.TOKEN, bad_token)
+        files = {"a": BytesIO(b"a"), "b": BytesIO(b"b")}
+        res = req_401(files=files)
+        assert files["a"].read() == b""
+        assert files["b"].read() == b""
+        assert res.json() == "successful reauth"
 
         def unsuccessful_reauth(*args):
             raise api.ApiError("signature expired")
@@ -280,8 +294,8 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
         stdout = capsys.readouterr().out
         # User enters bad_token 3 times
         assert stdout.count(bad_token) == 3
-        # User is re-prompted 4 times
-        assert stdout.count("paste your copied token below") == 4
+        # User is re-prompted 5 times
+        assert stdout.count("paste your copied token below") == 5
 
         # Simulate a user having pyperclip issues
         def throw():
