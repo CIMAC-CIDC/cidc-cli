@@ -204,6 +204,7 @@ def _wait_for_upload(procs: list) -> Optional[str]:
             errline = p.stderr.readline()
 
             if p.poll() != None:
+                p.stderr.close()
                 finished.add(i)
 
                 if p.returncode != 0:
