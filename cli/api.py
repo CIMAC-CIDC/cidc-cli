@@ -88,6 +88,12 @@ def retry_with_reauth(api_request):
             if res.status_code != 401:
                 break
 
+            # Check if the user got an error because they lack sufficient permissions.
+            # If so, don't prompt them for another token, since they'll just get the same error again.
+            error_message = _error_message(res)
+            if "is not authorized to upload" in error_message:
+                raise ApiError(error_message)
+
             # Prompt the user for a new ID token.
             while True:
                 click.prompt(
