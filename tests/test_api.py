@@ -232,6 +232,20 @@ def test_retry_with_reauth(runner, capsys, monkeypatch):
     with pytest.raises(api.ApiError, match="uhoh"):
         res = req_500()
 
+    @api.retry_with_reauth
+    def req_401_perms():
+        return make_error_response(
+            {
+                "errors": [
+                    "test@user.com is not authorized to upload pbmc data to some trial."
+                ]
+            }
+        )
+
+    # Raises ApiError on request that fails for permissions reasons
+    with pytest.raises(api.ApiError, match="is not authorized to upload pbmc data"):
+        res = req_401_perms()
+
     good_token = "good_token"
 
     @api.retry_with_reauth
