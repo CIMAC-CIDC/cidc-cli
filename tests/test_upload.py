@@ -257,3 +257,31 @@ def test_handle_upload_exc():
 
     with pytest.raises(RuntimeError, match="failed.\nfoo"):
         upload._handle_upload_exc(RuntimeError("foo"))
+
+
+def test_gsutil_assay_upload(monkeypatch):
+    """Check that _gsutil_assay_upload waits for all file upload processes to complete"""
+    num_procs = 13
+    process_mocks = [MagicMock(name=f"mock #{n}") for n in range(num_procs)]
+
+    def _start_procs(*args):
+        """Mock the _start_procs function"""
+        for proc in process_mocks:
+            proc.start()
+            yield proc
+
+    def _wait_for_upload(procs):
+        """Mock the _wait_for_upload function"""
+        for proc in procs:
+            proc.stop()
+
+    monkeypatch.setattr(upload, "_start_procs", _start_procs)
+    monkeypatch.setattr(upload, "_wait_for_upload", _wait_for_upload)
+    monkeypatch.setattr(upload, "_compose_file_mapping", MagicMock())
+
+    upload._gsutil_assay_upload(None, "")
+
+    # Ensure that _gsutil_assay_upload has started and waited for every process
+    for proc in process_mocks:
+        proc.start.assert_called()
+        proc.stop.assert_called()

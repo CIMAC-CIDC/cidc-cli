@@ -181,7 +181,7 @@ def _wait_for_upload(procs: list) -> Optional[str]:
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
 
-    # First we account all already successfully finished procs  
+    # First we account all already successfully finished procs
     finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
 
     error = None
@@ -252,17 +252,18 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
 
     proc_iter = _start_procs(upload_pairs)
     procs = []
-    while True:
+    all_uploads_have_run = False
+    while not all_uploads_have_run:
 
         # Here we start with just 1 parallel process and gradually
         # increase that to MAX_GSUTIL_PARALLEL_PROCESS doubling the number every time.
         try:
-            current_count = len(procs) or 1 # 1 is for starters
+            current_count = len(procs) or 1  # 1 is for starters
             how_many_to_add = min(current_count, MAX_GSUTIL_PARALLEL_PROCESS)
             for _ in range(how_many_to_add):
                 procs.append(next(proc_iter))
         except StopIteration:
-            break
+            all_uploads_have_run = True
 
         err = _wait_for_upload(procs)
 
