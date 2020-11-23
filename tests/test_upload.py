@@ -270,14 +270,15 @@ def test_gsutil_assay_upload(monkeypatch):
             proc.start()
             yield proc
 
-    def _wait_for_upload(procs):
+    def _wait_for_upload(procs, total):
         """Mock the _wait_for_upload function"""
+        assert total == num_procs
         for proc in procs:
             proc.stop()
 
     monkeypatch.setattr(upload, "_start_procs", _start_procs)
     monkeypatch.setattr(upload, "_wait_for_upload", _wait_for_upload)
-    monkeypatch.setattr(upload, "_compose_file_mapping", MagicMock())
+    monkeypatch.setattr(upload, "_compose_file_mapping", lambda *args: [0] * num_procs)
 
     upload._gsutil_assay_upload(None, "")
 
