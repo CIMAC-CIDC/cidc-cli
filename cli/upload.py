@@ -1,7 +1,6 @@
 """Upload local files to CIDC's upload bucket"""
 import os
 import time
-import shutil
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
@@ -148,7 +147,7 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
             return
 
         # Construct the upload command
-        gsutil_args = ["gsutil", "-m", "cp", src, dst]
+        gsutil_args = ["gsutil", "cp", src, dst]
 
         try:
             # Run the upload command
@@ -175,7 +174,7 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
             _handle_upload_exc(e)
 
 
-def _wait_for_upload(procs: list) -> Optional[str]:
+def _wait_for_upload(procs: list, total: int) -> Optional[str]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
@@ -197,8 +196,8 @@ def _wait_for_upload(procs: list) -> Optional[str]:
                 continue
 
             # start building user feedback for this process
-            message = f"[{len(finished)}/{len(procs)} done] "
-            message += click.style(f"(proc {i + 1}) ", fg="bright_blue")
+            message = f"[{len(finished)}/{total} done] "
+            message += click.style(f"(file {i + 1}) ", fg="bright_blue")
 
             # read stderr for this process
             errline = p.stderr.readline()
@@ -225,7 +224,7 @@ def _wait_for_upload(procs: list) -> Optional[str]:
                 errline
                 and len(errline) > 2  # skip '* ' spinner lines
                 and errline.split("]", 1)[0].endswith(
-                    "/1 files"
+                    "1 files"
                 )  # include gsutil output with upload progress
             ):
                 message += errline.split("]", 1)[1].rstrip()
@@ -249,6 +248,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
     """
 
     upload_pairs = _compose_file_mapping(upload_info, xlsx)
+    file_count = len(upload_pairs)
 
     proc_iter = _start_procs(upload_pairs)
     procs = []
@@ -265,7 +265,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
         except StopIteration:
             all_uploads_have_run = True
 
-        err = _wait_for_upload(procs)
+        err = _wait_for_upload(procs, file_count)
 
         if err:
             for p in procs:
@@ -283,6 +283,10 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
                     click.secho(err, fg="red")
 
                     raise click.Abort()
+
+    click.echo(
+        f"[{file_count}/{file_count} done] All files uploaded to GCS and staged for ingestion."
+    )
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
