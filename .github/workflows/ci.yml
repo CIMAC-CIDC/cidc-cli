@@ -1,5 +1,3 @@
-name: test-and-publish
-
 on:
   push:
     branches: [master]
@@ -7,7 +5,7 @@ on:
     branches: [master]
 
 jobs:
-  build:
+  test:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -27,6 +25,11 @@ jobs:
       - name: Test with pytest
         run: |
           pytest
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
       - name: Publish package to PyPI
         if: ${{ github.ref == 'refs/heads/master' }}
         uses: pypa/gh-action-pypi-publish@master
