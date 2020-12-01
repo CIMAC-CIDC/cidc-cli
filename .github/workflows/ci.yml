@@ -28,10 +28,10 @@ jobs:
 
   publish:
     runs-on: ubuntu-latest
+    if: ${{ github.ref == 'refs/heads/master' }}
     needs: test
     steps:
       - name: Publish package to PyPI
-        if: ${{ github.ref == 'refs/heads/master' }}
         uses: pypa/gh-action-pypi-publish@master
         with:
           skip_existing: true
