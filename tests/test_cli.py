@@ -8,6 +8,10 @@ def skip_consent(monkeypatch):
     monkeypatch.setattr("cli.consent.check_consent", lambda: True)
 
 
+def skip_gcloud_installation_check(monkeypatch):
+    monkeypatch.setattr("cli.gcloud.check_installed", lambda: True)
+
+
 def with_default_env(fn):
     """Ensures that a test run icurrent CLI config isn't overwritten by a test run"""
 
@@ -30,6 +34,7 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
     usage is printed when commands are supplied without arguments.
     """
     skip_consent(monkeypatch)
+    skip_gcloud_installation_check(monkeypatch)
 
     res = runner.invoke(cli.cidc)
     assert "Usage: cidc" in res.output
