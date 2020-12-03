@@ -27,7 +27,7 @@ jobs:
       - name: Test with pytest
         run: |
           pytest
-      - name: Check that the command-line is installed
+      - name: Check that the CLI command is installed
         run: |
           cidc --help
 
