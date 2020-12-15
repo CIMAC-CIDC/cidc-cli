@@ -308,11 +308,19 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
 
             if not os.path.isfile(source_path):
                 missing_files.append(source_path)
+
+        # gsutil treats brackets in a gs-uri as a character set
+        # see https://cloud.google.com/storage/docs/gsutil/addlhelp/WildcardNames#other-wildcard-characters
+        # this replaces opening with a generic wildcard, which should map to only a single file
         elif "[" in source_path and "]" in source_path:
-            source_path = source_path.replace("[","?")
+            source_path = source_path.replace("[", "?")
 
         target_uri = f"gs://{upload_info.gcs_bucket}/{gcs_uri}"
-        target_uri = target_uri.replace("[","").replace("]","")
+
+        # as above, gsutil treats brackets in as a character set
+        # a target uri cannot match multiple files, so there can be no wildcards
+        # but here, we control the URI, so just drop them
+        target_uri = target_uri.replace("[", "").replace("]", "")
 
         res.append([source_path, target_uri])
 
