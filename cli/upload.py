@@ -315,14 +315,7 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
         elif "[" in source_path and "]" in source_path:
             source_path = source_path.replace("[", "?")
 
-        target_uri = f"gs://{upload_info.gcs_bucket}/{gcs_uri}"
-
-        # as above, gsutil treats brackets in as a character set
-        # a target uri cannot match multiple files, so there can be no wildcards
-        # but here, we control the URI, so just drop them
-        target_uri = target_uri.replace("[", "").replace("]", "")
-
-        res.append([source_path, target_uri])
+        res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
     if missing_files:
         raise Exception(f'Could not locate files: {", ".join(missing_files)}')
