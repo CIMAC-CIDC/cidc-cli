@@ -286,3 +286,48 @@ def test_gsutil_assay_upload(monkeypatch):
     for proc in process_mocks:
         proc.start.assert_called()
         proc.stop.assert_called()
+
+
+def test_compose_file_mapping(tmpdir):
+    local_map = {
+        tmpdir.join("local.path"): "test/gcs.1a",
+        tmpdir.join("test.dir"): "test/gcs.1b",
+    }
+    input_map = {
+        "gs://bucket/gcs.path": "test/gcs.2",
+        "gs://bucket/[brackets]": "test/gcs.3",
+    }
+
+    # files must exist without care for content, so write garbage
+    for k in local_map.keys():
+        k.write("foo")
+
+    # but must be {str: str}
+    input_map.update({str(k): v for k, v in local_map.items()})
+    input_map["test.dir"] = input_map.pop(str(tmpdir.join("test.dir")))
+
+    upload_job = api.UploadInfo(
+        JOB_ID, JOB_ETAG, GCS_BUCKET, input_map, EXTRA_METADATA, UPLOAD_TOKEN
+    )
+    xlsx = str(tmpdir.join("bar.xlsx"))
+
+    output_map = dict(upload._compose_file_mapping(upload_job, xlsx))
+
+    for k, v in output_map.items():
+        if "local.path" in k:
+            assert v == f"gs://{GCS_BUCKET}/test/gcs.1a"
+        elif "dir" in k:
+            assert k == str(tmpdir.join("test.dir"))
+            assert v == f"gs://{GCS_BUCKET}/test/gcs.1b"
+        elif "gcs.path" in k:
+            assert v == f"gs://{GCS_BUCKET}/test/gcs.2"
+        elif "brackets" in k:
+            assert k == "gs://bucket/?brackets]"
+            assert v == f"gs://{GCS_BUCKET}/test/gcs.3"
+
+    failing_map = {str(tmpdir.join("foo.bar")): "foo.bar"}
+    upload_job = api.UploadInfo(
+        JOB_ID, JOB_ETAG, GCS_BUCKET, failing_map, EXTRA_METADATA, UPLOAD_TOKEN
+    )
+    with pytest.raises(Exception, match="Could not locate file"):
+        upload._compose_file_mapping(upload_job, xlsx)
