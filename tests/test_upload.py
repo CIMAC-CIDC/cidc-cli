@@ -294,7 +294,9 @@ def test_gsutil_assay_upload(monkeypatch):
 
     monkeypatch.setattr(upload, "_start_procs", _start_procs)
     monkeypatch.setattr(upload, "_wait_for_upload", _wait_for_upload)
-    monkeypatch.setattr(upload, "_compose_file_mapping", lambda *args: ([0] * num_procs, []))
+    monkeypatch.setattr(
+        upload, "_compose_file_mapping", lambda *args: ([0] * num_procs, [])
+    )
 
     upload._gsutil_assay_upload(
         api.UploadInfo(
@@ -380,7 +382,10 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
     monkeypatch.setattr("os.path.isfile", isfile)
 
     # mock gsutil ls file check by returning input
-    monkeypatch.setattr("subprocess.run", lambda args, capture_output: MagicMock(stdout=args[2].encode("utf-8")))
+    monkeypatch.setattr(
+        "subprocess.run",
+        lambda args, capture_output: MagicMock(stdout=args[2].encode("utf-8")),
+    )
 
     output_map, skipping = upload._compose_file_mapping(upload_job, xlsx)
     assert len(skipping) == 0, skipping

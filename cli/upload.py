@@ -181,7 +181,7 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
 
 def _wait_for_upload(
     procs: list, total: int, optional_files: List[str], skipped: List[int]
-) -> Tuple[List[int], Optional[str]]:
+):
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
@@ -211,16 +211,9 @@ def _wait_for_upload(
                 finished.add(i)
 
                 if p.returncode != 0:
-                    message += click.style(
-                        "!!! upload error !!! ", fg="red", bold=True
-                    )
+                    message += click.style("!!! upload error !!! ", fg="red", bold=True)
                     message += p.args[-2]
                     click.echo(message)
-
-                    with open("../skipped.mif.txt", "w") as f:
-                        f.write(str(skipped))
-                    with open("../optional.mif.txt", "w") as f:
-                        f.write(str(optional_files))
 
                     # stopping all other processes
                     for other_p in procs:
@@ -231,7 +224,7 @@ def _wait_for_upload(
                         f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
                     )
                     # Reconstruct multiline GCS error message
-                    prev_err = prev_errlines.get(i,"")
+                    prev_err = prev_errlines.get(i, "")
                     click.secho(f"{prev_err}{errline}", fg="red")
 
                     raise click.Abort()
@@ -272,7 +265,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
         upload_info.gcs_file_map.pop(s, "")
 
     proc_iter = _start_procs(upload_pairs)
-    procs, skipped = [], []
+    procs = []
     all_uploads_have_run = False
     while not all_uploads_have_run:
 
@@ -286,9 +279,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
         except StopIteration:
             all_uploads_have_run = True
 
-        _wait_for_upload(
-            procs, file_count, upload_info.optional_files, skipped
-        )
+        _wait_for_upload(procs, file_count, upload_info.optional_files, skipped)
 
     click.echo(
         f"[{file_count}/{file_count} done] All files uploaded to GCS and staged for ingestion."
@@ -297,7 +288,9 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
     return upload_info.gcs_file_map
 
 
-def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
+def _compose_file_mapping(
+    upload_info: api.UploadInfo, xlsx: str
+) -> Tuple[Dict[str, str], List[str]]:
     """
     Returns a list of (source_path, target uri) pairs for all 
     the files from the upload info relative to the `work dir` 
@@ -327,13 +320,18 @@ def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):
         # this replaces opening with a generic wildcard, which should map to only a single file
         elif "[" in source_path and "]" in source_path:
             source_path = source_path.replace("[", "?")
-            sub = subprocess.run(["gsutil","ls", f"'{source_path}'"], capture_output=True)
-            if sub.stdout.decode("utf-8").strip(" '").replace("[","?") != source_path:
+            sub = subprocess.run(
+                ["gsutil", "ls", f"'{source_path}'"], capture_output=True
+            )
+            if sub.stdout.decode("utf-8").strip(" '").replace("[", "?") != source_path:
                 if source_path in upload_info.optional_files:
                     skipping_files.append(gcs_uri)
                     continue
                 else:
-                    print(source_path, sub.stdout.decode("utf-8").strip(" '").replace("[","?"))
+                    print(
+                        source_path,
+                        sub.stdout.decode("utf-8").strip(" '").replace("[", "?"),
+                    )
                     missing_files.append(source_path)
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
