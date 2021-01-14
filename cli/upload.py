@@ -4,7 +4,7 @@ import time
 import subprocess
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Dict, BinaryIO, Optional, Generator
+from typing import BinaryIO, Dict, Generator, List, Optional, Tuple
 
 import click
 
@@ -56,16 +56,21 @@ def run_upload(upload_type: str, xlsx_path: str, is_analysis: bool = False):
 
         # Actually upload the assay data
         click.secho(f"> initiating GCS upload", dim=True)
-        _gsutil_assay_upload(upload_info, xlsx_path)
+        gcs_file_map = _gsutil_assay_upload(upload_info, xlsx_path)
     except (Exception, KeyboardInterrupt) as e:
         # we need to notify api of a failed upload
-        api.upload_failed(upload_info.job_id, upload_info.token, upload_info.job_etag)
+        api.upload_failed(
+            upload_info.job_id,
+            upload_info.token,
+            upload_info.job_etag,
+            upload_info.gcs_file_map,
+        )
         _handle_upload_exc(e)
         # _handle_upload_exc should raise, but raise for good measure
         raise
     else:
         api.upload_succeeded(
-            upload_info.job_id, upload_info.token, upload_info.job_etag
+            upload_info.job_id, upload_info.token, upload_info.job_etag, gcs_file_map
         )
 
     click.secho("> finalizing upload via the CIDC API", dim=True)
@@ -174,25 +179,24 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
             _handle_upload_exc(e)
 
 
-def _wait_for_upload(procs: list, total: int) -> Optional[str]:
+def _wait_for_upload(
+    procs: list, total: int, optional_files: List[str], skipped: List[int]
+) -> Tuple[List[int], Optional[str]]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
-
     # First we account all already successfully finished procs
-    finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
-
-    error = None
+    finished = set([i for i, p in enumerate(procs) if p.poll() == 0 or i in skipped])
 
     # GCS upload errors are generally spread across two lines.
     # Since we consume stderr one line at a time will polling upload processes,
     # we need to save the previous stderr line for each process in order
     # to reconstruct a full GCS upload error.
     prev_errlines = {}
-    while len(finished) != len(procs) and not error:
+    while len(finished) != len(procs):
         for i, p in enumerate(procs):
-            if i in finished:
+            if i in finished or i in skipped:
                 continue
 
             # start building user feedback for this process
@@ -202,19 +206,48 @@ def _wait_for_upload(procs: list, total: int) -> Optional[str]:
             # read stderr for this process
             errline = p.stderr.readline()
 
-            if p.poll() != None:
+            if p.poll() is not None:
                 p.stderr.close()
                 finished.add(i)
 
                 if p.returncode != 0:
-                    message += click.style(
-                        f"!!! upload error !!! ", fg="red", bold=True
-                    )
-                    message += p.args[-2]
-                    click.echo(message)
-                    # Reconstruct multiline GCS error message
-                    error = f"{prev_errlines.get(i, '')}{errline}"
-                    break
+                    prev_err = prev_errlines.get(i, "")
+                    if (
+                        "No URLs matched:" in prev_err
+                        and prev_err.split("matched:")[1].replace("?", "[").strip()
+                        in optional_files
+                    ):
+                        message += click.style(
+                            f"skipping - file not found ", fg="yellow", bold=True
+                        )
+                        message += p.args[-2]
+                        click.echo(message)
+
+                        skipped.append(i)
+                    else:
+                        message += click.style(
+                            "!!! upload error !!! ", fg="red", bold=True
+                        )
+                        message += p.args[-2]
+                        click.echo(message)
+
+                        with open("../skipped.mif.txt", "w") as f:
+                            f.write(str(skipped))
+                        with open("../optional.mif.txt", "w") as f:
+                            f.write(str(optional_files))
+
+                        # stopping all other processes
+                        for other_p in procs:
+                            if p != other_p:
+                                other_p.kill()
+
+                        click.echo(
+                            f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
+                        )
+                        # Reconstruct multiline GCS error message
+                        click.secho(f"{prev_err}{errline}", fg="red")
+
+                        raise click.Abort()
 
             # skipping "large file" warnings
             if errline.strip() in _IGNORED_WARN_LINES:
@@ -235,23 +268,23 @@ def _wait_for_upload(procs: list, total: int) -> Optional[str]:
                 # so save it.
                 prev_errlines[i] = errline
 
-    return error
+    return skipped
 
 
 # default from `gsutil -m` but maybe better to load from env
 MAX_GSUTIL_PARALLEL_PROCESS = 12
 
 
-def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
+def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
     """
     Upload local assay data to GCS using gsutil.
+    Return list of missing files
     """
-
     upload_pairs = _compose_file_mapping(upload_info, xlsx)
     file_count = len(upload_pairs)
 
     proc_iter = _start_procs(upload_pairs)
-    procs = []
+    procs, skipped = [], []
     all_uploads_have_run = False
     while not all_uploads_have_run:
 
@@ -265,28 +298,22 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str):
         except StopIteration:
             all_uploads_have_run = True
 
-        err = _wait_for_upload(procs, file_count)
-
-        if err:
-            for p in procs:
-
-                if p.poll() != 0:
-
-                    # stopping all other processes
-                    for other_p in procs:
-                        if p != other_p:
-                            other_p.kill()
-
-                    click.echo(
-                        f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
-                    )
-                    click.secho(err, fg="red")
-
-                    raise click.Abort()
+        skipped = _wait_for_upload(
+            procs, file_count, upload_info.optional_files, skipped
+        )
 
     click.echo(
         f"[{file_count}/{file_count} done] All files uploaded to GCS and staged for ingestion."
     )
+
+    # remove the skipped files from the map
+    gcs_file_map = upload_info.gcs_file_map
+    for s in skipped:
+        print(s)
+        # turn skipped from indexes to gcs_uri
+        gcs_file_map.pop(procs[s].args[-1], {})
+
+    return gcs_file_map
 
 
 def _compose_file_mapping(upload_info: api.UploadInfo, xlsx: str):

@@ -18,6 +18,11 @@ URL_MAPPING = {
     "local_path2.fastq.gz": "gcs/path/4321/fastq/2019-09-04T18:59:45.224099",
 }
 EXTRA_METADATA = {"lp1": "uuid1"}
+GCS_FILE_MAP = {
+    "gcs/path/1234/fastq/2019-09-04T18:59:45.224099": "uuid2",
+    "gcs/path/4321/fastq/2019-09-04T18:59:45.224099": "uuid3",
+}
+OPTIONAL_FILES = []
 UPLOAD_TOKEN = "test-upload-token"
 
 
@@ -28,7 +33,14 @@ class UploadMocks:
 
         self.api_initiate_upload = MagicMock()
         self.api_initiate_upload.return_value = api.UploadInfo(
-            JOB_ID, JOB_ETAG, GCS_BUCKET, URL_MAPPING, EXTRA_METADATA, UPLOAD_TOKEN
+            JOB_ID,
+            JOB_ETAG,
+            GCS_BUCKET,
+            URL_MAPPING,
+            EXTRA_METADATA,
+            GCS_FILE_MAP,
+            OPTIONAL_FILES,
+            UPLOAD_TOKEN,
         )
         monkeypatch.setattr(api, "initiate_upload", self.api_initiate_upload)
 
@@ -53,10 +65,12 @@ class UploadMocks:
         self.gcloud_login.assert_called_once()
         self.api_initiate_upload.assert_called_once()
         if failure:
-            self.upload_failed.assert_called_once_with(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
+            self.upload_failed.assert_called_once_with(
+                JOB_ID, UPLOAD_TOKEN, JOB_ETAG, GCS_FILE_MAP
+            )
         else:
             self.upload_succeeded.assert_called_once_with(
-                JOB_ID, UPLOAD_TOKEN, JOB_ETAG
+                JOB_ID, UPLOAD_TOKEN, JOB_ETAG, GCS_FILE_MAP
             )
             self._poll_for_upload_completion.assert_called_once_with(
                 JOB_ID, UPLOAD_TOKEN
@@ -85,6 +99,7 @@ def test_upload_success(runner: CliRunner, monkeypatch):
     mocks = UploadMocks(monkeypatch)
 
     upload_success = MagicMock()
+    upload_success.return_value = GCS_FILE_MAP
     monkeypatch.setattr(upload, "_gsutil_assay_upload", upload_success)
 
     # Run a successful upload.
@@ -270,17 +285,30 @@ def test_gsutil_assay_upload(monkeypatch):
             proc.start()
             yield proc
 
-    def _wait_for_upload(procs, total):
+    def _wait_for_upload(procs, total, optional_files, skipped):
         """Mock the _wait_for_upload function"""
         assert total == num_procs
         for proc in procs:
             proc.stop()
+        return []
 
     monkeypatch.setattr(upload, "_start_procs", _start_procs)
     monkeypatch.setattr(upload, "_wait_for_upload", _wait_for_upload)
     monkeypatch.setattr(upload, "_compose_file_mapping", lambda *args: [0] * num_procs)
 
-    upload._gsutil_assay_upload(None, "")
+    upload._gsutil_assay_upload(
+        api.UploadInfo(
+            JOB_ID,
+            JOB_ETAG,
+            GCS_BUCKET,
+            URL_MAPPING,
+            EXTRA_METADATA,
+            GCS_FILE_MAP,
+            OPTIONAL_FILES,
+            UPLOAD_TOKEN,
+        ),
+        "",
+    )
 
     # Ensure that _gsutil_assay_upload has started and waited for every process
     for proc in process_mocks:
@@ -307,7 +335,14 @@ def test_compose_file_mapping(tmpdir):
     input_map["test.dir"] = input_map.pop(str(tmpdir.join("test.dir")))
 
     upload_job = api.UploadInfo(
-        JOB_ID, JOB_ETAG, GCS_BUCKET, input_map, EXTRA_METADATA, UPLOAD_TOKEN
+        JOB_ID,
+        JOB_ETAG,
+        GCS_BUCKET,
+        input_map,
+        EXTRA_METADATA,
+        GCS_FILE_MAP,
+        OPTIONAL_FILES,
+        UPLOAD_TOKEN,
     )
     xlsx = str(tmpdir.join("bar.xlsx"))
 
@@ -327,7 +362,14 @@ def test_compose_file_mapping(tmpdir):
 
     failing_map = {str(tmpdir.join("foo.bar")): "foo.bar"}
     upload_job = api.UploadInfo(
-        JOB_ID, JOB_ETAG, GCS_BUCKET, failing_map, EXTRA_METADATA, UPLOAD_TOKEN
+        JOB_ID,
+        JOB_ETAG,
+        GCS_BUCKET,
+        failing_map,
+        EXTRA_METADATA,
+        GCS_FILE_MAP,
+        OPTIONAL_FILES,
+        UPLOAD_TOKEN,
     )
     with pytest.raises(Exception, match="Could not locate file"):
         upload._compose_file_mapping(upload_job, xlsx)

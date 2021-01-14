@@ -55,10 +55,10 @@ def _with_auth(headers: dict = None, id_token: str = None) -> dict:
     if not id_token:
         id_token = auth.get_id_token()
     return {
-        **(headers or {}),
         "Authorization": f"Bearer {id_token}",
         # Also, include user agent with info about the CLI version
         "User-Agent": _USER_AGENT,
+        **(headers or {}),
     }
 
 
@@ -176,6 +176,8 @@ class UploadInfo(NamedTuple):
     gcs_bucket: str
     url_mapping: dict
     extra_metadata: list
+    gcs_file_map: dict
+    optional_files: list
     token: str
 
 
@@ -207,24 +209,20 @@ def initiate_upload(
 
     try:
         upload_info = response.json()
-        return UploadInfo(
-            upload_info["job_id"],
-            upload_info["job_etag"],
-            upload_info["gcs_bucket"],
-            upload_info["url_mapping"],
-            upload_info["extra_metadata"],
-            upload_info["token"],
-        )
+        return UploadInfo(**upload_info)
     except:
         raise ApiError(
             "Cannot decode API response. You may need to update the CIDC CLI."
         )
 
 
-def _update_upload_status(job_id: int, job_token: str, etag: str, status: str):
+def _update_upload_status(
+    job_id: int, job_token: str, etag: str, status: str, gcs_file_map: Dict[str, str]
+):
     """Update the status for an existing upload job"""
     url = _url(f"/upload_jobs/{job_id}")
-    data = {"status": status}
+    data = {"status": status, "gcs_file_map": gcs_file_map}
+
     if_match = {"If-Match": etag}
     response = _requests_with_reauth.patch(
         url, params={"token": job_token}, json=data, headers=_with_auth(if_match)
@@ -232,9 +230,11 @@ def _update_upload_status(job_id: int, job_token: str, etag: str, status: str):
     return response
 
 
-def upload_succeeded(job_id: int, job_token: str, etag: str):
+def upload_succeeded(
+    job_id: int, job_token: str, etag: str, gcs_file_map: Dict[str, str]
+):
     """Tell the API that an upload job succeeded"""
-    _update_upload_status(job_id, job_token, etag, "upload-completed")
+    _update_upload_status(job_id, job_token, etag, "upload-completed", gcs_file_map)
 
 
 def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
@@ -254,9 +254,9 @@ def insert_extra_metadata(job_id: int, extra_metadata: Dict[str, BinaryIO]):
         raise ApiError(_error_message(response))
 
 
-def upload_failed(job_id: int, job_token: str, etag: str):
+def upload_failed(job_id: int, job_token: str, etag: str, gcs_file_map: Dict[str, str]):
     """Tell the API that an upload job failed"""
-    _update_upload_status(job_id, job_token, etag, "upload-failed")
+    _update_upload_status(job_id, job_token, etag, "upload-failed", gcs_file_map)
 
 
 class MergeStatus(NamedTuple):

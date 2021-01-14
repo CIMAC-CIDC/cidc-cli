@@ -106,6 +106,7 @@ def test_list_assays(monkeypatch):
 JOB_ID = 1
 JOB_ETAG = "abcd"
 UPLOAD_TOKEN = "test-upload-token"
+UPLOAD_URL_MAP = {}
 
 
 def test_initiate_upload(monkeypatch):
@@ -115,6 +116,8 @@ def test_initiate_upload(monkeypatch):
     GCS_BUCKET = "bucket"
     URL_MAPPING = {"foo": "bar"}
     EXTRA_METADATA = {"uuid": "lp1"}
+    GCS_FILE_MAP = {"bar": "baz"}
+    OPTIONAL_FILES = []
 
     monkeypatch.setattr(api, "_with_auth", lambda: {})
 
@@ -128,6 +131,8 @@ def test_initiate_upload(monkeypatch):
                 "gcs_bucket": GCS_BUCKET,
                 "url_mapping": URL_MAPPING,
                 "extra_metadata": EXTRA_METADATA,
+                "gcs_file_map": GCS_FILE_MAP,
+                "optional_files": OPTIONAL_FILES,
                 "token": UPLOAD_TOKEN,
             }
         )
@@ -160,7 +165,7 @@ def test_update_job_status(monkeypatch):
     def test_status(status):
         def request(url, params, json, headers):
             assert url.endswith("/upload_jobs/" + str(JOB_ID))
-            assert json == {"status": status}
+            assert json == {"status": status, "gcs_file_map": {}}
             assert headers.get("If-Match") == JOB_ETAG
             assert params["token"] == UPLOAD_TOKEN
             return make_json_response()
@@ -168,10 +173,10 @@ def test_update_job_status(monkeypatch):
         return request
 
     monkeypatch.setattr("requests.patch", test_status("upload-completed"))
-    api.upload_succeeded(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
+    api.upload_succeeded(JOB_ID, UPLOAD_TOKEN, JOB_ETAG, UPLOAD_URL_MAP)
 
     monkeypatch.setattr("requests.patch", test_status("upload-failed"))
-    api.upload_failed(JOB_ID, UPLOAD_TOKEN, JOB_ETAG)
+    api.upload_failed(JOB_ID, UPLOAD_TOKEN, JOB_ETAG, UPLOAD_URL_MAP)
 
 
 def test_poll_upload_merge_status(monkeypatch):
