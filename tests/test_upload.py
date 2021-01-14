@@ -294,7 +294,7 @@ def test_gsutil_assay_upload(monkeypatch):
 
     monkeypatch.setattr(upload, "_start_procs", _start_procs)
     monkeypatch.setattr(upload, "_wait_for_upload", _wait_for_upload)
-    monkeypatch.setattr(upload, "_compose_file_mapping", lambda *args: [0] * num_procs)
+    monkeypatch.setattr(upload, "_compose_file_mapping", lambda *args: ([0] * num_procs, []))
 
     upload._gsutil_assay_upload(
         api.UploadInfo(
@@ -316,7 +316,36 @@ def test_gsutil_assay_upload(monkeypatch):
         proc.stop.assert_called()
 
 
-def test_compose_file_mapping(tmpdir):
+def test_compose_file_mapping(tmpdir, monkeypatch):
+    xlsx = str(tmpdir.join("bar.xlsx"))
+
+    failing_map = {str(tmpdir.join("foo.bar")): "foo.bar"}
+    upload_job = api.UploadInfo(
+        JOB_ID,
+        JOB_ETAG,
+        GCS_BUCKET,
+        failing_map,
+        EXTRA_METADATA,
+        GCS_FILE_MAP,
+        OPTIONAL_FILES,
+        UPLOAD_TOKEN,
+    )
+    with pytest.raises(Exception, match="Could not locate file"):
+        upload._compose_file_mapping(upload_job, xlsx)
+
+    # doesn't fail if passed as an optional_file
+    upload_job = api.UploadInfo(
+        JOB_ID,
+        JOB_ETAG,
+        GCS_BUCKET,
+        failing_map,
+        EXTRA_METADATA,
+        GCS_FILE_MAP,
+        OPTIONAL_FILES + list(failing_map.keys()),
+        UPLOAD_TOKEN,
+    )
+    upload._compose_file_mapping(upload_job, xlsx)
+
     local_map = {
         tmpdir.join("local.path"): "test/gcs.1a",
         tmpdir.join("test.dir"): "test/gcs.1b",
@@ -344,11 +373,19 @@ def test_compose_file_mapping(tmpdir):
         OPTIONAL_FILES,
         UPLOAD_TOKEN,
     )
-    xlsx = str(tmpdir.join("bar.xlsx"))
 
-    output_map = dict(upload._compose_file_mapping(upload_job, xlsx))
+    # mock local file check
+    isfile = MagicMock()
+    isfile.return_value = True
+    monkeypatch.setattr("os.path.isfile", isfile)
 
-    for k, v in output_map.items():
+    # mock gsutil ls file check by returning input
+    monkeypatch.setattr("subprocess.run", lambda args, capture_output: MagicMock(stdout=args[2].encode("utf-8")))
+
+    output_map, skipping = upload._compose_file_mapping(upload_job, xlsx)
+    assert len(skipping) == 0, skipping
+
+    for k, v in output_map:
         if "local.path" in k:
             assert v == f"gs://{GCS_BUCKET}/test/gcs.1a"
         elif "dir" in k:
@@ -359,17 +396,3 @@ def test_compose_file_mapping(tmpdir):
         elif "brackets" in k:
             assert k == "gs://bucket/?brackets]"
             assert v == f"gs://{GCS_BUCKET}/test/gcs.3"
-
-    failing_map = {str(tmpdir.join("foo.bar")): "foo.bar"}
-    upload_job = api.UploadInfo(
-        JOB_ID,
-        JOB_ETAG,
-        GCS_BUCKET,
-        failing_map,
-        EXTRA_METADATA,
-        GCS_FILE_MAP,
-        OPTIONAL_FILES,
-        UPLOAD_TOKEN,
-    )
-    with pytest.raises(Exception, match="Could not locate file"):
-        upload._compose_file_mapping(upload_job, xlsx)
