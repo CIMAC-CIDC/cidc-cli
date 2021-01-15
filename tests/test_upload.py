@@ -285,7 +285,7 @@ def test_gsutil_assay_upload(monkeypatch):
             proc.start()
             yield proc
 
-    def _wait_for_upload(procs, total, optional_files, skipped):
+    def _wait_for_upload(procs, total, optional_files):
         """Mock the _wait_for_upload function"""
         assert total == num_procs
         for proc in procs:

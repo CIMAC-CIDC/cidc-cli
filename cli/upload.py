@@ -180,14 +180,16 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
 
 
 def _wait_for_upload(
-    procs: list, total: int, optional_files: List[str], skipped: List[int]
+    procs: list, total: int, optional_files: List[str]
 ) -> Optional[str]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
+
     # First we account all already successfully finished procs
     finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
+
     error = None
 
     # GCS upload errors are generally spread across two lines.
@@ -195,7 +197,7 @@ def _wait_for_upload(
     # we need to save the previous stderr line for each process in order
     # to reconstruct a full GCS upload error.
     prev_errlines = {}
-    while len(finished) != len(procs):
+    while len(finished) != len(procs) and not error:
         for i, p in enumerate(procs):
             if i in finished:
                 continue
@@ -271,7 +273,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, st
         except StopIteration:
             all_uploads_have_run = True
 
-        err = _wait_for_upload(procs, file_count, upload_info.optional_files, skipping)
+        err = _wait_for_upload(procs, file_count, upload_info.optional_files)
 
         if err:
             for p in procs:
