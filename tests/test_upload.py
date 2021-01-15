@@ -346,7 +346,8 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
         OPTIONAL_FILES + list(failing_map.keys()),
         UPLOAD_TOKEN,
     )
-    upload._compose_file_mapping(upload_job, xlsx)
+    upload_file_map, gcs_file_map = upload._compose_file_mapping(upload_job, xlsx)
+    assert gcs_file_map == ["foo.bar"]
 
     local_map = {
         tmpdir.join("local.path"): "test/gcs.1a",
@@ -383,8 +384,7 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
 
     # mock gsutil ls file check by returning input
     monkeypatch.setattr(
-        "subprocess.run",
-        lambda args, capture_output: MagicMock(stdout=args[2].encode("utf-8")),
+        "subprocess.run", lambda args, capture_output: MagicMock(returncode=0)
     )
 
     output_map, skipping = upload._compose_file_mapping(upload_job, xlsx)

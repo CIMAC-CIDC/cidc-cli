@@ -181,13 +181,14 @@ def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]
 
 def _wait_for_upload(
     procs: list, total: int, optional_files: List[str], skipped: List[int]
-):
+) -> Optional[str]:
     """
     Waits for all subprocesses and click.echos their stderr streams.
     Returns Optional[str] - an error message if an error has occurred during any if uploads
     """
     # First we account all already successfully finished procs
     finished = set([i for i, p in enumerate(procs) if p.poll() == 0])
+    error = None
 
     # GCS upload errors are generally spread across two lines.
     # Since we consume stderr one line at a time will polling upload processes,
@@ -214,20 +215,9 @@ def _wait_for_upload(
                     message += click.style("!!! upload error !!! ", fg="red", bold=True)
                     message += p.args[-2]
                     click.echo(message)
-
-                    # stopping all other processes
-                    for other_p in procs:
-                        if p != other_p:
-                            other_p.kill()
-
-                    click.echo(
-                        f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
-                    )
                     # Reconstruct multiline GCS error message
-                    prev_err = prev_errlines.get(i, "")
-                    click.secho(f"{prev_err}{errline}", fg="red")
-
-                    raise click.Abort()
+                    error = f"{prev_errlines.get(i, '')}{errline}"
+                    break
 
             # skipping "large file" warnings
             if errline.strip() in _IGNORED_WARN_LINES:
@@ -248,15 +238,17 @@ def _wait_for_upload(
                 # so save it.
                 prev_errlines[i] = errline
 
+    return error
+
 
 # default from `gsutil -m` but maybe better to load from env
 MAX_GSUTIL_PARALLEL_PROCESS = 12
 
 
-def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
+def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, str]:
     """
     Upload local assay data to GCS using gsutil.
-    Return list of missing files
+    Return modified GCS file map with missing files removed
     """
 
     upload_pairs, skipping = _compose_file_mapping(upload_info, xlsx)
@@ -279,7 +271,25 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> List[str]:
         except StopIteration:
             all_uploads_have_run = True
 
-        _wait_for_upload(procs, file_count, upload_info.optional_files, skipped)
+        err = _wait_for_upload(procs, file_count, upload_info.optional_files, skipping)
+
+        if err:
+            for p in procs:
+
+                if p.poll() != 0:
+
+                    # stopping all other processes
+                    for other_p in procs:
+                        if p != other_p:
+                            other_p.kill()
+
+                    click.echo(
+                        f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
+                    )
+                    prev_err = prev_errlines.get(i, "")
+                    click.secho(f"{prev_err}{errline}", fg="red")
+
+                    raise click.Abort()
 
     click.echo(
         f"[{file_count}/{file_count} done] All files uploaded to GCS and staged for ingestion."
@@ -298,8 +308,8 @@ def _compose_file_mapping(
     it will return it w/o change.
     """
     res = []
-    skipping_files = []
-    missing_files = []
+    missing_optional_files = []
+    missing_required_files = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
     for source_path, gcs_uri in upload_info.url_mapping.items():
 
@@ -310,36 +320,38 @@ def _compose_file_mapping(
 
             if not os.path.isfile(source_path):
                 if source_path in upload_info.optional_files:
-                    skipping_files.append(gcs_uri)
+                    missing_optional_files.append(gcs_uri)
                     continue
                 else:
-                    missing_files.append(source_path)
+                    missing_required_files.append(source_path)
 
         # gsutil treats brackets in a gs-uri as a character set
         # see https://cloud.google.com/storage/docs/gsutil/addlhelp/WildcardNames#other-wildcard-characters
         # this replaces opening with a generic wildcard, which should map to only a single file
-        elif "[" in source_path and "]" in source_path:
-            source_path = source_path.replace("[", "?")
+        else:
+            if "[" in source_path and "]" in source_path:
+                source_path = source_path.replace("[", "?")
+
             sub = subprocess.run(
                 ["gsutil", "ls", f"'{source_path}'"], capture_output=True
             )
-            if sub.stdout.decode("utf-8").strip(" '").replace("[", "?") != source_path:
+            if sub.returncode != 0:
                 if source_path in upload_info.optional_files:
-                    skipping_files.append(gcs_uri)
+                    missing_optional_files.append(gcs_uri)
                     continue
                 else:
                     print(
                         source_path,
                         sub.stdout.decode("utf-8").strip(" '").replace("[", "?"),
                     )
-                    missing_files.append(source_path)
+                    missing_required_files.append(source_path)
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
-    if missing_files:
-        raise Exception(f'Could not locate files: {", ".join(missing_files)}')
+    if missing_required_files:
+        raise Exception(f'Could not locate files: {", ".join(missing_required_files)}')
 
-    return res, skipping_files
+    return res, missing_optional_files
 
 
 def _poll_for_upload_completion(
