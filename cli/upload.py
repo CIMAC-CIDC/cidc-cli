@@ -334,24 +334,20 @@ def _compose_file_mapping(
             if "[" in source_path and "]" in source_path:
                 source_path = source_path.replace("[", "?")
 
-            sub = subprocess.run(
-                ["gsutil", "ls", f"'{source_path}'"], capture_output=True
-            )
+            sub = subprocess.run(["gsutil", "ls", source_path], capture_output=True)
             if sub.returncode != 0:
-                if source_path in upload_info.optional_files:
+                if source_path.replace("?", "[") in upload_info.optional_files:
                     missing_optional_files.append(gcs_uri)
                     continue
                 else:
-                    print(
-                        source_path,
-                        sub.stdout.decode("utf-8").strip(" '").replace("[", "?"),
-                    )
                     missing_required_files.append(source_path)
 
         res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
     if missing_required_files:
-        raise Exception(f'Could not locate files: {", ".join(missing_required_files)}')
+        raise Exception(
+            f'Could not locate the following required files:\n{", ".join(missing_required_files)}'
+        )
 
     return res, missing_optional_files
 
