@@ -332,7 +332,7 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
         OPTIONAL_FILES,
         UPLOAD_TOKEN,
     )
-    with pytest.raises(Exception, match="Could not locate file"):
+    with pytest.raises(Exception, match="Could not locate"):
         upload._compose_file_mapping(upload_job, xlsx)
 
     # doesn't fail if passed as an optional_file
