@@ -288,8 +288,7 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, st
                     click.echo(
                         f"\nGCS upload failed on {p.args[-2]} with the following message:\n"
                     )
-                    prev_err = prev_errlines.get(i, "")
-                    click.secho(f"{prev_err}{errline}", fg="red")
+                    click.secho(f"{err}", fg="red")
 
                     raise click.Abort()
 
@@ -313,6 +312,8 @@ def _compose_file_mapping(
     missing_optional_files = []
     missing_required_files = []
     xlsx_dir = os.path.abspath(os.path.dirname(xlsx))
+
+    gs_uris_to_check = {}
     for source_path, gcs_uri in upload_info.url_mapping.items():
 
         # if we're not copying from GCS to GCS, then
@@ -326,23 +327,47 @@ def _compose_file_mapping(
                     continue
                 else:
                     missing_required_files.append(source_path)
+            res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
 
-        # gsutil treats brackets in a gs-uri as a character set
-        # see https://cloud.google.com/storage/docs/gsutil/addlhelp/WildcardNames#other-wildcard-characters
-        # this replaces opening with a generic wildcard, which should map to only a single file
         else:
-            if "[" in source_path and "]" in source_path:
-                source_path = source_path.replace("[", "?")
+            # separate by bucket, to do single ls per bucket
+            # gsutil treats brackets in a gs-uri as a character set
+            # see https://cloud.google.com/storage/docs/gsutil/addlhelp/WildcardNames#other-wildcard-characters
+            # this replaces opening with a generic wildcard, which can only map to only a single bucket
+            bucket = source_path[5:].split("/")[0].replace("[", "?")
+            if bucket not in gs_uris_to_check:
+                gs_uris_to_check[bucket] = {}
+            gs_uris_to_check[bucket][source_path] = gcs_uri
 
-            sub = subprocess.run(["gsutil", "ls", source_path], capture_output=True)
-            if sub.returncode != 0:
-                if source_path.replace("?", "[") in upload_info.optional_files:
+    print(gs_uris_to_check)
+
+    # smart chcek of gs:// URIs
+    # separate by bucket, to do single ls per bucket
+    # then check in the return for all the files
+    for bucket, gs_file_mapping in gs_uris_to_check.items():
+        sub = subprocess.run(["gsutil", "ls", "-r", bucket], capture_output=True)
+        if sub.returncode != 0:
+            raise Exception(
+                f"Error getting {bucket} to check files: {sub.stderr.decode('utf-8'), }"
+            )
+        # didn't fail
+
+        # return in the format
+        # folder:
+        # gs://bucket/[file]
+        # gs://bucket/[file...]
+        #
+        # [folder...]:
+        file_list = [f.strip() for f in sub.stdout.decode("utf-8").split("\n")]
+        file_list = [f for f in file_list if f and not f.endswith(":")]
+
+        for gs_source_path, gcs_uri in gs_file_mapping.items():
+            if gs_source_path not in file_list:
+                if source_path in upload_info.optional_files:
                     missing_optional_files.append(gcs_uri)
                     continue
                 else:
-                    missing_required_files.append(source_path)
-
-        res.append([source_path, f"gs://{upload_info.gcs_bucket}/{gcs_uri}"])
+                    missing_required_files.append(gs_source_path)
 
     if missing_required_files:
         raise Exception(
