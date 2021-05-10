@@ -405,7 +405,7 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
         elif "gcs.path" in k:
             assert v == f"gs://{GCS_BUCKET}/test/gcs.2"
         elif "brackets" in k:
-            assert k == "gs://bucket/[brackets]/subitem"
+            assert k == "gs://bucket/?brackets]/subitem"
             assert v == f"gs://{GCS_BUCKET}/test/gcs.3"
 
     # now don't return one of them and see it fail
