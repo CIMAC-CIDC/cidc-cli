@@ -324,7 +324,7 @@ def _check_for_gs_files(
         # gs://bucket/[file...]
         #
         # [folder...]:
-        file_list = {}
+        file_list = set()
         for f in sub.stdout.decode("utf-8").split("\n"):
             f = f.strip()
             if f and not f.endswith(":"):
