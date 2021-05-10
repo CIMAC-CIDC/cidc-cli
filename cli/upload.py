@@ -299,6 +299,48 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, st
     return upload_info.gcs_file_map
 
 
+def _check_for_gs_files(
+    gs_uris_to_check: Dict[str, Dict[str, str]], optional_files: List[str]
+):
+    """Smart checking of gs:// URIs to ensure that files exist"""
+    missing_required_files, missing_optional_files = [], []
+
+    # separate by bucket, to do single ls per bucket
+    # then check in the return for all the files
+    for bucket, gs_file_mapping in gs_uris_to_check.items():
+        sub = subprocess.run(["gsutil", "ls", "-r", bucket], capture_output=True)
+        if sub.returncode != 0:
+            click.secho(
+                f"Error getting {bucket} to check files: {sub.stderr.decode('utf-8'), }",
+                fg="red",
+                bold=True,
+            )
+            raise click.Abort()
+        # didn't fail
+
+        # return in the format
+        # folder:
+        # gs://bucket/[file]
+        # gs://bucket/[file...]
+        #
+        # [folder...]:
+        file_list = {}
+        for f in sub.stdout.decode("utf-8").split("\n"):
+            f = f.strip()
+            if f and not f.endswith(":"):
+                file_list.add(f)
+
+        for gs_source_path, gcs_uri in gs_file_mapping.items():
+            if gs_source_path not in file_list:
+                if source_path in optional_files:
+                    missing_optional_files.append(gcs_uri)
+                    continue
+                else:
+                    missing_required_files.append(gs_source_path)
+
+    return missing_required_files, missing_optional_files
+
+
 def _compose_file_mapping(
     upload_info: api.UploadInfo, xlsx: str
 ) -> Tuple[Dict[str, str], List[str]]:
@@ -339,35 +381,12 @@ def _compose_file_mapping(
                 gs_uris_to_check[bucket] = {}
             gs_uris_to_check[bucket][source_path] = gcs_uri
 
-    print(gs_uris_to_check)
+    missing_required_gs_files, missing_optional_gs_files = _check_for_gs_files(
+        gs_uris_to_check, upload_info.optional_files
+    )
 
-    # smart chcek of gs:// URIs
-    # separate by bucket, to do single ls per bucket
-    # then check in the return for all the files
-    for bucket, gs_file_mapping in gs_uris_to_check.items():
-        sub = subprocess.run(["gsutil", "ls", "-r", bucket], capture_output=True)
-        if sub.returncode != 0:
-            raise Exception(
-                f"Error getting {bucket} to check files: {sub.stderr.decode('utf-8'), }"
-            )
-        # didn't fail
-
-        # return in the format
-        # folder:
-        # gs://bucket/[file]
-        # gs://bucket/[file...]
-        #
-        # [folder...]:
-        file_list = [f.strip() for f in sub.stdout.decode("utf-8").split("\n")]
-        file_list = [f for f in file_list if f and not f.endswith(":")]
-
-        for gs_source_path, gcs_uri in gs_file_mapping.items():
-            if gs_source_path not in file_list:
-                if source_path in upload_info.optional_files:
-                    missing_optional_files.append(gcs_uri)
-                    continue
-                else:
-                    missing_required_files.append(gs_source_path)
+    missing_required_files.extend(missing_required_gs_files)
+    missing_optional_files.extend(missing_optional_gs_files)
 
     if missing_required_files:
         raise Exception(
