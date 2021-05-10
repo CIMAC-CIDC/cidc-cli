@@ -300,7 +300,9 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, st
 
 
 def _check_for_gs_files(
-    gs_uris_to_check: Dict[str, Dict[str, str]], optional_files: List[str], target_bucket: str
+    gs_uris_to_check: Dict[str, Dict[str, str]],
+    optional_files: List[str],
+    target_bucket: str,
 ):
     """Smart checking of gs:// URIs to ensure that files exist"""
     res, missing_required_files, missing_optional_files = [], [], []
@@ -338,8 +340,15 @@ def _check_for_gs_files(
                 else:
                     missing_required_files.append(gs_source_path)
             else:
-                res.append([gs_source_path, f"gs://{target_bucket}/{gcs_uri}"])
-
+                # gsutil treats brackets in a gs-uri as a character set
+                # see https://cloud.google.com/storage/docs/gsutil/addlhelp/WildcardNames#other-wildcard-characters
+                # this replaces opening with a generic wildcard, which can only map to only a single bucket
+                res.append(
+                    [
+                        gs_source_path.replace("[", "?"),
+                        f"gs://{target_bucket}/{gcs_uri}",
+                    ]
+                )
 
     return res, missing_required_files, missing_optional_files
 

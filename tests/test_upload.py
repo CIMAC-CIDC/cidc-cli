@@ -409,9 +409,7 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
             assert v == f"gs://{GCS_BUCKET}/test/gcs.3"
 
     # now don't return one of them and see it fail
-    ls_return.stdout = "gs://bucket:\ngs://bucket/gcs.path\n".encode(
-        "utf-8"
-    )
+    ls_return.stdout = "gs://bucket:\ngs://bucket/gcs.path\n".encode("utf-8")
     ls_subprocess.return_value = ls_return
     monkeypatch.setattr("subprocess.run", ls_subprocess)
 
