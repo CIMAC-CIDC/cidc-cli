@@ -310,7 +310,9 @@ def _check_for_gs_files(
     # separate by bucket, to do single ls per bucket
     # then check in the return for all the files
     for bucket, gs_file_mapping in gs_uris_to_check.items():
-        sub = subprocess.run(["gsutil", "ls", "-r", bucket], capture_output=True)
+        sub = subprocess.run(
+            ["gsutil", "ls", "-r", f"gs://{bucket}"], capture_output=True
+        )
         if sub.returncode != 0:
             click.secho(
                 f"Error getting {bucket} to check files: {sub.stderr.decode('utf-8'), }",
