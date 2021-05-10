@@ -405,5 +405,15 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
         elif "gcs.path" in k:
             assert v == f"gs://{GCS_BUCKET}/test/gcs.2"
         elif "brackets" in k:
-            assert k == "gs://bucket/?brackets]"
+            assert k == "gs://bucket/[brackets]/subitem"
             assert v == f"gs://{GCS_BUCKET}/test/gcs.3"
+
+    # now don't return one of them and see it fail
+    ls_return.stdout = "gs://bucket:\ngs://bucket/gcs.path\n".encode(
+        "utf-8"
+    )
+    ls_subprocess.return_value = ls_return
+    monkeypatch.setattr("subprocess.run", ls_subprocess)
+
+    with pytest.raises(Exception, match=r"gs://bucket/\[brackets\]/subitem"):
+        output_map, skipping = upload._compose_file_mapping(upload_job, xlsx)

@@ -300,10 +300,10 @@ def _gsutil_assay_upload(upload_info: api.UploadInfo, xlsx: str) -> Dict[str, st
 
 
 def _check_for_gs_files(
-    gs_uris_to_check: Dict[str, Dict[str, str]], optional_files: List[str]
+    gs_uris_to_check: Dict[str, Dict[str, str]], optional_files: List[str], target_bucket: str
 ):
     """Smart checking of gs:// URIs to ensure that files exist"""
-    missing_required_files, missing_optional_files = [], []
+    res, missing_required_files, missing_optional_files = [], [], []
 
     # separate by bucket, to do single ls per bucket
     # then check in the return for all the files
@@ -332,13 +332,16 @@ def _check_for_gs_files(
 
         for gs_source_path, gcs_uri in gs_file_mapping.items():
             if gs_source_path not in file_list:
-                if source_path in optional_files:
+                if gs_source_path in optional_files:
                     missing_optional_files.append(gcs_uri)
                     continue
                 else:
                     missing_required_files.append(gs_source_path)
+            else:
+                res.append([gs_source_path, f"gs://{target_bucket}/{gcs_uri}"])
 
-    return missing_required_files, missing_optional_files
+
+    return res, missing_required_files, missing_optional_files
 
 
 def _compose_file_mapping(
@@ -381,10 +384,11 @@ def _compose_file_mapping(
                 gs_uris_to_check[bucket] = {}
             gs_uris_to_check[bucket][source_path] = gcs_uri
 
-    missing_required_gs_files, missing_optional_gs_files = _check_for_gs_files(
-        gs_uris_to_check, upload_info.optional_files
+    gs_res, missing_required_gs_files, missing_optional_gs_files = _check_for_gs_files(
+        gs_uris_to_check, upload_info.optional_files, upload_info.gcs_bucket
     )
 
+    res.extend(gs_res)
     missing_required_files.extend(missing_required_gs_files)
     missing_optional_files.extend(missing_optional_gs_files)
 
