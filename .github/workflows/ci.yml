@@ -62,5 +62,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@master
         with:
           skip_existing: true
-          user: jlurye-ksg
+          user: ${{ secrets.PYPI_USERNAME }}Use secrets.PYPI_USERNAME instead of hardcoding
+
           password: ${{ secrets.PYPI_PASSWORD }}
