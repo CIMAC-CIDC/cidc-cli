@@ -1,7 +1,6 @@
 """Implements a client for the CIDC API running on Google App Engine"""
 from functools import wraps
-from collections import namedtuple
-from typing import Optional, List, BinaryIO, NamedTuple, Dict, Callable
+from typing import Optional, List, BinaryIO, NamedTuple, Dict
 
 import click
 import requests
