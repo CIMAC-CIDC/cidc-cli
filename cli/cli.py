@@ -1,7 +1,7 @@
 """The second generation CIDC command-line interface."""
 import click
 
-from . import api, auth, gcloud, upload, config, consent
+from . import api, auth, gcloud, upload, config, consent, __version__
 
 #### $ cidc ####
 @click.group()
@@ -12,6 +12,13 @@ def cidc(ignore):
     if not consent.check_consent():
         exit(0)
     gcloud.check_installed()
+
+
+#### $ cidc vesion ####
+@click.command()
+def version():
+    """Echo version and done"""
+    click.echo(f"cidc-cli {__version__}")
 
 
 #### $ cidc login ####
@@ -103,6 +110,7 @@ def upload_analysis(analysis, xlsx):
 
 
 # Wire up the interface
+cidc.add_command(version)
 cidc.add_command(login)
 cidc.add_command(assays)
 cidc.add_command(analyses)
