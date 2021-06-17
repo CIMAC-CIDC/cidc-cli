@@ -1,6 +1,6 @@
 from click.testing import CliRunner
 
-from cli import cli, consent, config
+from cli import cli, consent, config, __version__
 from functools import wraps
 
 
@@ -38,6 +38,9 @@ def test_cidc_structure(runner: CliRunner, monkeypatch):
 
     res = runner.invoke(cli.cidc)
     assert "Usage: cidc" in res.output
+
+    res = runner.invoke(cli.cidc, ["version"])
+    assert f"cidc-cli {__version__}" in res.output
 
     res = runner.invoke(cli.cidc, ["assays"])
     assert "Usage: cidc assays" in res.output
