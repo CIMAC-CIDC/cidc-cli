@@ -18,5 +18,5 @@ setup(
     description="A command-line interface for interacting with the CIDC.",
     # TODO: Add a long_description, since external people may use this.
     install_requires=requirements,
-    python_requires=">=3.6",
+    python_requires=">=3.7",
 )
