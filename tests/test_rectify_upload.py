@@ -29,7 +29,7 @@ def test_cidc_schemas(monkeypatch):
         for value in values[value_name]
     ]
     for old, new in upload_info.url_mapping.items():
-        assert old.startswith(rectify_upload.current_gcs_bucket)
+        assert old.startswith(rectify_upload.CURRENT_GCS_BUCKET)
 
         assert new.startswith("gs://cidc-data-staging/10021_wes_test/wes_redo/")
         new_path = new.replace("gs://cidc-data-staging/10021_wes_test/wes_redo/", "")
