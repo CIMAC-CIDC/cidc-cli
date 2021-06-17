@@ -3,4 +3,5 @@ python-dotenv==0.10.3
 python-jose==3.0.1
 requests==2.22.0
 pyperclip==1.8.0
+pandas~=1.1.5
 cidc-schemas~=0.24.43
