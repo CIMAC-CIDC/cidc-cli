@@ -186,7 +186,7 @@ def test_csms():
     response = _requests_with_reauth.get(
         _url("/permissions/test_csms"), headers=_with_auth()
     )
-    click.echo(str(response))
+    click.echo(response.json())
 
 
 def initiate_upload(
