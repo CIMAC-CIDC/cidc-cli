@@ -181,6 +181,14 @@ class UploadInfo(NamedTuple):
     token: str
 
 
+def test_csms():
+    """A simple API hit for a test of CSMS connection"""
+    response = _requests_with_reauth.get(
+        _url("/permissions/test_csms"), headers=_with_auth()
+    )
+    click.echo(str(response))
+
+
 def initiate_upload(
     upload_type: str, xlsx_file: BinaryIO, is_analysis: bool = False
 ) -> UploadInfo:

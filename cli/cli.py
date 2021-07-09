@@ -2,6 +2,7 @@
 import click
 
 from . import api, auth, gcloud, upload, config, consent, __version__
+import cli
 
 #### $ cidc ####
 @click.group()
@@ -14,7 +15,7 @@ def cidc(ignore):
     gcloud.check_installed()
 
 
-#### $ cidc vesion ####
+#### $ cidc version ####
 @click.command()
 def version():
     """Echo version and done"""
@@ -53,6 +54,19 @@ def set_env(environment):
 def get_env():
     """Get the current CLI environment."""
     click.echo(config.get_env())
+
+
+#### $ cidc csms ####
+@click.group("csms", hidden=True)
+def csms_():
+    """NCI CSMS-related functionality."""
+
+
+#### $ cidc csms test ####
+@click.command()
+def test():
+    """A simple API hit for a test of CSMS connection"""
+    api.test_csms()
 
 
 #### $ cidc assays ####
@@ -115,9 +129,12 @@ cidc.add_command(login)
 cidc.add_command(assays)
 cidc.add_command(analyses)
 cidc.add_command(config_)
+cidc.add_command(csms_)
 
 config_.add_command(set_env)
 config_.add_command(get_env)
+
+csms_.add_command(test)
 
 assays.add_command(list_assays)
 assays.add_command(upload_assay)
