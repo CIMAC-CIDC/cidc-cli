@@ -183,8 +183,14 @@ class UploadInfo(NamedTuple):
 
 def test_csms():
     """A simple API hit for a test of CSMS connection"""
+    response = _requests_with_reauth.get(_url("/admin/test_csms"), headers=_with_auth())
+    click.echo(response.json())
+
+
+def load_from_blobs():
+    """A simple API hit to fill the relational database from the JSON blobs"""
     response = _requests_with_reauth.get(
-        _url("/permissions/test_csms"), headers=_with_auth()
+        _url("/admin/load_from_blobs"), headers=_with_auth()
     )
     click.echo(response.json())
 

@@ -56,17 +56,24 @@ def get_env():
     click.echo(config.get_env())
 
 
-#### $ cidc csms ####
-@click.group("csms", hidden=True)
-def csms_():
-    """NCI CSMS-related functionality."""
+#### $ cidc admin ####
+@click.group("admin", hidden=True)
+def admin_():
+    """Manage API admin features."""
 
 
-#### $ cidc csms test ####
+#### $ cidc admin test-csms ####
 @click.command()
-def test():
+def test_csms():
     """A simple API hit for a test of CSMS connection"""
     api.test_csms()
+
+
+#### $ cidc admin load-blobs ####
+@click.command()
+def load_blobs():
+    """A simple API hit to fill the relational database from the JSON blobs"""
+    api.load_from_blobs()
 
 
 #### $ cidc assays ####
@@ -129,18 +136,19 @@ cidc.add_command(login)
 cidc.add_command(assays)
 cidc.add_command(analyses)
 cidc.add_command(config_)
-cidc.add_command(csms_)
+cidc.add_command(admin_)
 
 config_.add_command(set_env)
 config_.add_command(get_env)
-
-csms_.add_command(test)
 
 assays.add_command(list_assays)
 assays.add_command(upload_assay)
 
 analyses.add_command(list_analyses)
 analyses.add_command(upload_analysis)
+
+admin_.add_command(test_csms)
+admin_.add_command(load_blobs)
 
 if __name__ == "__main__":
     cidc()
