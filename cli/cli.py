@@ -2,7 +2,6 @@
 import click
 
 from . import api, auth, gcloud, upload, config, consent, __version__
-import cli
 
 #### $ cidc ####
 @click.group()
