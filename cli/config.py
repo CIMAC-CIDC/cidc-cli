@@ -1,5 +1,4 @@
 import os
-from time import sleep
 from pathlib import Path
 import click
 
