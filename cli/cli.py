@@ -68,6 +68,13 @@ def test_csms():
     api.test_csms()
 
 
+#### $ cidc admin grant-all ####
+@click.command()
+def grant_all():
+    """A simple API hit for a test of CSMS connection"""
+    api.grant_all_download_permissions()
+
+
 #### $ cidc admin load-blobs ####
 @click.command()
 def load_blobs():
@@ -146,6 +153,7 @@ assays.add_command(upload_assay)
 analyses.add_command(list_analyses)
 analyses.add_command(upload_analysis)
 
+admin_.add_command(grant_all)
 admin_.add_command(test_csms)
 admin_.add_command(load_blobs)
 
