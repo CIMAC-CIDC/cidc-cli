@@ -136,7 +136,7 @@ so slow that gsutil disables downloads of composite objects.""".split(
 def _start_procs(src_dst_pairs: list) -> Generator[subprocess.Popen, None, None]:
     """
     Starts multiple "gsutil cp" subprocesses.
-    
+
     src_dst_pairs: a list of tuples (local file path, target GCS path)
 
     Yields subprocess.Popen objects
@@ -359,8 +359,8 @@ def _compose_file_mapping(
     upload_info: api.UploadInfo, xlsx: str
 ) -> Tuple[Dict[str, str], List[str]]:
     """
-    Returns a list of (source_path, target uri) pairs for all 
-    the files from the upload info relative to the `work dir` 
+    Returns a list of (source_path, target uri) pairs for all
+    the files from the upload info relative to the `work dir`
     that is xlsx file locaction. If s source_path is a GCS uri,
     it will return it w/o change.
     """

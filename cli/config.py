@@ -74,6 +74,6 @@ if _current_env == "prod":
 elif _current_env == "staging":
     API_V2_URL = "https://staging-api.cimac-network.org"
 elif _current_env == "dev":
-    API_V2_URL = "http://localhost:8000"
+    API_V2_URL = "http://localhost:5000"
 else:
     raise ValueError(f"Unsupported environment: {_current_env}")

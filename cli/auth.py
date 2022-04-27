@@ -44,7 +44,7 @@ def validate_and_cache_token(id_token: str):
 
 def get_id_token() -> str:
     """
-    Look for a cached id_token for this user. If no token is cached, 
+    Look for a cached id_token for this user. If no token is cached,
     exit and prompt the user to log in. Otherwise, return the cached token.
     """
     # Try to find a cached token
