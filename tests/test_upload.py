@@ -385,8 +385,10 @@ def test_compose_file_mapping(tmpdir, monkeypatch):
     # mock gsutil ls file check by returning input
     ls_return = MagicMock()
     ls_return.returncode = 0
-    ls_return.stdout = "gs://bucket:\ngs://bucket/gcs.path\n\ngs://bucket/[brackets]/subitem".encode(
-        "utf-8"
+    ls_return.stdout = (
+        "gs://bucket:\ngs://bucket/gcs.path\n\ngs://bucket/[brackets]/subitem".encode(
+            "utf-8"
+        )
     )
     ls_subprocess = MagicMock()
     ls_subprocess.return_value = ls_return
