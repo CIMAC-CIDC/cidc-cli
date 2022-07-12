@@ -12,6 +12,7 @@ This Changelog tracks changes to this project. The notes below include a summary
 ## Version `0.9.17` - 12 Jul 2022
 
 - `changed` local optional file handling for uploads with prepended folder
+- `added` README as long_description for PyPI
 
 ## Version `0.9.16` - 28 Apr 2022
 
