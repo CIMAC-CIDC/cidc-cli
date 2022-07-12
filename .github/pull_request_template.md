@@ -23,3 +23,4 @@ Please include and complete the following checklist. You can mark an item as com
 - [ ] Type Annotations - All new code has been type annotated in the function signatures using type hints
 - [ ] Docstrings - Docstrings have been provided for functions
 - [ ] Documentation - [README](https://github.com/CIMAC-CIDC/cidc-cli/blob/master/README.md) and [CHANGELOG](https://github.com/CIMAC-CIDC/cidc-cli/blob/master/CHANGELOG.md) have been updated to explain major changes & new features
+- [ ] Package version - Manually bumped the CLI package version in [`cli/__init__.py`](https://github.com/CIMAC-CIDC/cidc-cli/blob/master/cli/__init__.py#L1)
