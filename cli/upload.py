@@ -378,7 +378,7 @@ def _compose_file_mapping(
             source_path = os.path.join(xlsx_dir, source_path)
 
             if not os.path.isfile(source_path):
-                if source_path in upload_info.optional_files:
+                if any(source_path.endswith(f) for f in upload_info.optional_files):
                     missing_optional_files.append(gcs_uri)
                     continue
                 else:
