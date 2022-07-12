@@ -7,6 +7,9 @@ from setuptools import setup, find_packages
 
 from cli import __version__
 
+with open("README.md") as readme_file:
+    readme = readme_file.read()
+
 with open("requirements.txt") as f:
     requirements = f.read().splitlines()
 
@@ -16,7 +19,8 @@ setup(
     packages=find_packages(exclude=("tests")),
     entry_points={"console_scripts": ["cidc = cli.cli:cidc"]},
     description="A command-line interface for interacting with the CIDC.",
-    # TODO: Add a long_description, since external people may use this.
+    long_description=readme,
+    long_description_content_type="text/markdown",
     install_requires=requirements,
     python_requires=">=3.6",
 )
