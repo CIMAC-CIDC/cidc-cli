@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.10.0` - xx Aug 2022
+
+- `added` admin suite for removing/editing data
+
 ## Version `0.9.17` - 12 Jul 2022
 
 - `changed` local optional file handling for uploads with prepended folder
