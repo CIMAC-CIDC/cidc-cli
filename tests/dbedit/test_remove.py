@@ -152,9 +152,7 @@ def test_remove_clinical(monkeypatch):
 
     # test for proper removal of single file
     reset_mocks()
-    dbedit_remove.remove_clinical(
-        TEST_TRIAL_ID, TEST_CLINICAL_FILE_URL, session=session
-    )
+    dbedit_remove.remove_clinical(TEST_TRIAL_ID, TEST_CLINICAL_FILE_URL)
 
     Session.begin.assert_called_once_with()
     begin.__enter__.assert_called_once()
@@ -183,7 +181,7 @@ def test_remove_clinical(monkeypatch):
 
     # test for proper removal of all files
     reset_mocks()
-    dbedit_remove.remove_clinical(TEST_TRIAL_ID, "*", session=session)
+    dbedit_remove.remove_clinical(TEST_TRIAL_ID, "*")
 
     Session.begin.assert_called_once_with()
     begin.__enter__.assert_called_once()
@@ -228,7 +226,6 @@ def test_remove_clinical(monkeypatch):
         dbedit_remove.remove_clinical(
             trial_id=TEST_TRIAL_ID,
             target_id=TEST_CLINICAL_FILE_URL,
-            session=session,
         )
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 0
@@ -248,7 +245,6 @@ def test_remove_clinical(monkeypatch):
         dbedit_remove.remove_clinical(
             trial_id=TEST_TRIAL_ID,
             target_id="*",
-            session=session,
         )
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 0
@@ -360,7 +356,6 @@ def test_remove_shipment(monkeypatch):
     dbedit_remove.remove_shipment(
         trial_id=TEST_TRIAL_ID,
         target_id=TEST_MANIFEST_ID,
-        session=session,
     )
 
     Session.begin.assert_called_once_with()
@@ -408,7 +403,6 @@ def test_remove_shipment(monkeypatch):
         dbedit_remove.remove_shipment(
             trial_id=TEST_TRIAL_ID,
             target_id=TEST_MANIFEST_ID,
-            session=session,
         )
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 0
@@ -426,7 +420,6 @@ def test_remove_shipment(monkeypatch):
         dbedit_remove.remove_shipment(
             trial_id=TEST_TRIAL_ID,
             target_id=TEST_MANIFEST_ID,
-            session=session,
         )
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 0

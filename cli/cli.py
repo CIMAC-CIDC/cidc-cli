@@ -2,7 +2,7 @@
 import click
 
 from . import api, auth, gcloud, upload, config, consent, __version__
-from .dbedit.cli import list_, remove_
+from .dbedit.cli import get_username, list_, remove_, set_username
 
 #### $ cidc ####
 @click.group()
@@ -157,8 +157,10 @@ analyses.add_command(upload_analysis)
 admin_.add_command(grant_all)
 admin_.add_command(test_csms)
 admin_.add_command(load_blobs)
+admin_.add_command(get_username)
 admin_.add_command(list_)
 admin_.add_command(remove_)
+admin_.add_command(set_username)
 
 if __name__ == "__main__":
     cidc()

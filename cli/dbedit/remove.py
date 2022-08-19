@@ -12,7 +12,7 @@ from .core import (
 )
 
 
-def remove_clinical(trial_id: str, target_id: str, *, session: Session):
+def remove_clinical(trial_id: str, target_id: str):
     """
     Removes a clinical file completely, include its downloadle_files entry
 
@@ -104,7 +104,7 @@ def _remove_samples_from_blob(
     return metadata_json
 
 
-def remove_shipment(trial_id: str, target_id: str, *, session: Session):
+def remove_shipment(trial_id: str, target_id: str):
     """
     Removes a shipment completely with all of its samples, including its upload_jobs entry
     Removes a participant completely if removing all of its samples

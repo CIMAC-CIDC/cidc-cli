@@ -2,6 +2,7 @@ import pytest
 from unittest.mock import MagicMock
 
 from cli.dbedit import core
+from cli.config import set_env
 
 TEST_PASSWORD: str = "password"
 TEST_TRIAL_ID: str = "test_prism_trial_id"
@@ -59,6 +60,8 @@ class Mocker:
 
 
 def test_connect(monkeypatch):
+    monkeypatch.setattr(core, "get_env", lambda: "prod")
+    monkeypatch.setattr(core, "get_username", lambda: TEST_USER)
     mocks = Mocker(monkeypatch)
 
     assert core.DownloadableFiles is None
@@ -67,7 +70,8 @@ def test_connect(monkeypatch):
     assert core.UploadJobs is None
     assert core.Users is None
 
-    core.connect()
+    list_mod = MagicMock()
+    core.connect(list_mod)
 
     mocks.Connector.assert_called_once_with()
     mocks.automap_base.assert_called_once_with()
@@ -94,10 +98,17 @@ def test_connect(monkeypatch):
     assert core.UploadJobs is not None
     assert core.Users is not None
 
+    assert list_mod.DownloadableFiles is not None
+    assert list_mod.Session is not None
+    assert list_mod.TrialMetadata is not None
+    assert list_mod.UploadJobs is not None
+    assert list_mod.Users is not None
+
     mocks.reset_mocks()
+    list_mod.reset_mock()
     # check that it switches to staging if no ENV
     monkeypatch.setattr(core, "get_env", lambda: None)
-    core.connect()
+    core.connect(list_mod)
     mocks.Connector_instance.connect.assert_called_once_with(
         "cidc-dfci-staging:us-central1:cidc-postgresql-staging",
         "pg8000",
@@ -106,9 +117,10 @@ def test_connect(monkeypatch):
         db="cidc-staging",
     )
     mocks.reset_mocks()
+    list_mod.reset_mock()
     # check that it switches to staging if weird ENV
     monkeypatch.setattr(core, "get_env", lambda: "foo")
-    core.connect()
+    core.connect(list_mod)
     mocks.Connector_instance.connect.assert_called_once_with(
         "cidc-dfci-staging:us-central1:cidc-postgresql-staging",
         "pg8000",
@@ -119,6 +131,7 @@ def test_connect(monkeypatch):
 
 
 def test_get_clinical_downloadable_files(monkeypatch):
+    monkeypatch.setattr(core, "get_env", lambda: "dev")
     DownloadableFiles = MagicMock()
     monkeypatch.setattr(core, "DownloadableFiles", DownloadableFiles)
 
@@ -145,6 +158,7 @@ def test_get_clinical_downloadable_files(monkeypatch):
 
 
 def test_get_shipments(monkeypatch):
+    monkeypatch.setattr(core, "get_env", lambda: "dev")
     UploadJobs = MagicMock()
     monkeypatch.setattr(core, "UploadJobs", UploadJobs)
 
@@ -173,6 +187,7 @@ def test_get_shipments(monkeypatch):
 
 
 def test_get_trial_if_exists(monkeypatch):
+    monkeypatch.setattr(core, "get_env", lambda: "dev")
     Session = MagicMock()
     session = MagicMock()
     begin = MagicMock()

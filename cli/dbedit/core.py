@@ -1,13 +1,14 @@
 import getpass
+from types import ModuleType
 from typing import List, Optional
 import warnings
+from .config import get_username, set_username
 
 from google.cloud.sql.connector import Connector
 import sqlalchemy
 from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm import sessionmaker
 
-from .. import cache
 from ..config import get_env
 
 global Session
@@ -17,7 +18,7 @@ Session = None
 DownloadableFiles, TrialMetadata, UploadJobs, Users = None, None, None, None
 
 
-def connect() -> None:
+def connect(list_mod: ModuleType) -> None:
     """
     Set up this module to be able to make sqlalchemy calls
     uses ENV as set by $ cidc config set-env
@@ -31,10 +32,10 @@ def connect() -> None:
         print("unknown ENV, applying to staging:", ENV)
         ENV: str = "staging"
 
-    username: Optional[str] = cache.get("username")
+    username: Optional[str] = get_username()
     if not username:
         username = input("Username: ")
-        cache.store("username", username)
+        set_username(username)
 
     password = getpass.getpass()
     connection_name = (
@@ -82,6 +83,14 @@ def connect() -> None:
     TrialMetadata = Base.classes.trial_metadata
     UploadJobs = Base.classes.upload_jobs
     Users = Base.classes.users
+
+    # wire up the passed module
+    # this is a hack to not pass them around
+    list_mod.Session = Session
+    list_mod.DownloadableFiles = DownloadableFiles
+    list_mod.TrialMetadata = TrialMetadata
+    list_mod.UploadJobs = UploadJobs
+    list_mod.Users = Users
 
 
 def get_clinical_downloadable_files(

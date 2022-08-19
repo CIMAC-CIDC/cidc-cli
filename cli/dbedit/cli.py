@@ -1,6 +1,24 @@
 import click
 
 from . import __version__, core, remove, list
+from . import config
+
+
+#### $ cidc admin get-username ####
+@click.command()
+def get_username():
+    """Get the current database username."""
+    click.echo(" ".join(["database username:", config.get_username()]))
+
+
+#### $ cidc admin set-username ####
+@click.command()
+@click.argument("username", required=True, type=str)
+def set_username(username: str):
+    """Set the database username."""
+    config.set_username(username)
+    click.echo(f"Updated database username to {username}")
+
 
 #### $ cidc admin list ####
 @click.group("list")
@@ -18,7 +36,7 @@ def list_clinical(trial_id: str):
 
     TRIAL_ID is the id of the trial to affect
     """
-    core.connect()
+    core.connect(list)
     list.list_clinical(trial_id=trial_id)
 
 
@@ -31,7 +49,7 @@ def list_shipments(trial_id: str):
 
     TRIAL_ID is the id of the trial to affect
     """
-    core.connect()
+    core.connect(list)
     list.list_shipments(trial_id=trial_id)
 
 
@@ -56,7 +74,7 @@ def remove_clinical(trial_id: str, target_id: str):
         not including {trial_id}/clinical/
         special value * for all files for this trial
     """
-    core.connect()
+    core.connect(list)
     remove.remove_clinical(trial_id=trial_id, target_id=target_id)
 
 
@@ -71,7 +89,7 @@ def remove_shipment(trial_id: str, target_id: str):
     TRIAL_ID is the id of the trial to affect
     TARGET_ID is the manifest_id of the shipment to remove
     """
-    core.connect()
+    core.connect(remove)
     remove.remove_shipment(trial_id=trial_id, target_id=target_id)
 
 
