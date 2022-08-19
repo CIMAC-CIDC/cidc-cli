@@ -69,7 +69,7 @@ def remove_shipment(trial_id: str, target_id: str, *, session: Session):
                 sample["cimac_id"] for sample in partic["samples"]
             ]
             for upload in targets
-            for partic in upload.metadata_patch["participants"]
+            for partic in upload.metadata_patch.get("participants", [])
         }
         if not len(samples_to_delete):
             print(f"Shipment {target_id} for trial {trial_id} has no samples")

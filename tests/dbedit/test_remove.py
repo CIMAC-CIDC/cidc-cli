@@ -1,5 +1,6 @@
 from copy import deepcopy
 from datetime import datetime
+import pytest
 from typing import Dict, List
 from unittest.mock import MagicMock, PropertyMock
 
@@ -158,6 +159,19 @@ def test_remove_shipment(monkeypatch):
     get_shipments.return_value = mock_uploads
     monkeypatch.setattr(dbedit_remove, "get_shipments", get_shipments)
 
+    def reset_mocks():
+        Session.reset_mock()
+        session.reset_mock()
+        begin.reset_mock()
+        TrialMetadata.reset_mock()
+        UploadJobs.reset_mock()
+        query.reset_mock()
+        query_filter.reset_mock()
+        with_for_update.reset_mock()
+        mock_trial.reset_mock()
+        [mock.reset_mock() for mock in mock_uploads]
+        get_shipments.reset_mock()
+
     dbedit_remove.remove_shipment(
         trial_id=TEST_TRIAL_ID,
         target_id=TEST_MANIFEST_ID,
@@ -179,7 +193,6 @@ def test_remove_shipment(monkeypatch):
     session.add.assert_called_once()
     args = session.add.call_args_list[0].args
     assert len(args) == 1
-    print(args)
 
     assert isinstance(mock_trial._updated, datetime)
     assert mock_trial._updated != datetime.fromisoformat("2020-01-01T12:34:45")
@@ -190,3 +203,66 @@ def test_remove_shipment(monkeypatch):
         (mock_uploads[0],),
         (mock_uploads[2],),
     ]
+
+    # check that it exits if no samples are in the matching manifest
+    reset_mocks()
+    remove_samples_from_blob = MagicMock()
+    monkeypatch.setattr(
+        dbedit_remove, "_remove_samples_from_blob", remove_samples_from_blob
+    )
+
+    empty_shipment = MagicMock()
+    empty_shipment.metadata_json = {
+        "participants": [],
+        "shipments": [
+            {"manifest_id": TEST_MANIFEST_ID},
+        ],
+    }
+    get_shipments.return_value = [empty_shipment]
+    monkeypatch.setattr(dbedit_remove, "get_shipments", get_shipments)
+
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        dbedit_remove.remove_shipment(
+            trial_id=TEST_TRIAL_ID,
+            target_id=TEST_MANIFEST_ID,
+            session=session,
+        )
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
+    remove_samples_from_blob.assert_not_called()
+
+    # check that it exits if no matching manifest found
+    reset_mocks()
+    remove_samples_from_blob.reset_mock()
+    get_shipments.return_value = []
+    monkeypatch.setattr(dbedit_remove, "get_shipments", get_shipments)
+
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        dbedit_remove.remove_shipment(
+            trial_id=TEST_TRIAL_ID,
+            target_id=TEST_MANIFEST_ID,
+            session=session,
+        )
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
+    remove_samples_from_blob.assert_not_called()
+
+    # check that it exits if trial not found
+    reset_mocks()
+    with_for_update.first.return_value = None
+    query_filter.with_for_update.return_value = with_for_update
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(dbedit_remove, "Session", Session)
+
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        dbedit_remove.remove_shipment(
+            trial_id=TEST_TRIAL_ID,
+            target_id=TEST_MANIFEST_ID,
+            session=session,
+        )
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
+    get_shipments.assert_not_called()

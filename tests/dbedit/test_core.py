@@ -93,6 +93,29 @@ def test_connect(monkeypatch):
     assert core.UploadJobs is not None
     assert core.Users is not None
 
+    mocks.reset_mocks()
+    # check that it switches to staging if no ENV
+    monkeypatch.setattr(core, "get_env", lambda: None)
+    core.connect()
+    mocks.Connector_instance.connect.assert_called_once_with(
+        "cidc-dfci-staging:us-central1:cidc-postgresql-staging",
+        "pg8000",
+        user=TEST_USER,
+        password=TEST_PASSWORD,
+        db="cidc-staging",
+    )
+    mocks.reset_mocks()
+    # check that it switches to staging if weird ENV
+    monkeypatch.setattr(core, "get_env", lambda: "foo")
+    core.connect()
+    mocks.Connector_instance.connect.assert_called_once_with(
+        "cidc-dfci-staging:us-central1:cidc-postgresql-staging",
+        "pg8000",
+        user=TEST_USER,
+        password=TEST_PASSWORD,
+        db="cidc-staging",
+    )
+
 
 def test_get_shipments(monkeypatch):
     UploadJobs = MagicMock()
