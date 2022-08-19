@@ -7,6 +7,88 @@ from cli.dbedit import list as dbedit_list
 TEST_TRIAL_ID: str = "test_prism_trial_id"
 
 
+def test_list_clinical(monkeypatch):
+    Session = MagicMock()
+    session = MagicMock()
+    begin = MagicMock()
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+
+    monkeypatch.setattr(dbedit_list, "Session", Session)
+
+    mock_trial = MagicMock()
+    mock_trial.metadata_json = {
+        "clinical_data": {
+            "records": [
+                {
+                    "clinical_file": {
+                        "object_url": f"{TEST_TRIAL_ID}/clinical/clinical1.xlsx",
+                        "number_of_participants": 5,
+                    },
+                },
+                {
+                    "clinical_file": {
+                        "object_url": f"{TEST_TRIAL_ID}/clinical/clinical2.csv",
+                        "number_of_participants": 3,
+                    },
+                },
+            ],
+        },
+    }
+
+    get_trial_if_exists = MagicMock()
+    get_trial_if_exists.return_value = mock_trial
+    monkeypatch.setattr(dbedit_list, "get_trial_if_exists", get_trial_if_exists)
+
+    file1 = MagicMock()
+    file1.object_url = f"{TEST_TRIAL_ID}/clinical/clinical1.xlsx"
+    file1._created = datetime.fromisoformat("2020-01-01T12:34:45")
+
+    file2 = MagicMock()
+    file2.object_url = f"{TEST_TRIAL_ID}/clinical/clinical2.csv"
+    file2._created = datetime.fromisoformat("2020-02-02T12:34:45")
+
+    get_clinical_downloadable_files = MagicMock()
+    get_clinical_downloadable_files.return_value = [file1, file2]
+    monkeypatch.setattr(
+        dbedit_list, "get_clinical_downloadable_files", get_clinical_downloadable_files
+    )
+
+    mock_print = MagicMock()
+    monkeypatch.setattr("builtins.print", mock_print)
+
+    dbedit_list.list_clinical(TEST_TRIAL_ID)
+
+    Session.begin.assert_called_once_with()
+    begin.__enter__.assert_called_once()
+    get_clinical_downloadable_files.assert_called_once_with(
+        TEST_TRIAL_ID, session=session
+    )
+    begin.__exit__.assert_called_once()
+
+    mock_print.assert_called_once()
+    args = mock_print.call_args_list[0].args
+    assert len(args) == 1
+
+    df = args[0]
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (2, 4)
+    assert all(
+        col in df.columns
+        for col in ["created", "filename", "num_participants", "object_url"]
+    )
+
+    assert df.equals(
+        pd.DataFrame(
+            [
+                [file1.object_url, "clinical1.xlsx", 5, file1._created],
+                [file2.object_url, "clinical2.csv", 3, file2._created],
+            ],
+            columns=["object_url", "filename", "num_participants", "created"],
+        )
+    )
+
+
 def test_list_shipments(monkeypatch):
     Session = MagicMock()
     session = MagicMock()

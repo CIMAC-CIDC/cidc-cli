@@ -11,7 +11,8 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 ## Version `0.10.0` - xx Aug 2022
 
-- `added` admin suite for removing/editing data
+- `added` admin suite for listing/removing data
+  - list/remove shipments/clinical
 
 ## Version `0.9.17` - 12 Jul 2022
 

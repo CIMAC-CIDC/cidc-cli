@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import MagicMock
 
 from cli.dbedit import core
@@ -117,6 +118,32 @@ def test_connect(monkeypatch):
     )
 
 
+def test_get_clinical_downloadable_files(monkeypatch):
+    DownloadableFiles = MagicMock()
+    monkeypatch.setattr(core, "DownloadableFiles", DownloadableFiles)
+
+    session = MagicMock()
+    # these are to hold the results
+    query = MagicMock()
+    query_filter = MagicMock()
+
+    mock_files = [MagicMock(), MagicMock()]
+    query_filter.all.return_value = mock_files
+
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+
+    res: list = core.get_clinical_downloadable_files(TEST_TRIAL_ID, session=session)
+    assert len(res) == 2 and res is mock_files
+
+    session.query.assert_called_once_with(DownloadableFiles)
+    query.filter.assert_called_once_with(
+        DownloadableFiles.trial_id == TEST_TRIAL_ID,
+        DownloadableFiles.object_url.like("%/clinical/%"),
+    )
+    query_filter.all.assert_called_once_with()
+
+
 def test_get_shipments(monkeypatch):
     UploadJobs = MagicMock()
     monkeypatch.setattr(core, "UploadJobs", UploadJobs)
@@ -143,3 +170,106 @@ def test_get_shipments(monkeypatch):
         UploadJobs.status == "merge-completed",
     )
     query_filter.all.assert_called_once_with()
+
+
+def test_get_trial_if_exists(monkeypatch):
+    Session = MagicMock()
+    session = MagicMock()
+    begin = MagicMock()
+
+    TrialMetadata = MagicMock()
+    monkeypatch.setattr(core, "TrialMetadata", TrialMetadata)
+
+    # these are to hold the results
+    query = MagicMock()
+    query_filter = MagicMock()
+    with_for_update = MagicMock()
+
+    mock_trial = MagicMock()
+    mock_trial.metadata_json = {"foo": "bar"}
+
+    with_for_update.first.return_value = mock_trial
+    query_filter.with_for_update.return_value = with_for_update
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(core, "Session", Session)
+
+    def reset_mocks():
+        Session.reset_mock()
+        session.reset_mock()
+        begin.reset_mock()
+        TrialMetadata.reset_mock()
+        query.reset_mock()
+        query_filter.reset_mock()
+        with_for_update.reset_mock()
+        mock_trial.reset_mock()
+
+    # check it returns the trial for update
+    with_for_update.first.return_value = mock_trial
+    query_filter.with_for_update.return_value = with_for_update
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(core, "Session", Session)
+
+    reset_mocks()
+    trial: TrialMetadata = core.get_trial_if_exists(
+        trial_id=TEST_TRIAL_ID,
+        with_for_update=True,
+        session=session,
+    )
+    assert trial is mock_trial
+
+    # check that it exits if trial not found for update
+    with_for_update.first.return_value = None
+    query_filter.with_for_update.return_value = with_for_update
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(core, "Session", Session)
+
+    reset_mocks()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        core.get_trial_if_exists(
+            trial_id=TEST_TRIAL_ID,
+            with_for_update=True,
+            session=session,
+        )
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
+
+    # check it returns the trial NOT for update
+    query_filter.first.return_value = mock_trial
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(core, "Session", Session)
+
+    reset_mocks()
+    trial: TrialMetadata = core.get_trial_if_exists(
+        trial_id=TEST_TRIAL_ID,
+        session=session,
+    )
+    assert trial is mock_trial
+
+    # check that it exits if trial not found NOT for update
+    query_filter.first.return_value = None
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+    begin.__enter__.return_value = session
+    Session.begin.return_value = begin
+    monkeypatch.setattr(core, "Session", Session)
+
+    reset_mocks()
+    with pytest.raises(SystemExit) as pytest_wrapped_e:
+        core.get_trial_if_exists(
+            trial_id=TEST_TRIAL_ID,
+            session=session,
+        )
+        assert pytest_wrapped_e.type == SystemExit
+        assert pytest_wrapped_e.value.code == 0
