@@ -368,7 +368,7 @@ def test_remove_shipment(monkeypatch):
 
     session.add.assert_called_once()
     args = session.add.call_args_list[0].args
-    print(args)
+    print(list(args))
     assert len(args) == 1
 
     assert isinstance(args[0]._updated, datetime)
