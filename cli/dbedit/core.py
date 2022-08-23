@@ -116,6 +116,27 @@ def get_clinical_downloadable_files(
     )
 
 
+def get_misc_data_files(trial_id: str, *, session: Session) -> List[DownloadableFiles]:
+    """
+    Get all downloadable_files rows from misc_data uploads for the given trial
+
+    Parameters
+    ----------
+    trial_id: str
+        the id of the trial to affect
+    session: Session
+        a session created from this module's `Session` after `connect()` is called
+    """
+    return (
+        session.query(DownloadableFiles)
+        .filter(
+            DownloadableFiles.trial_id == trial_id,
+            DownloadableFiles.object_url.like("%/misc_data/%"),
+        )
+        .all()
+    )
+
+
 def get_shipments(trial_id: str, *, session: Session) -> List[UploadJobs]:
     """
     Get all upload_jobs rows from successful manifest uploads for the given trial

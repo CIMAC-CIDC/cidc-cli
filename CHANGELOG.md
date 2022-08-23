@@ -13,6 +13,8 @@ This Changelog tracks changes to this project. The notes below include a summary
 
 - `added` admin suite for listing/removing data
   - list/remove shipments/clinical
+  - list misc_data files
+  - list batches/samples for assays / analysis
 
 ## Version `0.9.17` - 12 Jul 2022
 

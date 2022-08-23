@@ -157,6 +157,33 @@ def test_get_clinical_downloadable_files(monkeypatch):
     query_filter.all.assert_called_once_with()
 
 
+def test_get_misc_data_files(monkeypatch):
+    monkeypatch.setattr(core, "get_env", lambda: "dev")
+    DownloadableFiles = MagicMock()
+    monkeypatch.setattr(core, "DownloadableFiles", DownloadableFiles)
+
+    session = MagicMock()
+    # these are to hold the results
+    query = MagicMock()
+    query_filter = MagicMock()
+
+    mock_files = [MagicMock(), MagicMock()]
+    query_filter.all.return_value = mock_files
+
+    query.filter.return_value = query_filter
+    session.query.return_value = query
+
+    res: list = core.get_misc_data_files(TEST_TRIAL_ID, session=session)
+    assert len(res) == 2 and res is mock_files
+
+    session.query.assert_called_once_with(DownloadableFiles)
+    query.filter.assert_called_once_with(
+        DownloadableFiles.trial_id == TEST_TRIAL_ID,
+        DownloadableFiles.object_url.like("%/misc_data/%"),
+    )
+    query_filter.all.assert_called_once_with()
+
+
 def test_get_shipments(monkeypatch):
     monkeypatch.setattr(core, "get_env", lambda: "dev")
     UploadJobs = MagicMock()

@@ -1,6 +1,6 @@
 import click
 
-from . import __version__, core, remove, list
+from . import __version__, core, remove, list as dblist
 from . import config
 
 
@@ -27,6 +27,29 @@ def list_():
     pass
 
 
+#### $ cidc admin list supported ####
+@click.command("supported")
+def list_supported():
+    """List assays and analyses that are supported for listing"""
+    print(", ".join(sorted(list(dblist.SUPPORTED_ASSAYS_AND_ANALYSES))))
+
+
+#### $ cidc admin list assay ####
+@click.command("assay")
+@click.argument("trial_id", required=True, type=str)
+@click.argument("assay_or_analysis", required=True, type=str)
+def list_assay(trial_id: str, assay_or_analysis: str):
+    """
+    List CIMAC IDs for a given assay or analysis for a given trial
+    Same as `cidc admin list analysis`
+
+    TRIAL_ID is the id of the trial to affect
+    ASSAY_OR_ANALYSIS is the assay or analysis to list CIMAC IDs for
+    """
+    core.connect(dblist)
+    dblist.list_data_cimac_ids(trial_id=trial_id, assay_or_analysis=assay_or_analysis)
+
+
 #### $ cidc admin list clinical ####
 @click.command("clinical")
 @click.argument("trial_id", required=True, type=str)
@@ -36,8 +59,21 @@ def list_clinical(trial_id: str):
 
     TRIAL_ID is the id of the trial to affect
     """
-    core.connect(list)
-    list.list_clinical(trial_id=trial_id)
+    core.connect(dblist)
+    dblist.list_clinical(trial_id=trial_id)
+
+
+#### $ cidc admin list misc-data ####
+@click.command("misc-data")
+@click.argument("trial_id", required=True, type=str)
+def list_misc_data(trial_id: str):
+    """
+    List files from misc_data uploads for a given trial
+
+    TRIAL_ID is the id of the trial to affect
+    """
+    core.connect(dblist)
+    dblist.list_misc_data(trial_id=trial_id)
 
 
 #### $ cidc admin list shipments ####
@@ -49,8 +85,8 @@ def list_shipments(trial_id: str):
 
     TRIAL_ID is the id of the trial to affect
     """
-    core.connect(list)
-    list.list_shipments(trial_id=trial_id)
+    core.connect(dblist)
+    dblist.list_shipments(trial_id=trial_id)
 
 
 #### $ cidc admin remove ####
@@ -74,7 +110,7 @@ def remove_clinical(trial_id: str, target_id: str):
         not including {trial_id}/clinical/
         special value * for all files for this trial
     """
-    core.connect(list)
+    core.connect(dblist)
     remove.remove_clinical(trial_id=trial_id, target_id=target_id)
 
 
@@ -93,5 +129,9 @@ def remove_shipment(trial_id: str, target_id: str):
     remove.remove_shipment(trial_id=trial_id, target_id=target_id)
 
 
+list_.add_command(list_assay)
+list_.add_command(list_clinical)
 list_.add_command(list_shipments)
+list_.add_command(list_supported)
+remove_.add_command(remove_clinical)
 remove_.add_command(remove_shipment)
