@@ -5,55 +5,17 @@ from typing import Dict, List
 from unittest.mock import MagicMock, call
 
 from cli.dbedit import remove as dbedit_remove
+from .constants import (
+    TEST_CLINICAL_FILE_URL,
+    TEST_MANIFEST_ID,
+    TEST_METADATA_JSON,
+    TEST_TRIAL_ID,
+)
 
-TEST_CLINICAL_FILE_URL: str = "clinical_file.xlsx"
-TEST_MANIFEST_ID: str = "test_upload"
-TEST_TRIAL_ID: str = "test_prism_trial_id"
-
-TRIAL_METADATA: dict = {
-    "clinical_data": {
-        "records": [
-            {
-                "object_url": TEST_CLINICAL_FILE_URL,
-                "number_of_participants": 5,
-            },
-            {
-                "object_url": TEST_CLINICAL_FILE_URL.replace(".", "2."),
-                "number_of_participants": 3,
-            },
-        ],
-    },
-    "participants": [
-        {
-            "cimac_participant_id": "CTTTPP1",
-            "samples": [
-                {"cimac_id": "CTTTPP101.00"},
-                {"cimac_id": "CTTTPP102.00"},
-            ],
-        },
-        {
-            "cimac_participant_id": "CTTTPP2",
-            "samples": [
-                {"cimac_id": "CTTTPP201.00"},
-                {"cimac_id": "CTTTPP202.00"},
-            ],
-        },
-        {
-            "cimac_participant_id": "CTTTPP3",
-            "samples": [
-                {"cimac_id": "CTTTPP301.00"},
-                {"cimac_id": "CTTTPP302.00"},
-                {"cimac_id": "CTTTPP303.00"},
-            ],
-        },
-    ],
-    "shipments": [
-        {"manifest_id": TEST_MANIFEST_ID},
-        {"manifest_id": TEST_MANIFEST_ID + "2"},
-    ],
-}
 CLIPPED_METADATA_SHIPMENTS: dict = {
-    "clinical_data": TRIAL_METADATA["clinical_data"],
+    "analysis": TEST_METADATA_JSON["analysis"],
+    "assays": TEST_METADATA_JSON["assays"],
+    "clinical_data": TEST_METADATA_JSON["clinical_data"],
     "participants": [
         {
             "cimac_participant_id": "CTTTPP1",
@@ -74,6 +36,8 @@ CLIPPED_METADATA_SHIPMENTS: dict = {
     ],
 }
 CLIPPED_METADATA_TARGET_CLINICAL: dict = {
+    "analysis": TEST_METADATA_JSON["analysis"],
+    "assays": TEST_METADATA_JSON["assays"],
     "clinical_data": {
         "records": [
             {
@@ -82,12 +46,14 @@ CLIPPED_METADATA_TARGET_CLINICAL: dict = {
             },
         ],
     },
-    "participants": TRIAL_METADATA["participants"],
-    "shipments": TRIAL_METADATA["shipments"],
+    "participants": TEST_METADATA_JSON["participants"],
+    "shipments": TEST_METADATA_JSON["shipments"],
 }
 CLIPPED_METADATA_ALL_CLINICAL: dict = {
-    "participants": TRIAL_METADATA["participants"],
-    "shipments": TRIAL_METADATA["shipments"],
+    "analysis": TEST_METADATA_JSON["analysis"],
+    "assays": TEST_METADATA_JSON["assays"],
+    "participants": TEST_METADATA_JSON["participants"],
+    "shipments": TEST_METADATA_JSON["shipments"],
 }
 
 
@@ -133,7 +99,7 @@ def test_remove_clinical(monkeypatch):
     # mock getting the trial
     get_trial_if_exists = MagicMock()
     mock_trial = MagicMock()
-    mock_trial.metadata_json = TRIAL_METADATA
+    mock_trial.metadata_json = TEST_METADATA_JSON
     mock_trial._updated = datetime.fromisoformat("2020-01-01T12:34:45")
     get_trial_if_exists.first.return_value = mock_trial
     monkeypatch.setattr(dbedit_remove, "get_trial_if_exists", get_trial_if_exists)
@@ -260,13 +226,13 @@ def test_remove_samples_from_blob():
     }
 
     res = dbedit_remove._remove_samples_from_blob(
-        metadata_json=TRIAL_METADATA,
+        metadata_json=TEST_METADATA_JSON,
         samples_to_remove=samples_to_remove,
     )
 
     # this doesn't remove the shipment itself
     clip_just_samples = deepcopy(CLIPPED_METADATA_SHIPMENTS)
-    clip_just_samples["shipments"] = TRIAL_METADATA["shipments"]
+    clip_just_samples["shipments"] = TEST_METADATA_JSON["shipments"]
     assert res == clip_just_samples
 
 
@@ -282,7 +248,7 @@ def test_remove_shipment(monkeypatch):
     # mock getting the trial
     get_trial_if_exists = MagicMock()
     mock_trial = MagicMock()
-    mock_trial.metadata_json = TRIAL_METADATA
+    mock_trial.metadata_json = TEST_METADATA_JSON
     mock_trial._updated = datetime.fromisoformat("2020-01-01T12:34:45")
     get_trial_if_exists.first.return_value = mock_trial
     monkeypatch.setattr(dbedit_remove, "get_trial_if_exists", get_trial_if_exists)

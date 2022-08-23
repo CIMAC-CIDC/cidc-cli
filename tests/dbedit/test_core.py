@@ -4,9 +4,7 @@ from unittest.mock import MagicMock
 from cli.dbedit import core
 from cli.config import set_env
 
-TEST_PASSWORD: str = "password"
-TEST_TRIAL_ID: str = "test_prism_trial_id"
-TEST_USER: str = "test_user"
+from .constants import TEST_PASSWORD, TEST_TRIAL_ID, TEST_USER
 
 
 class Mocker:
