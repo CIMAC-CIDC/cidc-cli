@@ -76,9 +76,8 @@ def test_connect(monkeypatch):
     mocks.Connector.assert_called_once_with()
     mocks.automap_base.assert_called_once_with()
     mocks.sqlalchemy.create_engine.assert_called_once()
-    assert mocks.sqlalchemy.create_engine.call_args_list[0].args == (
-        "postgresql+pg8000://",
-    )
+    args, _ = mocks.sqlalchemy.create_engine.call_args
+    assert args == ("postgresql+pg8000://",)
 
     mocks.Connector_instance.connect.assert_called_once_with(
         "cidc-dfci:us-east1:cidc-postgresql-prod",
@@ -90,7 +89,8 @@ def test_connect(monkeypatch):
 
     mocks.sessionmaker.assert_called_once_with(mocks.create_engine_result)
     mocks.Base.prepare.assert_called_once()
-    assert mocks.Base.prepare.call_args_list[0].args == (mocks.create_engine_result,)
+    args, _ = mocks.Base.prepare.call_args
+    assert args == (mocks.create_engine_result,)
 
     assert core.DownloadableFiles is not None
     assert core.Session is not None

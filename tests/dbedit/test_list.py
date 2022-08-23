@@ -246,7 +246,7 @@ def test_list_clinical(monkeypatch):
     begin.__exit__.assert_called_once()
 
     mock_print.assert_called_once()
-    args = mock_print.call_args_list[0].args
+    args, _ = mock_print.call_args
     assert len(args) == 1
 
     df = args[0]
@@ -298,7 +298,7 @@ def test_list_misc_data(monkeypatch):
     begin.__exit__.assert_called_once()
 
     mock_print.assert_called_once()
-    args = mock_print.call_args_list[0].args
+    args, _ = mock_print.call_args
     assert len(args) == 1
 
     df = args[0]
@@ -361,7 +361,7 @@ def test_list_shipments(monkeypatch):
     begin.__exit__.assert_called_once()
 
     mock_print.assert_called_once()
-    args = mock_print.call_args_list[0].args
+    args, _ = mock_print.call_args
     assert len(args) == 1
 
     df = args[0]
