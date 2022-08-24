@@ -1,3 +1,4 @@
+from typing import Tuple
 import click
 
 from . import __version__, core, remove, list as dblist
@@ -94,6 +95,30 @@ def list_shipments(trial_id: str):
 def remove_():
     """Deleting different things"""
     pass
+
+
+#### $ cidc admin remove assay ####
+@click.command("assay")
+@click.argument("trial_id", required=True, type=str)
+@click.argument("assay", required=True, type=str)
+@click.argument("target_id", required=True, nargs=-1)
+def remove_assay(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]):
+    """
+    Remove a given clinical data file from a given trial's metadata
+    as well as remove the file itself from the portal.
+
+    TRIAL_ID is the id of the trial to affect
+    ASSAY_OR_ANALYSIS is the assay or analysis to affect
+    TARGET_ID is a tuple of the ids to find the data to remove
+        it cannot go past where is divisible in the data
+        eg if ASSAY_OR_ANALYSIS == "elisa", only `assay_run_id` is accepted
+        eg if ASSAY_OR_ANALYSIS == "wes_analysis", only `run_id` is accepted
+        eg if ASSAY_OR_ANALYSIS == "olink", `batch_id [file]` is assumed
+    """
+    core.connect(dblist)
+    remove.remove_data(
+        trial_id=trial_id, assay_or_analysis=assay_or_analysis, target_id=target_id
+    )
 
 
 #### $ cidc admin remove clinical ####

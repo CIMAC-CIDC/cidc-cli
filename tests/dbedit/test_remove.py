@@ -1,12 +1,15 @@
 from copy import deepcopy
 from datetime import datetime
+from fileinput import filename
+from deepdiff import DeepDiff
 import pytest
+from _pytest.monkeypatch import MonkeyPatch
 from typing import Dict, List
 from unittest.mock import MagicMock, call
 
 from cli.dbedit import remove as dbedit_remove
 from .constants import (
-    TEST_CLINICAL_FILE_URL,
+    TEST_CLINICAL_URL_XLSX,
     TEST_MANIFEST_ID,
     TEST_METADATA_JSON,
     TEST_TRIAL_ID,
@@ -41,7 +44,7 @@ CLIPPED_METADATA_TARGET_CLINICAL: dict = {
     "clinical_data": {
         "records": [
             {
-                "object_url": TEST_CLINICAL_FILE_URL.replace(".", "2."),
+                "object_url": TEST_CLINICAL_URL_XLSX.replace(".", "2."),
                 "number_of_participants": 3,
             },
         ],
@@ -69,11 +72,11 @@ def test_remove_clinical(monkeypatch):
 
     # mock downlodable files
     mock_files = [MagicMock(), MagicMock()]
-    mock_files[0].object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_FILE_URL}"
+    mock_files[0].object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX}"
     mock_files[
         1
     ].object_url = (
-        f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_FILE_URL.replace('.', '2.')}"
+        f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX.replace('.', '2.')}"
     )
 
     # mock query for individual file
@@ -118,7 +121,7 @@ def test_remove_clinical(monkeypatch):
 
     # test for proper removal of single file
     reset_mocks()
-    dbedit_remove.remove_clinical(TEST_TRIAL_ID, TEST_CLINICAL_FILE_URL)
+    dbedit_remove.remove_clinical(TEST_TRIAL_ID, TEST_CLINICAL_URL_XLSX)
 
     Session.begin.assert_called_once_with()
     begin.__enter__.assert_called_once()
@@ -131,7 +134,7 @@ def test_remove_clinical(monkeypatch):
     query.filter.assert_called_once_with(
         DownloadableFiles.trial_id == TEST_TRIAL_ID,
         DownloadableFiles.object_url
-        == f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_FILE_URL}",
+        == f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX}",
     )
     query_filter.all.assert_called_once_with()
 
@@ -191,7 +194,7 @@ def test_remove_clinical(monkeypatch):
     with pytest.raises(SystemExit) as pytest_wrapped_e:
         dbedit_remove.remove_clinical(
             trial_id=TEST_TRIAL_ID,
-            target_id=TEST_CLINICAL_FILE_URL,
+            target_id=TEST_CLINICAL_URL_XLSX,
         )
         assert pytest_wrapped_e.type == SystemExit
         assert pytest_wrapped_e.value.code == 0
@@ -392,3 +395,849 @@ def test_remove_shipment(monkeypatch):
     remove_samples_from_blob.assert_not_called()
     session.add.assert_not_called()
     session.delete.assert_not_called()
+
+
+class Test_remove_data:
+    def setup(self):
+        self.Session = MagicMock()
+        self.session = MagicMock()
+        self.begin = MagicMock()
+        self.begin.__enter__.return_value = self.session
+        self.Session.begin.return_value = self.begin
+
+        self.mock_trial = MagicMock()
+        self.mock_trial.metadata_json = deepcopy(TEST_METADATA_JSON)
+
+        self.get_trial_if_exists = MagicMock()
+        self.get_trial_if_exists.return_value = self.mock_trial
+
+        self.mock_remove_clinical = MagicMock()
+        self.mock_remove_misc_data = MagicMock()
+
+        self.real_print = print
+        self.mock_print = MagicMock()
+
+        self.DownloadableFiles = MagicMock()
+
+        self.monkeypatch = MonkeyPatch()
+        self.monkeypatch.setattr(dbedit_remove, "Session", self.Session)
+        self.monkeypatch.setattr(
+            dbedit_remove, "get_trial_if_exists", self.get_trial_if_exists
+        )
+        self.monkeypatch.setattr(
+            dbedit_remove, "remove_clinical", self.mock_remove_clinical
+        )
+        self.monkeypatch.setattr(
+            dbedit_remove, "DownloadableFiles", self.DownloadableFiles
+        )
+        self.monkeypatch.setattr("builtins.print", self.mock_print)
+
+    def test_bail_outs(self):
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="bar", target_id=tuple()
+        )
+        self.mock_print.assert_called_once_with(
+            "Assay / analysis not supported:", "bar"
+        )
+
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="clinical_data", target_id=("bar",)
+        )
+        self.mock_print.assert_not_called()
+        self.mock_remove_clinical.assert_called_once_with(
+            trial_id="foo", target_id="bar"
+        )
+
+    def test_olink(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="olink", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find olink batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no combined file, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=("olink_batch_2", "combined"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find a combined file for olink batch olink_batch_2 for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching file, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=("olink_batch_2", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find a file bar in olink batch olink_batch_2 for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single file
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["assays"]["olink"]["batches"][1]["records"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=(
+                "olink_batch_2",
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
+            ]
+        )
+
+        # remove a combined file
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"]["olink"]["batches"][0].pop("combined")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=(
+                "olink_batch",
+                "combined",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/combined_npx.xlsx",
+            ]
+        )
+
+        # remove a whole batch
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"]["olink"]["batches"].pop(1)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=("olink_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_1/assay_npx.xlsx",
+            ]
+        )
+
+        # remove a study-wide file
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"]["olink"].pop("study")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=("study",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/olink/study_npx.xlsx",
+                f"{TEST_TRIAL_ID}/olink/ALL object_urls",
+            ]
+        )
+
+        # remove last record removes whole batch and assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"].pop("olink")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="olink",
+            target_id=(
+                "olink_batch",
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/chip_0/assay_npx.xlsx",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/chip_0/assay_npx.xlsx",
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/chip_0/ALL object_urls",
+                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/ALL object_urls",
+                f"{TEST_TRIAL_ID}/olink/ALL object_urls",
+            ]
+        )
+
+    def test_elisa(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="elisa", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find elisa batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single run
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["assays"]["elisa"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="elisa",
+            target_id=("elisa_batch",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/elisa/elisa_batch/assay.xlsx",
+            ]
+        )
+
+        # remove last run removes whole assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"].pop("elisa")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="elisa",
+            target_id=("elisa_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/elisa/elisa_batch_2/assay.xlsx",
+                f"{TEST_TRIAL_ID}/elisa/elisa_batch_2/ALL object_urls",
+            ]
+        )
+
+    def test_nanostring(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="nanostring", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find nanostring batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching run_id, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="nanostring",
+            target_id=("nanostring_batch", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find a run bar in nanostring batch nanostring_batch for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single run
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["assays"]["nanostring"][0]["runs"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="nanostring",
+            target_id=(
+                "nanostring_batch",
+                "nanostring_batch_run",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch/nanostring_batch_run/control.rcc",
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch/nanostring_batch_run/CTTTPP101.00.rcc",
+            ]
+        )
+
+        # remove a single batch
+        target_metadata["assays"]["nanostring"].pop(1)
+        self.mock_print.reset_mock()
+        self.DownloadableFiles.object_url.reset_mock()
+        self.session.add.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="nanostring",
+            target_id=("nanostring_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch_2/normalized_data.csv",
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch_2/nanostring_batch_2_run/control.rcc",
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch_2/nanostring_batch_2_run/CTTTPP102.00.rcc",
+            ]
+        )
+        # remove last run removes whole batch and assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"].pop("nanostring")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="nanostring",
+            target_id=("nanostring_batch", "nanostring_batch_run_2"),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch/nanostring_batch_run_2/control.rcc",
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch/nanostring_batch_run_2/CTTTPP201.00.rcc",
+                f"{TEST_TRIAL_ID}/nanostring/nanostring_batch/normalized_data.csv",
+            ]
+        )
+
+    def test_rna_level1_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="rna_level1_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find RNA analysis for bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single sample
+        self.mock_print.reset_mock()
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["rna_analysis"]["level_1"].pop(0)
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="rna_level1_analysis",
+            target_id=("CTTTPP101.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/rna/CTTTPP101.00/analysis/error.yaml",
+            ],
+        )
+
+        # remove down to a single samples
+        self.mock_print.reset_mock()
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["analysis"]["rna_analysis"]["level_1"].pop(
+            1
+        )  # the last of 3 (now 2)
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="rna_level1_analysis",
+            target_id=("CTTTPP102.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/rna/CTTTPP102.00/analysis/error.yaml",
+            ],
+        )
+
+        # remove last sample removes whole assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        self.mock_print.reset_mock()
+        target_metadata["analysis"].pop("rna_analysis")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="rna_level1_analysis",
+            target_id=("CTTTPP201.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/rna/CTTTPP201.00/analysis/error.yaml",
+            ],
+        )
+
+    def test_wes_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="wes_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find WES paired analysis for bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single pair run
+        self.mock_print.reset_mock()
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["wes_analysis"]["pair_runs"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_analysis",
+            target_id=("CTTTPP101.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP101.00/analysis/error.yaml",
+            ],
+        )
+
+        # remove a pair run in both "wes_analysis" and "wes_analysis_old"
+        self.mock_print.reset_mock()
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["analysis"]["wes_analysis"]["pair_runs"].pop(
+            0
+        )  # the second of 3, now first 2
+        target_metadata["analysis"]["wes_analysis_old"]["pair_runs"].pop(1)
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_analysis",
+            target_id=("CTTTPP102.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP102.00/analysis/error.yaml",
+                f"{TEST_TRIAL_ID}/wes/CTTTPP102.00/analysis/error.yaml",
+            ],
+        )
+
+        # old_only, there's another one in wes_analysis
+        # remove last pair run removes whole assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        self.mock_print.reset_mock()
+        target_metadata["analysis"].pop("wes_analysis_old")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_analysis_old",
+            target_id=("CTTTPP201.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP201.00/analysis/error.yaml",
+            ],
+        )
+
+    def test_wes_tumor_only_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_tumor_only_analysis",
+            target_id=("bar",),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find WES tumor-only analysis for bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single pair run
+        self.mock_print.reset_mock()
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["wes_tumor_only_analysis"]["runs"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_tumor_only_analysis",
+            target_id=("CTTTPP101.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes_tumor_only/CTTTPP101.00/analysis/error.yaml",
+            ],
+        )
+
+        # remove a pair run in both "wes_tumor_only_analysis" and "wes_tumor_only_analysis_old"
+        self.mock_print.reset_mock()
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["analysis"]["wes_tumor_only_analysis"]["runs"].pop(
+            0
+        )  # the second of 3, now first 2
+        target_metadata["analysis"]["wes_tumor_only_analysis_old"]["runs"].pop(1)
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_tumor_only_analysis",
+            target_id=("CTTTPP102.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes_tumor_only/CTTTPP102.00/analysis/error.yaml",
+                f"{TEST_TRIAL_ID}/wes_tumor_only/CTTTPP102.00/analysis/error.yaml",
+            ],
+        )
+
+        # old_only, there's another one in wes_tumor_only_analysis
+        # remove last pair run removes whole assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        self.mock_print.reset_mock()
+        target_metadata["analysis"].pop("wes_tumor_only_analysis_old")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes_tumor_only_analysis_old",
+            target_id=("CTTTPP201.00",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes_tumor_only/CTTTPP201.00/analysis/error.yaml",
+            ],
+        )
+
+    def test_batched_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="ctdna_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find ctdna_analysis batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching cimac_id, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="ctdna_analysis",
+            target_id=("ctdna_analysis_batch", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find ctdna_analysis for sample bar in batch ctdna_analysis_batch for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single batch
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["ctdna_analysis"]["batches"][0]["records"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="ctdna_analysis",
+            target_id=(
+                "ctdna_analysis_batch",
+                "CTTTPP101.00",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP101.00/genome-wide_plots.pdf",
+            ]
+        )
+
+        # remove a single batch
+        target_metadata["analysis"]["ctdna_analysis"]["batches"].pop(1)
+        self.mock_print.reset_mock()
+        self.DownloadableFiles.object_url.reset_mock()
+        self.session.add.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="ctdna_analysis",
+            target_id=("ctdna_analysis_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/summary_plots.pdf",
+                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/CTTTPP102.00/genome-wide_plots.pdf",
+            ]
+        )
+        # remove last run removes whole batch and assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["analysis"].pop("ctdna_analysis")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="ctdna_analysis",
+            target_id=("ctdna_analysis_batch", "CTTTPP201.00"),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP201.00/genome-wide_plots.pdf",
+                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/summary_plots.pdf",
+            ]
+        )
+
+    def test_generic_assay_with_ids(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="atacseq_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find atacseq_analysis batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching cimac_id, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="atacseq_analysis",
+            target_id=("atacseq_analysis_batch", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find atacseq_analysis for sample bar in batch atacseq_analysis_batch for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single batch
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["atacseq_analysis"][0]["records"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="atacseq_analysis",
+            target_id=(
+                "atacseq_analysis_batch",
+                "CTTTPP101.00",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/atacseq/CTTTPP101.00/analysis/aligned_sorted.bam",
+            ]
+        )
+
+        # remove a single batch
+        target_metadata["analysis"]["atacseq_analysis"].pop(1)
+        self.mock_print.reset_mock()
+        self.DownloadableFiles.object_url.reset_mock()
+        self.session.add.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="atacseq_analysis",
+            target_id=("atacseq_analysis_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/atacseq/analysis/atacseq_analysis_batch_2/report.zip",
+                f"{TEST_TRIAL_ID}/atacseq/CTTTPP102.00/analysis/aligned_sorted.bam",
+            ]
+        )
+        # remove last run removes whole batch and assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["analysis"].pop("atacseq_analysis")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="atacseq_analysis",
+            target_id=("atacseq_analysis_batch", "CTTTPP201.00"),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/atacseq/CTTTPP201.00/analysis/aligned_sorted.bam",
+                f"{TEST_TRIAL_ID}/atacseq/analysis/atacseq_analysis_batch/report.zip",
+            ]
+        )
+
+    def test_generic_assay_no_ids(self):
+        self.mock_print.reset_mock()
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="wes", target_id=("bar",)
+        )
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="wes", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find wes batch bar for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching cimac_id, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes",
+            target_id=("0", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find wes for sample bar in batch 0 for trial foo"
+        )
+        self.session.add.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single batch
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["assays"]["wes"][0]["records"].pop(0)
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes",
+            target_id=(
+                "0",
+                "CTTTPP101.00",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP101.00/reads_0.bam",
+                f"{TEST_TRIAL_ID}/wes/CTTTPP101.00/reads_1.bam",
+            ]
+        )
+
+        # remove a single batch
+        target_metadata["assays"]["wes"].pop(1)
+        self.mock_print.reset_mock()
+        self.DownloadableFiles.object_url.reset_mock()
+        self.session.add.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes",
+            target_id=("1",),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP102.00/reads_0.bam",
+            ]
+        )
+        # remove last run removes whole batch and assay
+        self.session.add.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        target_metadata["assays"].pop("wes")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="wes",
+            target_id=("0", "CTTTPP201.00"),
+        )
+        self.mock_print.assert_not_called()
+        self.session.add.assert_called_once()
+        args, _ = self.session.add.call_args
+        assert DeepDiff(args[0].metadata_json, target_metadata) == {}
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/wes/CTTTPP201.00/reads_0.bam",
+            ]
+        )

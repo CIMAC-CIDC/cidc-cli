@@ -4,7 +4,14 @@ from _pytest.monkeypatch import MonkeyPatch
 from unittest.mock import MagicMock
 
 from cli.dbedit import list as dbedit_list
-from .constants import TEST_METADATA_JSON, TEST_TRIAL_ID
+from .constants import (
+    TEST_CLINICAL_URL_CSV,
+    TEST_CLINICAL_URL_XLSX,
+    TEST_METADATA_JSON,
+    TEST_MISC_DATA_URL1,
+    TEST_MISC_DATA_URL2,
+    TEST_TRIAL_ID,
+)
 
 
 def test_list_clinical(monkeypatch):
@@ -20,8 +27,8 @@ def test_list_clinical(monkeypatch):
     get_trial_if_exists.return_value = mock_trial
 
     file1, file2 = MagicMock(), MagicMock()
-    file1.object_url = f"{TEST_TRIAL_ID}/clinical/clinical1.xlsx"
-    file2.object_url = f"{TEST_TRIAL_ID}/clinical/clinical2.csv"
+    file1.object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX}"
+    file2.object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_CSV}"
     file1._created = datetime.fromisoformat("2020-01-01T12:34:45")
     file2._created = datetime.fromisoformat("2020-02-02T12:34:45")
 
@@ -52,19 +59,31 @@ def test_list_clinical(monkeypatch):
 
     df = args[0]
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (2, 4)
+    assert df.shape == (2, 5)
     assert all(
         col in df.columns
-        for col in ["created", "filename", "num_participants", "object_url"]
+        for col in ["created", "filename", "num_participants", "object_url", "comment"]
     )
 
     assert df.equals(
         pd.DataFrame(
             [
-                [file1.object_url, "clinical1.xlsx", 5, file1._created],
-                [file2.object_url, "clinical2.csv", 3, file2._created],
+                [
+                    file1.object_url,
+                    TEST_CLINICAL_URL_XLSX,
+                    5,
+                    file1._created,
+                    "comment",
+                ],
+                [file2.object_url, TEST_CLINICAL_URL_CSV, 3, file2._created, pd.NA],
             ],
-            columns=["object_url", "filename", "num_participants", "created"],
+            columns=[
+                "object_url",
+                "filename",
+                "num_participants",
+                "created",
+                "comment",
+            ],
         )
     )
 
@@ -76,9 +95,14 @@ def test_list_misc_data(monkeypatch):
     begin.__enter__.return_value = session
     Session.begin.return_value = begin
 
+    mock_trial = MagicMock()
+    mock_trial.metadata_json = TEST_METADATA_JSON
+    get_trial_if_exists = MagicMock()
+    get_trial_if_exists.return_value = mock_trial
+
     file1, file2 = MagicMock(), MagicMock()
-    file1.object_url = f"{TEST_TRIAL_ID}/misc_data/file1.xlsx"
-    file2.object_url = f"{TEST_TRIAL_ID}/misc_data/file2.csv"
+    file1.object_url = f"{TEST_TRIAL_ID}/misc_data/{TEST_MISC_DATA_URL1}"
+    file2.object_url = f"{TEST_TRIAL_ID}/misc_data/{TEST_MISC_DATA_URL2}"
     file1._created = datetime.fromisoformat("2020-01-01T12:34:45")
     file2._created = datetime.fromisoformat("2020-02-02T12:34:45")
 
@@ -88,6 +112,7 @@ def test_list_misc_data(monkeypatch):
     mock_print = MagicMock()
 
     monkeypatch.setattr(dbedit_list, "Session", Session)
+    monkeypatch.setattr(dbedit_list, "get_trial_if_exists", get_trial_if_exists)
     monkeypatch.setattr(dbedit_list, "get_misc_data_files", get_misc_data_files)
     monkeypatch.setattr("builtins.print", mock_print)
 
@@ -104,16 +129,25 @@ def test_list_misc_data(monkeypatch):
 
     df = args[0]
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (2, 3)
-    assert all(col in df.columns for col in ["created", "filename", "object_url"])
+    assert df.shape == (2, 5)
+    assert all(
+        col in df.columns
+        for col in ["batch_id", "created", "description", "filename", "object_url"]
+    )
 
     assert df.equals(
         pd.DataFrame(
             [
-                [file1.object_url, "file1.xlsx", file1._created],
-                [file2.object_url, "file2.csv", file2._created],
+                [
+                    0,
+                    file1.object_url,
+                    TEST_MISC_DATA_URL1,
+                    file1._created,
+                    "description",
+                ],
+                [1, file2.object_url, TEST_MISC_DATA_URL2, file2._created, pd.NA],
             ],
-            columns=["object_url", "filename", "created"],
+            columns=["batch_id", "object_url", "filename", "created", "description"],
         )
     )
 
@@ -247,8 +281,21 @@ class Test_list_data_cimac_ids:
         assert df.equals(
             pd.DataFrame(
                 [
-                    {"batch_id": "combined", "file": "study-wide", "cimac_id": cimac_id}
-                    for cimac_id in ["CTTTPP101.00", "CTTTPP201.00", "CTTTPP102.00"]
+                    {
+                        "batch_id": "olink_batch",
+                        "file": "combined",
+                        "cimac_id": "CTTTPP101.00",
+                    },
+                    {
+                        "batch_id": "olink_batch_2",
+                        "file": f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
+                        "cimac_id": "CTTTPP201.00",
+                    },
+                    {
+                        "batch_id": "olink_batch_2",
+                        "file": f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_1/assay_npx.xlsx",
+                        "cimac_id": "CTTTPP102.00",
+                    },
                 ]
             )
         )
@@ -336,6 +383,40 @@ class Test_list_data_cimac_ids:
                         "tumor_cimac_id": "CTTTPP201.00",
                         "normal_cimac_id": "CTTTPP20N.00",
                     },
+                    {
+                        "run_id": "CTTTPP201.00",
+                        "tumor_cimac_id": "CTTTPP201.00",
+                        "normal_cimac_id": "CTTTPP20N.00",
+                    },
+                    {
+                        "run_id": "CTTTPP102.00",
+                        "tumor_cimac_id": "CTTTPP102.00",
+                        "normal_cimac_id": "CTTTPP10N.00",
+                    },
+                ]
+            )
+        )
+
+    def test_wes_analysis_old(self):
+        self.mock_print.reset_mock()
+        dbedit_list.list_data_cimac_ids(
+            trial_id="foo", assay_or_analysis="wes_analysis_old"
+        )
+        df: pd.DataFrame = self._get_and_assert_df()
+
+        assert df.equals(
+            pd.DataFrame(
+                [
+                    {
+                        "run_id": "CTTTPP201.00",
+                        "tumor_cimac_id": "CTTTPP201.00",
+                        "normal_cimac_id": "CTTTPP20N.00",
+                    },
+                    {
+                        "run_id": "CTTTPP102.00",
+                        "tumor_cimac_id": "CTTTPP102.00",
+                        "normal_cimac_id": "CTTTPP10N.00",
+                    },
                 ]
             )
         )
@@ -351,9 +432,26 @@ class Test_list_data_cimac_ids:
             pd.DataFrame(
                 [
                     {"cimac_id": cimac_id}
-                    for cimac_id in ["CTTTPP101.00", "CTTTPP201.00", "CTTTPP102.00"]
+                    for cimac_id in [
+                        "CTTTPP101.00",
+                        "CTTTPP102.00",
+                        "CTTTPP201.00",
+                        "CTTTPP201.00",
+                        "CTTTPP102.00",
+                    ]
                 ]
             )
+        )
+
+    def test_wes_tumor_only_analysis_old(self):
+        self.mock_print.reset_mock()
+        dbedit_list.list_data_cimac_ids(
+            trial_id="foo", assay_or_analysis="wes_tumor_only_analysis_old"
+        )
+        df: pd.DataFrame = self._get_and_assert_df()
+
+        assert df.equals(
+            pd.DataFrame([{"cimac_id": "CTTTPP201.00"}, {"cimac_id": "CTTTPP102.00"}])
         )
 
     def test_batched_analysis(self):
@@ -433,45 +531,4 @@ class Test_list_data_cimac_ids:
                     },
                 ]
             )
-        )
-
-    def test_olink_no_study_wide(self):
-        # olink works without study-wide file
-        self.mock_trial.metadata_json["assays"]["olink"].pop("study")
-        self.get_trial_if_exists.return_value = self.mock_trial
-        self.monkeypatch.setattr(
-            dbedit_list, "get_trial_if_exists", self.get_trial_if_exists
-        )
-
-        self.mock_print.reset_mock()
-        dbedit_list.list_data_cimac_ids(trial_id="foo", assay_or_analysis="olink")
-        df: pd.DataFrame = self._get_and_assert_df()
-
-        assert df.equals(
-            pd.DataFrame(
-                [
-                    {
-                        "batch_id": "olink_batch",
-                        "file": "combined",
-                        "cimac_id": "CTTTPP101.00",
-                    },
-                    {
-                        "batch_id": "olink_batch_2",
-                        "file": f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
-                        "cimac_id": "CTTTPP201.00",
-                    },
-                    {
-                        "batch_id": "olink_batch_2",
-                        "file": f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_1/assay_npx.xlsx",
-                        "cimac_id": "CTTTPP102.00",
-                    },
-                ]
-            )
-        )
-
-        # reset mock to correct metadata
-        self.mock_trial.metadata_json = TEST_METADATA_JSON
-        self.get_trial_if_exists.return_value = self.mock_trial
-        self.monkeypatch.setattr(
-            dbedit_list, "get_trial_if_exists", self.get_trial_if_exists
         )
