@@ -100,7 +100,7 @@ def remove_():
 #### $ cidc admin remove assay ####
 @click.command("assay")
 @click.argument("trial_id", required=True, type=str)
-@click.argument("assay", required=True, type=str)
+@click.argument("assay_or_analysis", required=True, type=str)
 @click.argument("target_id", required=True, nargs=-1)
 def remove_assay(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]):
     """
@@ -115,7 +115,7 @@ def remove_assay(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]):
         eg if ASSAY_OR_ANALYSIS == "wes_analysis", only `run_id` is accepted
         eg if ASSAY_OR_ANALYSIS == "olink", `batch_id [file]` is assumed
     """
-    core.connect(dblist)
+    core.connect(remove)
     remove.remove_data(
         trial_id=trial_id, assay_or_analysis=assay_or_analysis, target_id=target_id
     )
@@ -135,7 +135,7 @@ def remove_clinical(trial_id: str, target_id: str):
         not including {trial_id}/clinical/
         special value * for all files for this trial
     """
-    core.connect(dblist)
+    core.connect(remove)
     remove.remove_clinical(trial_id=trial_id, target_id=target_id)
 
 
@@ -158,5 +158,6 @@ list_.add_command(list_assay)
 list_.add_command(list_clinical)
 list_.add_command(list_shipments)
 list_.add_command(list_supported)
+remove_.add_command(remove_assay)
 remove_.add_command(remove_clinical)
 remove_.add_command(remove_shipment)

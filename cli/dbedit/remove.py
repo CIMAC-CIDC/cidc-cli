@@ -658,9 +658,12 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
 
         if metadata_json is not None:
             # update the `trial_metadata`
-            trial.metadata_json = metadata_json
-            trial._updated = datetime.now()
-            session.add(trial)
+            session.query(TrialMetadata).filter(TrialMetadata.trial_id == trial_id).update(
+                {
+                    TrialMetadata.metadata_json: metadata_json,
+                    TrialMetadata._updated: datetime.now(),
+                }
+            )
 
             # remove the `downloadable_files`
             session.query(DownloadableFiles).filter(
