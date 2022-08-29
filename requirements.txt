@@ -1,4 +1,3 @@
-cidc-schemas==0.25.54
 click~=8.0.1
 cloud-sql-python-connector[pg8000]
 pandas==1.2.4

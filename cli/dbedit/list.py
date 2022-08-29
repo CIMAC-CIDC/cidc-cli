@@ -11,12 +11,44 @@ from .core import (
     TrialMetadata,
     UploadJobs,
 )
-from cidc_schemas import prism
+
+# copied from cidc_schemas.prism.constants
+# Windows doesn't handle current jsonschemas RefResolver configuration
+SUPPORTED_ANALYSES: List[str] = [
+    "atacseq_analysis",
+    "ctdna_analysis",
+    "cytof_analysis",
+    "rna_level1_analysis",
+    "tcr_analysis",
+    "wes_analysis",
+    "wes_tumor_only_analysis",
+    "microbiome_analysis",
+]
+SUPPORTED_ASSAYS: List[str] = [
+    "atacseq_fastq",
+    "wes_fastq",
+    "wes_bam",
+    "olink",
+    "cytof",
+    "ihc",
+    "elisa",
+    "rna_fastq",
+    "rna_bam",
+    "mif",
+    "tcr_adaptive",
+    "tcr_fastq",
+    "hande",
+    "nanostring",
+    "clinical_data",
+    "misc_data",
+    "ctdna",
+    "microbiome",
+]
 
 SUPPORTED_ASSAYS_AND_ANALYSES: Set[str] = {
     # everything once, without file type specifiers
-    a.split("_fastq")[0].split("_bam")[0]
-    for a in prism.SUPPORTED_ASSAYS + prism.SUPPORTED_ANALYSES
+    a.split("_fastq")[0].split("_bam")[0].split("_adaptive")[0]
+    for a in SUPPORTED_ASSAYS + SUPPORTED_ANALYSES
 } | {"wes_analysis_old", "wes_tumor_only_analysis_old"}
 
 

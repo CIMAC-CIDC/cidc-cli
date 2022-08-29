@@ -9,12 +9,11 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
-## Version `0.10.0` - xx Aug 2022
+## Version `0.10.0` - 30 Aug 2022
 
-- `added` admin suite for listing/removing data
-  - list/remove shipments/clinical
-  - list misc_data files
-  - list batches/samples for assays / analysis
+- `added` admin suite for listing/removing shipments, clinical data, assay, and analysis
+- `remove` stale admin command for grant all permissions
+- `remove` admin command for relational load from blobs
 
 ## Version `0.9.17` - 12 Jul 2022
 
