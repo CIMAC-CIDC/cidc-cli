@@ -658,7 +658,9 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
 
         if metadata_json is not None:
             # update the `trial_metadata`
-            session.query(TrialMetadata).filter(TrialMetadata.trial_id == trial_id).update(
+            session.query(TrialMetadata).filter(
+                TrialMetadata.trial_id == trial_id
+            ).update(
                 {
                     TrialMetadata.metadata_json: metadata_json,
                     TrialMetadata._updated: datetime.now(),
@@ -721,8 +723,12 @@ def remove_clinical(trial_id: str, target_id: str) -> None:
         ]
 
         # update the `trial_metadata`
-        trial._updated = datetime.now()
-        session.add(trial)
+        session.query(TrialMetadata).filter(TrialMetadata.trial_id == trial_id).update(
+            {
+                TrialMetadata.metadata_json: trial.metadata_json,
+                TrialMetadata._updated: datetime.now(),
+            }
+        )
 
         # remove the `downloadable_files`
         for t in targets:
@@ -816,8 +822,12 @@ def remove_shipment(trial_id: str, target_id: str) -> None:
         ]
 
         # update the `trial_metadata`
-        trial._updated = datetime.now()
-        session.add(trial)
+        session.query(TrialMetadata).filter(TrialMetadata.trial_id == trial_id).update(
+            {
+                TrialMetadata.metadata_json: trial.metadata_json,
+                TrialMetadata._updated: datetime.now(),
+            }
+        )
 
         # remove the `upload_jobs`
         for t in targets:
