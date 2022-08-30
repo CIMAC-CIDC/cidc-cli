@@ -1,7 +1,7 @@
 from typing import Tuple
 import click
 
-from . import __version__, core, remove, list as dblist
+from . import core, remove, list as dblist
 from . import config
 
 
@@ -105,7 +105,7 @@ def remove_():
 def remove_assay(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]):
     """
     Remove a given clinical data file from a given trial's metadata
-    as well as remove the file itself from the portal.
+    as well as remove the associated files themselves from the portal.
 
     TRIAL_ID is the id of the trial to affect
     ASSAY_OR_ANALYSIS is the assay or analysis to affect
