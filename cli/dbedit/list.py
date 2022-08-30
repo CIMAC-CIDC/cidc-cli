@@ -52,6 +52,11 @@ SUPPORTED_ASSAYS_AND_ANALYSES: Set[str] = {
 } | {"wes_analysis_old", "wes_tumor_only_analysis_old"}
 
 
+pd.set_option("display.max_columns", None)
+pd.set_option("display.max_colwidth", None)
+pd.set_option("display.max_rows", None)
+
+
 def _describe_olink(metadata_json: dict) -> pd.DataFrame:
     ret = pd.DataFrame(columns=["batch_id", "file", "cimac_id"])
     for batch in metadata_json.get("assays", {}).get("olink", {"batches": []})[
