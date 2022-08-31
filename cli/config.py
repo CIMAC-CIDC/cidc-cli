@@ -13,12 +13,12 @@ TOKEN_CACHE_PATH = os.path.join(CIDC_WORKING_DIR, "id_token")
 _ENV_KEY = "env"
 
 
-def set_env(value: str):
+def set_env(value: str) -> None:
     """Set the current CLI environment"""
     cache.store(_ENV_KEY, value)
 
 
-def get_env():
+def get_env() -> str:
     """Get the current CLI environment"""
     return cache.get(_ENV_KEY) or "prod"
 
@@ -38,7 +38,7 @@ _WARNING = "\n".join(
 _STRIKE = "*" * 64
 
 
-def check_env_warning(ignore_env):
+def check_env_warning(ignore_env) -> None:
     """Get the current CLI environment"""
     if get_env() != "prod":
         print(_STRIKE + "\n" + _WARNING + _STRIKE)

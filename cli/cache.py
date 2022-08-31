@@ -7,7 +7,7 @@ import os
 from typing import Optional
 
 
-def _cache_dir():
+def _cache_dir() -> str:
     """Hack to prevent circular imports issue with the constants module"""
     from .config import CIDC_WORKING_DIR
 
@@ -18,7 +18,7 @@ def _key_path(key: str) -> str:
     return os.path.join(_cache_dir(), key)
 
 
-def store(key: str, value: str):
+def store(key: str, value: str) -> None:
     """Persist a value across CLI commands."""
     cdir = _cache_dir()
     # Create the cache directory if it doesn't exist

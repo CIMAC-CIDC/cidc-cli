@@ -1,5 +1,8 @@
-click~=8.1.0
+click~=8.0.1
+cloud-sql-python-connector[pg8000]
+pandas==1.2.4
 python-dotenv==0.10.3
 python-jose==3.0.1
-requests==2.22.0
 pyperclip==1.8.0
+requests==2.22.0
+sqlalchemy~=1.4.0
