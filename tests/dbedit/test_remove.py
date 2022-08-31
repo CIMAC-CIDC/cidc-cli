@@ -790,6 +790,137 @@ class Test_remove_data:
             ]
         )
 
+    def test_cytof_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="cytof_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find cytof analysis batch bar for trial foo"
+        )
+        self.query.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # if no matching run_id, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="cytof_analysis",
+            target_id=("cytof_batch", "bar"),
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find cytof analysis for sample bar in batch cytof_batch for trial foo"
+        )
+        self.query.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single run
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["assays"]["cytof"][0]["records"][0].pop("output_files")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="cytof_analysis",
+            target_id=(
+                "cytof_batch",
+                "CTTTPP101.00",
+            ),
+        )
+        self.mock_print.assert_not_called()
+        self.filter_query.update.assert_called_once()
+        args, _ = self.filter_query.update.call_args
+        assert (
+            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
+        )
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP101.00/assignment.csv",
+                f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP101.00/source.fcs",
+            ]
+        )
+
+        # remove a single batch
+        target_metadata["assays"]["cytof"][1].pop("astrolabe_analysis")
+        target_metadata["assays"]["cytof"][1]["records"][0].pop("output_files")
+        self.mock_print.reset_mock()
+        self.DownloadableFiles.object_url.reset_mock()
+        self.filter_query.update.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="cytof_analysis",
+            target_id=("cytof_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.filter_query.update.assert_called_once()
+        args, _ = self.filter_query.update.call_args
+        assert (
+            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
+        )
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/reports.zip",
+                f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/CTTTPP102.00/assignment.csv",
+                f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/CTTTPP102.00/source.fcs",
+            ]
+        )
+
+    def test_microbiome_analysis(self):
+        # if no matching batch, bails
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo", assay_or_analysis="microbiome_analysis", target_id=("bar",)
+        )
+        self.mock_print.assert_called_once_with(
+            "Cannot find microbiome analysis batch bar for trial foo"
+        )
+        self.query.assert_not_called()
+        self.session.delete.assert_not_called()
+
+        # remove a single batch
+        self.mock_print.reset_mock()
+        target_metadata = deepcopy(TEST_METADATA_JSON)
+        target_metadata["analysis"]["microbiome_analysis"]["batches"].pop(0)
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="microbiome_analysis",
+            target_id=("microbiome_batch",),
+        )
+        self.mock_print.assert_not_called()
+        self.filter_query.update.assert_called_once()
+        args, _ = self.filter_query.update.call_args
+        assert (
+            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
+        )
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch/summary.pdf",
+            ],
+        )
+
+        # remove last sample removes whole assay
+        self.filter_query.update.reset_mock()
+        self.DownloadableFiles.object_url.in_.reset_mock()
+        self.mock_print.reset_mock()
+        target_metadata["analysis"].pop("microbiome_analysis")
+        self.mock_print.reset_mock()
+        dbedit_remove.remove_data(
+            trial_id="foo",
+            assay_or_analysis="microbiome_analysis",
+            target_id=("microbiome_batch_2",),
+        )
+        self.mock_print.assert_not_called()
+        self.filter_query.update.assert_called_once()
+        args, _ = self.filter_query.update.call_args
+        assert (
+            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
+        )
+        self.DownloadableFiles.object_url.in_.assert_called_once_with(
+            [
+                f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch_2/summary.pdf",
+            ],
+        )
+
     def test_rna_level1_analysis(self):
         # if no matching batch, bails
         self.mock_print.reset_mock()

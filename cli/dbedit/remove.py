@@ -260,6 +260,67 @@ def _remove_rna_analysis_from_blob(
     return metadata_json, object_urls_to_delete
 
 
+def _remove_cytof_analysis_from_blob(
+    metadata_json: dict,
+    trial_id: str,
+    batch_id: str,
+    cimac_id: str = None,
+) -> Tuple[Optional[dict], List[str]]:
+    batch_ids: List[str] = [
+        batch["batch_id"]
+        for batch in metadata_json.get("assays", {}).get("cytof", [])
+        if "astrolabe_analysis" in batch
+    ]
+    if batch_id not in batch_ids:
+        print(f"Cannot find cytof analysis batch {batch_id} for trial {trial_id}")
+        return None, []
+    else:
+        batch_idx: int = batch_ids.index(batch_id)
+
+    object_urls_to_delete: List[str] = []
+    if cimac_id:
+        cimac_ids: List[str] = [
+            record["cimac_id"]
+            for record in metadata_json["assays"]["cytof"][batch_idx]["records"]
+            if "output_files" in record
+        ]
+        if cimac_id not in cimac_ids:
+            print(
+                f"Cannot find cytof analysis for sample {cimac_id} in batch {batch_id} for trial {trial_id}"
+            )
+            return None, []
+        else:
+            record_idx: int = cimac_ids.index(cimac_id)
+            output_files: dict = metadata_json["assays"]["cytof"][batch_idx]["records"][
+                record_idx
+            ].pop("output_files")
+            object_urls_to_delete.extend(_get_all_object_urls(output_files))
+
+    else:
+        batch: dict = {
+            key: metadata_json["assays"]["cytof"][batch_idx].pop(key, {})
+            for key in [
+                "astrolabe_reports",
+                "astrolabe_analysis",
+                "control_files_analysis",
+            ]
+        }
+        object_urls_to_delete.extend(_get_all_object_urls(batch))
+
+        # remove analysis from all samples in this batch as well
+        for record_idx, record in enumerate(
+            metadata_json["assays"]["cytof"][batch_idx]["records"]
+        ):
+            if "output_files" in record:
+                output_files: dict = metadata_json["assays"]["cytof"][batch_idx][
+                    "records"
+                ][record_idx].pop("output_files")
+                object_urls_to_delete.extend(_get_all_object_urls(output_files))
+
+    # there cannot be any hanging structure to remove
+    return metadata_json, object_urls_to_delete
+
+
 def _remove_wes_analysis_from_blob(
     metadata_json: dict,
     trial_id: str,
@@ -354,6 +415,39 @@ def _remove_wes_tumor_only_analysis_from_blob(
             target: dict = metadata_json["analysis"].pop(subkey)
         if target:
             object_urls_to_delete.extend(_get_all_object_urls(target))
+
+    return metadata_json, object_urls_to_delete
+
+
+def _remove_microbiome_analysis_from_blob(
+    metadata_json: dict,
+    trial_id: str,
+    batch_id: str,
+) -> Tuple[Optional[dict], List[str]]:
+    batch_ids: List[str] = [
+        batch["batch_id"]
+        for batch in metadata_json.get("analysis", {}).get(
+            "microbiome_analysis", {"batches": []}
+        )["batches"]
+    ]
+    if batch_id not in batch_ids:
+        print(f"Cannot find microbiome analysis batch {batch_id} for trial {trial_id}")
+        return None, []
+
+    object_urls_to_delete: List[str] = []
+    batch_idx: int = batch_ids.index(batch_id)
+    batch: dict = metadata_json["analysis"]["microbiome_analysis"]["batches"].pop(
+        batch_idx
+    )
+    object_urls_to_delete.extend(_get_all_object_urls(batch))
+
+    # also remove hanging structures
+    target = dict()
+    if not metadata_json["analysis"]["microbiome_analysis"]["batches"]:
+        # if no batches, remove the whole assay/analysis
+        target["analysis"] = metadata_json["analysis"].pop("microbiome_analysis")
+    if target:
+        object_urls_to_delete.extend(_get_all_object_urls(target))
 
     return metadata_json, object_urls_to_delete
 
@@ -595,6 +689,19 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
                 print(
                     "Error: if ASSAY_OR_ANALYSIS == 'rna_level1_analysis', only `cimac_id` is accepted"
                 )
+
+        elif assay_or_analysis == "cytof_analysis":
+            if len(target_id) <= 2:
+                metadata_json, object_urls_to_delete = _remove_cytof_analysis_from_blob(
+                    metadata_json=trial.metadata_json,
+                    trial_id=trial_id,
+                    batch_id=target_id[0],
+                    cimac_id=None if len(target_id) == 1 else target_id[1],
+                )
+            else:
+                print(
+                    "Error: if ASSAY_OR_ANALYSIS == 'cytof_analysis', only `batch_id [cimac_id]` is accepted"
+                )
         elif assay_or_analysis in ["wes_analysis", "wes_analysis_old"]:
             if len(target_id) == 1:
                 metadata_json, object_urls_to_delete = _remove_wes_analysis_from_blob(
@@ -625,9 +732,25 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
                 print(
                     f"Error: if ASSAY_OR_ANALYSIS == '{assay_or_analysis}', only `cimac_id` is accepted"
                 )
+
+        elif assay_or_analysis == "microbiome_analysis":
+
+            if len(target_id) == 1:
+                (
+                    metadata_json,
+                    object_urls_to_delete,
+                ) = _remove_microbiome_analysis_from_blob(
+                    metadata_json=trial.metadata_json,
+                    trial_id=trial_id,
+                    batch_id=target_id[0],
+                )
+            else:
+                print(
+                    f"Error: if ASSAY_OR_ANALYSIS == microbiome_analysis, only `btach_id` is accepted"
+                )
+
         elif assay_or_analysis in [
             "ctdna_analysis",
-            "microbiome_analysis",
             "tcr_analysis",
         ]:
             if len(target_id) and len(target_id) <= 2:

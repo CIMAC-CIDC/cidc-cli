@@ -139,6 +139,27 @@ def _describe_rna_analysis(metadata_json: dict) -> pd.DataFrame:
     )
 
 
+def _describe_cytof_analysis(
+    metadata_json: dict,
+) -> pd.DataFrame:
+    ret = pd.DataFrame(columns=["batch_id", "cimac_id"])
+    for batch in metadata_json.get("assays", {}).get("cytof", []):
+        if "astrolabe_analysis" in batch:
+            ret = ret.append(
+                pd.DataFrame(
+                    [
+                        {
+                            "batch_id": batch["batch_id"],
+                            "cimac_id": record["cimac_id"],
+                        }
+                        for record in batch["records"]
+                        if "output_files" in record
+                    ]
+                )
+            )
+    return ret.reset_index(drop=True)
+
+
 def _describe_wes_analysis(metadata_json: dict, just_old: bool = False) -> pd.DataFrame:
     ret = pd.DataFrame(columns=["run_id", "tumor_cimac_id", "normal_cimac_id"])
 
@@ -183,6 +204,19 @@ def _describe_wes_tumor_only_analysis(
             )
         )
     return ret.reset_index(drop=True)
+
+
+def _describe_microbiome_analysis(metadata_json: dict) -> pd.DataFrame:
+    return pd.DataFrame(
+        [
+            {
+                "batch_id": batch["batch_id"],
+            }
+            for batch in metadata_json.get("analysis", {}).get(
+                "microbiome_analysis", {"batches": []}
+            )["batches"]
+        ]
+    )
 
 
 def _describe_batched(metadata_json: dict, assay_or_analysis: str) -> pd.DataFrame:
@@ -266,6 +300,11 @@ def list_data_cimac_ids(trial_id: str, assay_or_analysis: str) -> None:
                 metadata_json=trial.metadata_json
             )
 
+        elif assay_or_analysis == "cytof_analysis":
+            cimac_ids: pd.DataFrame = _describe_cytof_analysis(
+                metadata_json=trial.metadata_json
+            )
+
         elif assay_or_analysis in ["wes_analysis", "wes_analysis_old"]:
             cimac_ids: pd.DataFrame = _describe_wes_analysis(
                 metadata_json=trial.metadata_json,
@@ -281,9 +320,13 @@ def list_data_cimac_ids(trial_id: str, assay_or_analysis: str) -> None:
                 just_old="old" in assay_or_analysis,
             )
 
+        elif assay_or_analysis == "microbiome_analysis":
+            cimac_ids: pd.DataFrame = _describe_microbiome_analysis(
+                metadata_json=trial.metadata_json,
+            )
+
         elif assay_or_analysis in [
             "ctdna_analysis",
-            "microbiome_analysis",
             "tcr_analysis",
         ]:
             cimac_ids: pd.DataFrame = _describe_batched(

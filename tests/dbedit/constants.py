@@ -129,6 +129,22 @@ TEST_METADATA_JSON: dict = {
                 },
             ],
         },
+        "microbiome_analysis": {
+            "batches": [
+                {
+                    "batch_id": "microbiome_batch",
+                    "summary_file": {
+                        "object_url": f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch/summary.pdf",
+                    },
+                },
+                {
+                    "batch_id": "microbiome_batch_2",
+                    "summary_file": {
+                        "object_url": f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch_2/summary.pdf",
+                    },
+                },
+            ],
+        },
         "rna_analysis": {
             "level_1": [
                 {
@@ -239,6 +255,78 @@ TEST_METADATA_JSON: dict = {
         },
     },
     "assays": {
+        "cytof": [
+            {
+                "assay_run_id": "cytof_run",
+                "batch_id": "cytof_batch",
+                "astrolabe_analysis": {
+                    "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/reports.zip",
+                },
+                "source_fcs": [
+                    {
+                        "object_url": f"{TEST_TRIAL_ID}/cytof/cytof_batch/source_0.fcs",
+                    },
+                ],
+                "records": [
+                    {
+                        "cimac_id": "CTTTPP101.00",
+                        "input_files": {
+                            "processed_fcs": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof/CTTTPP101.00/processed.fcs",
+                            },
+                        },
+                        "output_files": {
+                            "assignment": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP101.00/assignment.csv",
+                            },
+                            "fcs_file": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP101.00/source.fcs",
+                            },
+                        },
+                    },
+                    {
+                        "cimac_id": "CTTTPP201.00",
+                        "output_files": {
+                            "assignment": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP201.00/assignment.csv",
+                            },
+                            "fcs_file": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch/CTTTPP201.00/source.fcs",
+                            },
+                        },
+                    },
+                ],
+            },
+            {
+                "assay_run_id": "cytof_run",
+                "batch_id": "cytof_batch_2",
+                "astrolabe_analysis": {
+                    "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/reports.zip",
+                },
+                "records": [
+                    {
+                        "cimac_id": "CTTTPP102.00",
+                        "output_files": {
+                            "assignment": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/CTTTPP102.00/assignment.csv",
+                            },
+                            "fcs_file": {
+                                "object_url": f"{TEST_TRIAL_ID}/cytof_analysis/cytof_run/cytof_batch_2/CTTTPP102.00/source.fcs",
+                            },
+                        },
+                    },
+                ],
+            },
+            {
+                "assay_run_id": "cytof_run_2",
+                "batch_id": "cytof_batch_3",
+                "records": [
+                    {
+                        "cimac_id": "CTTTPP301.00",
+                    },
+                ],
+            },
+        ],
         "misc_data": [
             {
                 "files": [
