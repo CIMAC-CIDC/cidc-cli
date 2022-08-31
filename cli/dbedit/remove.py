@@ -791,9 +791,16 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
             )
 
             # remove the `downloadable_files`
-            session.query(DownloadableFiles).filter(
-                DownloadableFiles.object_url.in_(object_urls_to_delete)
-            ).delete()
+            num_deleted: int = (
+                session.query(DownloadableFiles)
+                .filter(DownloadableFiles.object_url.in_(object_urls_to_delete))
+                .delete()
+            )
+
+            print(
+                f"Updated trial {trial_id}, removing {assay_or_analysis} values {target_id}",
+                f"along with {num_deleted} files",
+            )
 
 
 def remove_clinical(trial_id: str, target_id: str) -> None:
@@ -856,6 +863,8 @@ def remove_clinical(trial_id: str, target_id: str) -> None:
         # remove the `downloadable_files`
         for t in targets:
             session.delete(t)
+
+        print(f"Updated trial {trial_id}, removing {len(targets)} clinical data files")
 
 
 def _remove_samples_from_blob(
@@ -955,3 +964,11 @@ def remove_shipment(trial_id: str, target_id: str) -> None:
         # remove the `upload_jobs`
         for t in targets:
             session.delete(t)
+
+        num_samples: int = sum(len(samples) for samples in samples_to_remove.values())
+        num_partic: int = len(samples_to_remove)
+
+        print(
+            f"Updated trial {trial_id}, removing shipment {target_id}",
+            f"along with {num_samples} samples across {num_partic} participants",
+        )

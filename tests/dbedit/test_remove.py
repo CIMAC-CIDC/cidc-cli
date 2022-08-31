@@ -519,15 +519,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["assays"]["olink"]["batches"][1]["records"].pop(0)
         self.mock_print.reset_mock()
+        target_id = (
+            "olink_batch_2",
+            f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="olink",
-            target_id=(
-                "olink_batch_2",
-                f"{TEST_TRIAL_ID}/olink/batch_olink_batch_2/chip_0/assay_npx.xlsx",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing olink values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -544,15 +548,19 @@ class Test_remove_data:
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["assays"]["olink"]["batches"][0].pop("combined")
         self.mock_print.reset_mock()
+        target_id = (
+            "olink_batch",
+            "combined",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="olink",
-            target_id=(
-                "olink_batch",
-                "combined",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing olink values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -574,7 +582,10 @@ class Test_remove_data:
             assay_or_analysis="olink",
             target_id=("olink_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing olink values {('olink_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -596,7 +607,11 @@ class Test_remove_data:
             assay_or_analysis="olink",
             target_id=("study",),
         )
-        self.mock_print.assert_not_called()
+
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing olink values {('study',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -614,15 +629,19 @@ class Test_remove_data:
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["assays"].pop("olink")
         self.mock_print.reset_mock()
+        target_id = (
+            "olink_batch",
+            f"{TEST_TRIAL_ID}/olink/batch_olink_batch/chip_0/assay_npx.xlsx",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="olink",
-            target_id=(
-                "olink_batch",
-                f"{TEST_TRIAL_ID}/olink/batch_olink_batch/chip_0/assay_npx.xlsx",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing olink values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -658,7 +677,10 @@ class Test_remove_data:
             assay_or_analysis="elisa",
             target_id=("elisa_batch",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing elisa values {('elisa_batch',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -680,7 +702,10 @@ class Test_remove_data:
             assay_or_analysis="elisa",
             target_id=("elisa_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing elisa values {('elisa_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -722,15 +747,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["assays"]["nanostring"][0]["runs"].pop(0)
         self.mock_print.reset_mock()
+        target_id = (
+            "nanostring_batch",
+            "nanostring_batch_run",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="nanostring",
-            target_id=(
-                "nanostring_batch",
-                "nanostring_batch_run",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing nanostring values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -753,7 +782,10 @@ class Test_remove_data:
             assay_or_analysis="nanostring",
             target_id=("nanostring_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing nanostring values {('nanostring_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -771,12 +803,16 @@ class Test_remove_data:
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["assays"].pop("nanostring")
         self.mock_print.reset_mock()
+        target_id = ("nanostring_batch", "nanostring_batch_run_2")
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="nanostring",
-            target_id=("nanostring_batch", "nanostring_batch_run_2"),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing nanostring values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -819,15 +855,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["assays"]["cytof"][0]["records"][0].pop("output_files")
         self.mock_print.reset_mock()
+        target_id = (
+            "cytof_batch",
+            "CTTTPP101.00",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="cytof_analysis",
-            target_id=(
-                "cytof_batch",
-                "CTTTPP101.00",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing cytof_analysis values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -851,7 +891,10 @@ class Test_remove_data:
             assay_or_analysis="cytof_analysis",
             target_id=("cytof_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing cytof_analysis values {('cytof_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -886,7 +929,10 @@ class Test_remove_data:
             assay_or_analysis="microbiome_analysis",
             target_id=("microbiome_batch",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing microbiome_analysis values {('microbiome_batch',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -898,7 +944,7 @@ class Test_remove_data:
             ],
         )
 
-        # remove last sample removes whole assay
+        # remove last batch removes whole assay
         self.filter_query.update.reset_mock()
         self.DownloadableFiles.object_url.in_.reset_mock()
         self.mock_print.reset_mock()
@@ -909,7 +955,10 @@ class Test_remove_data:
             assay_or_analysis="microbiome_analysis",
             target_id=("microbiome_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing microbiome_analysis values {('microbiome_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -942,7 +991,10 @@ class Test_remove_data:
             assay_or_analysis="rna_level1_analysis",
             target_id=("CTTTPP101.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing rna_level1_analysis values {('CTTTPP101.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -966,7 +1018,10 @@ class Test_remove_data:
             assay_or_analysis="rna_level1_analysis",
             target_id=("CTTTPP102.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing rna_level1_analysis values {('CTTTPP102.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -989,7 +1044,10 @@ class Test_remove_data:
             assay_or_analysis="rna_level1_analysis",
             target_id=("CTTTPP201.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing rna_level1_analysis values {('CTTTPP201.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1023,7 +1081,10 @@ class Test_remove_data:
             assay_or_analysis="wes_analysis",
             target_id=("CTTTPP101.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_analysis values {('CTTTPP101.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1048,7 +1109,10 @@ class Test_remove_data:
             assay_or_analysis="wes_analysis",
             target_id=("CTTTPP102.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_analysis values {('CTTTPP102.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1073,7 +1137,10 @@ class Test_remove_data:
             assay_or_analysis="wes_analysis_old",
             target_id=("CTTTPP201.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_analysis_old values {('CTTTPP201.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1109,7 +1176,10 @@ class Test_remove_data:
             assay_or_analysis="wes_tumor_only_analysis",
             target_id=("CTTTPP101.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_tumor_only_analysis values {('CTTTPP101.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1134,7 +1204,10 @@ class Test_remove_data:
             assay_or_analysis="wes_tumor_only_analysis",
             target_id=("CTTTPP102.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_tumor_only_analysis values {('CTTTPP102.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1159,7 +1232,10 @@ class Test_remove_data:
             assay_or_analysis="wes_tumor_only_analysis_old",
             target_id=("CTTTPP201.00",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes_tumor_only_analysis_old values {('CTTTPP201.00',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1200,15 +1276,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["analysis"]["ctdna_analysis"]["batches"][0]["records"].pop(0)
         self.mock_print.reset_mock()
+        target_id = (
+            "ctdna_analysis_batch",
+            "CTTTPP101.00",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="ctdna_analysis",
-            target_id=(
-                "ctdna_analysis_batch",
-                "CTTTPP101.00",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing ctdna_analysis values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1230,7 +1310,10 @@ class Test_remove_data:
             assay_or_analysis="ctdna_analysis",
             target_id=("ctdna_analysis_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing ctdna_analysis values {('ctdna_analysis_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1247,12 +1330,16 @@ class Test_remove_data:
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["analysis"].pop("ctdna_analysis")
         self.mock_print.reset_mock()
+        target_id = ("ctdna_analysis_batch", "CTTTPP201.00")
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="ctdna_analysis",
-            target_id=("ctdna_analysis_batch", "CTTTPP201.00"),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing ctdna_analysis values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1294,15 +1381,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["analysis"]["atacseq_analysis"][0]["records"].pop(0)
         self.mock_print.reset_mock()
+        target_id = (
+            "atacseq_analysis_batch",
+            "CTTTPP101.00",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="atacseq_analysis",
-            target_id=(
-                "atacseq_analysis_batch",
-                "CTTTPP101.00",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing atacseq_analysis values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1324,7 +1415,10 @@ class Test_remove_data:
             assay_or_analysis="atacseq_analysis",
             target_id=("atacseq_analysis_batch_2",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing atacseq_analysis values {('atacseq_analysis_batch_2',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1336,17 +1430,22 @@ class Test_remove_data:
                 f"{TEST_TRIAL_ID}/atacseq/CTTTPP102.00/analysis/aligned_sorted.bam",
             ]
         )
+
         # remove last run removes whole batch and assay
         self.filter_query.update.reset_mock()
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["analysis"].pop("atacseq_analysis")
         self.mock_print.reset_mock()
+        target_id = ("atacseq_analysis_batch", "CTTTPP201.00")
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="atacseq_analysis",
-            target_id=("atacseq_analysis_batch", "CTTTPP201.00"),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing atacseq_analysis values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1393,15 +1492,19 @@ class Test_remove_data:
         target_metadata = deepcopy(TEST_METADATA_JSON)
         target_metadata["assays"]["wes"][0]["records"].pop(0)
         self.mock_print.reset_mock()
+        target_id = (
+            "0",
+            "CTTTPP101.00",
+        )
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="wes",
-            target_id=(
-                "0",
-                "CTTTPP101.00",
-            ),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1424,7 +1527,10 @@ class Test_remove_data:
             assay_or_analysis="wes",
             target_id=("1",),
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes values {('1',)}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (
@@ -1440,12 +1546,16 @@ class Test_remove_data:
         self.DownloadableFiles.object_url.in_.reset_mock()
         target_metadata["assays"].pop("wes")
         self.mock_print.reset_mock()
+        target_id = ("0", "CTTTPP201.00")
         dbedit_remove.remove_data(
             trial_id="foo",
             assay_or_analysis="wes",
-            target_id=("0", "CTTTPP201.00"),
+            target_id=target_id,
         )
-        self.mock_print.assert_not_called()
+        self.mock_print.assert_called_once_with(
+            f"Updated trial foo, removing wes values {target_id}",
+            f"along with {self.filter_query.delete()} files",
+        )
         self.filter_query.update.assert_called_once()
         args, _ = self.filter_query.update.call_args
         assert (

@@ -85,6 +85,13 @@ gcloud auth application-default login
 
 #### Configuration
 
+Configuration of the environment ie staging versus production is done as above using:
+
+```bash
+cidc config get-env
+cidc config set-env ENV
+```
+
 Configuration of the database username is done via a pair of functions:
 
 ```bash
