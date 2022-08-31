@@ -156,6 +156,7 @@ def remove_shipment(trial_id: str, target_id: str):
 
 list_.add_command(list_assay)
 list_.add_command(list_clinical)
+list_.add_command(list_misc_data)
 list_.add_command(list_shipments)
 list_.add_command(list_supported)
 remove_.add_command(remove_assay)
