@@ -1,6 +1,5 @@
 from copy import deepcopy
 from datetime import datetime
-from fileinput import filename
 from deepdiff import DeepDiff
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
@@ -8,8 +7,8 @@ from typing import Dict, List
 from unittest.mock import MagicMock, call
 
 from cli.dbedit import remove as dbedit_remove
-from cli.dbedit.core import Session, TrialMetadata
 from .constants import (
+    TEST_CLINICAL_URL_CSV,
     TEST_CLINICAL_URL_XLSX,
     TEST_MANIFEST_ID,
     TEST_METADATA_JSON,
@@ -45,8 +44,10 @@ CLIPPED_METADATA_TARGET_CLINICAL: dict = {
     "clinical_data": {
         "records": [
             {
-                "object_url": TEST_CLINICAL_URL_XLSX.replace(".", "2."),
-                "number_of_participants": 3,
+                "clinical_file": {
+                    "object_url": f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_CSV}",
+                    "number_of_participants": 3,
+                },
             },
         ],
     },
@@ -74,11 +75,7 @@ def test_remove_clinical(monkeypatch):
     # mock downlodable files
     mock_files = [MagicMock(), MagicMock()]
     mock_files[0].object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX}"
-    mock_files[
-        1
-    ].object_url = (
-        f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_XLSX.replace('.', '2.')}"
-    )
+    mock_files[1].object_url = f"{TEST_TRIAL_ID}/clinical/{TEST_CLINICAL_URL_CSV}"
 
     # mock query for individual file
     query = MagicMock()
@@ -103,9 +100,9 @@ def test_remove_clinical(monkeypatch):
     # mock getting the trial
     get_trial_if_exists = MagicMock()
     mock_trial = MagicMock()
-    mock_trial.metadata_json = TEST_METADATA_JSON
+    mock_trial.metadata_json = deepcopy(TEST_METADATA_JSON)
     mock_trial._updated = datetime.fromisoformat("2020-01-01T12:34:45")
-    get_trial_if_exists.first.return_value = mock_trial
+    get_trial_if_exists.return_value = mock_trial
     monkeypatch.setattr(dbedit_remove, "get_trial_if_exists", get_trial_if_exists)
 
     # mock table class
@@ -157,7 +154,10 @@ def test_remove_clinical(monkeypatch):
     assert args[0][TrialMetadata._updated] != datetime.fromisoformat(
         "2020-01-01T12:34:45"
     )
-    args[0][TrialMetadata.metadata_json] == CLIPPED_METADATA_TARGET_CLINICAL
+    assert (
+        DeepDiff(args[0][TrialMetadata.metadata_json], CLIPPED_METADATA_TARGET_CLINICAL)
+        == {}
+    )
 
     session.delete.assert_called_once_with(mock_files[0])
 
@@ -181,12 +181,15 @@ def test_remove_clinical(monkeypatch):
     filter_query.update.assert_called_once()
     args, _ = filter_query.update.call_args
     assert len(args) == 1
-
     assert isinstance(args[0][TrialMetadata._updated], datetime)
+
     assert args[0][TrialMetadata._updated] != datetime.fromisoformat(
         "2020-01-01T12:34:45"
     )
-    args[0][TrialMetadata.metadata_json] == CLIPPED_METADATA_TARGET_CLINICAL
+    assert (
+        DeepDiff(args[0][TrialMetadata.metadata_json], CLIPPED_METADATA_ALL_CLINICAL)
+        == {}
+    )
 
     assert session.delete.call_count == 2
     session.delete.assert_has_calls(
@@ -422,6 +425,9 @@ def test_remove_shipment(monkeypatch):
 
 
 class Test_remove_data:
+    def teardown(self):
+        self.monkeypatch.setattr("builtins.print", self.real_print)
+
     def setup(self):
         self.Session = MagicMock()
         self.begin = MagicMock()
