@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.10.1` - 6 Sep 2022
+
+- `fixed` bug in removing clinical data
+
 ## Version `0.10.0` - 30 Aug 2022
 
 - `added` admin suite for listing/removing shipments, clinical data, assay, and analysis

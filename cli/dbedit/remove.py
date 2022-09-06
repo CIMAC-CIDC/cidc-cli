@@ -1,5 +1,4 @@
 from datetime import datetime
-from re import M
 from typing import Dict, List, Optional, Tuple
 
 from .core import (
@@ -846,11 +845,15 @@ def remove_clinical(trial_id: str, target_id: str) -> None:
             exit()
 
         # remove the file(s)
-        trial.metadata_json["clinical_data"] = [
+        trial.metadata_json["clinical_data"]["records"] = [
             r
             for r in trial.metadata_json.get("clinical_data", {}).get("records", [])
             if r["clinical_file"]["object_url"] not in target_urls
         ]
+
+        # remove any hanging structure
+        if not len(trial.metadata_json["clinical_data"]["records"]):
+            trial.metadata_json.pop("clinical_data")
 
         # update the `trial_metadata`
         session.query(TrialMetadata).filter(TrialMetadata.trial_id == trial_id).update(
