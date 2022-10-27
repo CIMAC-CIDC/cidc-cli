@@ -914,68 +914,6 @@ class Test_remove_data:
             ]
         )
 
-    def test_microbiome_analysis(self):
-        # if no matching batch, bails
-        self.mock_print.reset_mock()
-        dbedit_remove.remove_data(
-            trial_id="foo", assay_or_analysis="microbiome_analysis", target_id=("bar",)
-        )
-        self.mock_print.assert_called_once_with(
-            "Cannot find microbiome analysis batch bar for trial foo"
-        )
-        self.query.assert_not_called()
-        self.session.delete.assert_not_called()
-
-        # remove a single batch
-        self.mock_print.reset_mock()
-        target_metadata = deepcopy(TEST_METADATA_JSON)
-        target_metadata["analysis"]["microbiome_analysis"]["batches"].pop(0)
-        dbedit_remove.remove_data(
-            trial_id="foo",
-            assay_or_analysis="microbiome_analysis",
-            target_id=("microbiome_batch",),
-        )
-        self.mock_print.assert_called_once_with(
-            f"Updated trial foo, removing microbiome_analysis values {('microbiome_batch',)}",
-            f"along with {self.filter_query.delete()} files",
-        )
-        self.filter_query.update.assert_called_once()
-        args, _ = self.filter_query.update.call_args
-        assert (
-            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
-        )
-        self.DownloadableFiles.object_url.in_.assert_called_once_with(
-            [
-                f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch/summary.pdf",
-            ],
-        )
-
-        # remove last batch removes whole assay
-        self.filter_query.update.reset_mock()
-        self.DownloadableFiles.object_url.in_.reset_mock()
-        self.mock_print.reset_mock()
-        target_metadata["analysis"].pop("microbiome_analysis")
-        self.mock_print.reset_mock()
-        dbedit_remove.remove_data(
-            trial_id="foo",
-            assay_or_analysis="microbiome_analysis",
-            target_id=("microbiome_batch_2",),
-        )
-        self.mock_print.assert_called_once_with(
-            f"Updated trial foo, removing microbiome_analysis values {('microbiome_batch_2',)}",
-            f"along with {self.filter_query.delete()} files",
-        )
-        self.filter_query.update.assert_called_once()
-        args, _ = self.filter_query.update.call_args
-        assert (
-            DeepDiff(args[0][self.TrialMetadata.metadata_json], target_metadata) == {}
-        )
-        self.DownloadableFiles.object_url.in_.assert_called_once_with(
-            [
-                f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch_2/summary.pdf",
-            ],
-        )
-
     def test_rna_level1_analysis(self):
         # if no matching batch, bails
         self.mock_print.reset_mock()
@@ -1257,10 +1195,10 @@ class Test_remove_data:
         # if no matching batch, bails
         self.mock_print.reset_mock()
         dbedit_remove.remove_data(
-            trial_id="foo", assay_or_analysis="ctdna_analysis", target_id=("bar",)
+            trial_id="foo", assay_or_analysis="tcr_analysis", target_id=("bar",)
         )
         self.mock_print.assert_called_once_with(
-            "Cannot find ctdna_analysis batch bar for trial foo"
+            "Cannot find tcr_analysis batch bar for trial foo"
         )
         self.query.assert_not_called()
         self.session.delete.assert_not_called()
@@ -1269,30 +1207,30 @@ class Test_remove_data:
         self.mock_print.reset_mock()
         dbedit_remove.remove_data(
             trial_id="foo",
-            assay_or_analysis="ctdna_analysis",
-            target_id=("ctdna_analysis_batch", "bar"),
+            assay_or_analysis="tcr_analysis",
+            target_id=("tcr_analysis_batch", "bar"),
         )
         self.mock_print.assert_called_once_with(
-            "Cannot find ctdna_analysis for sample bar in batch ctdna_analysis_batch for trial foo"
+            "Cannot find tcr_analysis for sample bar in batch tcr_analysis_batch for trial foo"
         )
         self.query.assert_not_called()
         self.session.delete.assert_not_called()
 
         # remove a single batch
         target_metadata = deepcopy(TEST_METADATA_JSON)
-        target_metadata["analysis"]["ctdna_analysis"]["batches"][0]["records"].pop(0)
+        target_metadata["analysis"]["tcr_analysis"]["batches"][0]["records"].pop(0)
         self.mock_print.reset_mock()
         target_id = (
-            "ctdna_analysis_batch",
+            "tcr_analysis_batch",
             "CTTTPP101.00",
         )
         dbedit_remove.remove_data(
             trial_id="foo",
-            assay_or_analysis="ctdna_analysis",
+            assay_or_analysis="tcr_analysis",
             target_id=target_id,
         )
         self.mock_print.assert_called_once_with(
-            f"Updated trial foo, removing ctdna_analysis values {target_id}",
+            f"Updated trial foo, removing tcr_analysis values {target_id}",
             f"along with {self.filter_query.delete()} files",
         )
         self.filter_query.update.assert_called_once()
@@ -1302,22 +1240,22 @@ class Test_remove_data:
         )
         self.DownloadableFiles.object_url.in_.assert_called_once_with(
             [
-                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP101.00/genome-wide_plots.pdf",
+                f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/CTTTPP101.00/tra_clone.csv",
             ]
         )
 
         # remove a single batch
-        target_metadata["analysis"]["ctdna_analysis"]["batches"].pop(1)
+        target_metadata["analysis"]["tcr_analysis"]["batches"].pop(1)
         self.mock_print.reset_mock()
         self.DownloadableFiles.object_url.reset_mock()
         self.filter_query.update.reset_mock()
         dbedit_remove.remove_data(
             trial_id="foo",
-            assay_or_analysis="ctdna_analysis",
-            target_id=("ctdna_analysis_batch_2",),
+            assay_or_analysis="tcr_analysis",
+            target_id=("tcr_analysis_batch_2",),
         )
         self.mock_print.assert_called_once_with(
-            f"Updated trial foo, removing ctdna_analysis values {('ctdna_analysis_batch_2',)}",
+            f"Updated trial foo, removing tcr_analysis values {('tcr_analysis_batch_2',)}",
             f"along with {self.filter_query.delete()} files",
         )
         self.filter_query.update.assert_called_once()
@@ -1327,23 +1265,23 @@ class Test_remove_data:
         )
         self.DownloadableFiles.object_url.in_.assert_called_once_with(
             [
-                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/summary_plots.pdf",
-                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/CTTTPP102.00/genome-wide_plots.pdf",
+                f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch_2/report_trial.tar.gz",
+                f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch_2/CTTTPP102.00/tra_clone.csv",
             ]
         )
         # remove last run removes whole batch and assay
         self.filter_query.update.reset_mock()
         self.DownloadableFiles.object_url.in_.reset_mock()
-        target_metadata["analysis"].pop("ctdna_analysis")
+        target_metadata["analysis"].pop("tcr_analysis")
         self.mock_print.reset_mock()
-        target_id = ("ctdna_analysis_batch", "CTTTPP201.00")
+        target_id = ("tcr_analysis_batch", "CTTTPP201.00")
         dbedit_remove.remove_data(
             trial_id="foo",
-            assay_or_analysis="ctdna_analysis",
+            assay_or_analysis="tcr_analysis",
             target_id=target_id,
         )
         self.mock_print.assert_called_once_with(
-            f"Updated trial foo, removing ctdna_analysis values {target_id}",
+            f"Updated trial foo, removing tcr_analysis values {target_id}",
             f"along with {self.filter_query.delete()} files",
         )
         self.filter_query.update.assert_called_once()
@@ -1353,8 +1291,8 @@ class Test_remove_data:
         )
         self.DownloadableFiles.object_url.in_.assert_called_once_with(
             [
-                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP201.00/genome-wide_plots.pdf",
-                f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/summary_plots.pdf",
+                f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/CTTTPP201.00/tra_clone.csv",
+                f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/report_trial.tar.gz",
             ]
         )
 

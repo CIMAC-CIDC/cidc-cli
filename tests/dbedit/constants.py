@@ -91,57 +91,41 @@ TEST_METADATA_JSON: dict = {
                 ],
             },
         ],
-        "ctdna_analysis": {
+        "tcr_analysis": {
             "batches": [
                 {
-                    "batch_id": "ctdna_analysis_batch",
-                    "summary_plots": {
-                        "object_url": f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/summary_plots.pdf",
+                    "batch_id": "tcr_analysis_batch",
+                    "report_trial": {
+                        "object_url": f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/report_trial.tar.gz",
                     },
                     "records": [
                         {
                             "cimac_id": "CTTTPP101.00",
-                            "genome-wide_plots": {
-                                "object_url": f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP101.00/genome-wide_plots.pdf",
+                            "tra_clone": {
+                                "object_url": f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/CTTTPP101.00/tra_clone.csv",
                             },
                         },
                         {
                             "cimac_id": "CTTTPP201.00",
-                            "genome-wide_plots": {
-                                "object_url": f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch/CTTTPP201.00/genome-wide_plots.pdf",
+                            "tra_clone": {
+                                "object_url": f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch/CTTTPP201.00/tra_clone.csv",
                             },
                         },
                     ],
                 },
                 {
-                    "batch_id": "ctdna_analysis_batch_2",
-                    "summary_plots": {
-                        "object_url": f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/summary_plots.pdf",
+                    "batch_id": "tcr_analysis_batch_2",
+                    "report_trial": {
+                        "object_url": f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch_2/report_trial.tar.gz",
                     },
                     "records": [
                         {
                             "cimac_id": "CTTTPP102.00",
-                            "genome-wide_plots": {
-                                "object_url": f"{TEST_TRIAL_ID}/ctdna_analysis/ctdna_analysis_batch_2/CTTTPP102.00/genome-wide_plots.pdf",
+                            "tra_clone": {
+                                "object_url": f"{TEST_TRIAL_ID}/tcr_analysis/tcr_analysis_batch_2/CTTTPP102.00/tra_clone.csv",
                             },
                         },
                     ],
-                },
-            ],
-        },
-        "microbiome_analysis": {
-            "batches": [
-                {
-                    "batch_id": "microbiome_batch",
-                    "summary_file": {
-                        "object_url": f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch/summary.pdf",
-                    },
-                },
-                {
-                    "batch_id": "microbiome_batch_2",
-                    "summary_file": {
-                        "object_url": f"{TEST_TRIAL_ID}/microbiome_analysis/microbiome_batch_2/summary.pdf",
-                    },
                 },
             ],
         },

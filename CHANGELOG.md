@@ -9,6 +9,12 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## Version `0.10.2` - 27 Oct 2022
+
+- `removed` updated for microbiome and ctdna analysis
+- `added` mibi assay
+- `changed` dev api port to match developers' environments
+
 ## Version `0.10.1` - 6 Sep 2022
 
 - `fixed` bug in removing clinical data

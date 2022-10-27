@@ -418,39 +418,6 @@ def _remove_wes_tumor_only_analysis_from_blob(
     return metadata_json, object_urls_to_delete
 
 
-def _remove_microbiome_analysis_from_blob(
-    metadata_json: dict,
-    trial_id: str,
-    batch_id: str,
-) -> Tuple[Optional[dict], List[str]]:
-    batch_ids: List[str] = [
-        batch["batch_id"]
-        for batch in metadata_json.get("analysis", {}).get(
-            "microbiome_analysis", {"batches": []}
-        )["batches"]
-    ]
-    if batch_id not in batch_ids:
-        print(f"Cannot find microbiome analysis batch {batch_id} for trial {trial_id}")
-        return None, []
-
-    object_urls_to_delete: List[str] = []
-    batch_idx: int = batch_ids.index(batch_id)
-    batch: dict = metadata_json["analysis"]["microbiome_analysis"]["batches"].pop(
-        batch_idx
-    )
-    object_urls_to_delete.extend(_get_all_object_urls(batch))
-
-    # also remove hanging structures
-    target = dict()
-    if not metadata_json["analysis"]["microbiome_analysis"]["batches"]:
-        # if no batches, remove the whole assay/analysis
-        target["analysis"] = metadata_json["analysis"].pop("microbiome_analysis")
-    if target:
-        object_urls_to_delete.extend(_get_all_object_urls(target))
-
-    return metadata_json, object_urls_to_delete
-
-
 def _remove_batched_assay_from_blob(
     metadata_json: dict,
     trial_id: str,
@@ -732,24 +699,8 @@ def remove_data(trial_id: str, assay_or_analysis: str, target_id: Tuple[str]) ->
                     f"Error: if ASSAY_OR_ANALYSIS == '{assay_or_analysis}', only `cimac_id` is accepted"
                 )
 
-        elif assay_or_analysis == "microbiome_analysis":
-
-            if len(target_id) == 1:
-                (
-                    metadata_json,
-                    object_urls_to_delete,
-                ) = _remove_microbiome_analysis_from_blob(
-                    metadata_json=trial.metadata_json,
-                    trial_id=trial_id,
-                    batch_id=target_id[0],
-                )
-            else:
-                print(
-                    f"Error: if ASSAY_OR_ANALYSIS == microbiome_analysis, only `btach_id` is accepted"
-                )
-
         elif assay_or_analysis in [
-            "ctdna_analysis",
+            "mibi",
             "tcr_analysis",
         ]:
             if len(target_id) and len(target_id) <= 2:
