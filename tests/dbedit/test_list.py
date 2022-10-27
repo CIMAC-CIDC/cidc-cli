@@ -454,26 +454,6 @@ class Test_list_data_cimac_ids:
             pd.DataFrame([{"cimac_id": "CTTTPP201.00"}, {"cimac_id": "CTTTPP102.00"}])
         )
 
-    def test_microbiome_analysis(self):
-        self.mock_print.reset_mock()
-        dbedit_list.list_data_cimac_ids(
-            trial_id="foo", assay_or_analysis="microbiome_analysis"
-        )
-        df: pd.DataFrame = self._get_and_assert_df()
-
-        assert df.equals(
-            pd.DataFrame(
-                [
-                    {
-                        "batch_id": "microbiome_batch",
-                    },
-                    {
-                        "batch_id": "microbiome_batch_2",
-                    },
-                ]
-            )
-        )
-
     def test_cytof_analysis(self):
         self.mock_print.reset_mock()
         dbedit_list.list_data_cimac_ids(
@@ -503,7 +483,7 @@ class Test_list_data_cimac_ids:
     def test_batched_analysis(self):
         self.mock_print.reset_mock()
         dbedit_list.list_data_cimac_ids(
-            trial_id="foo", assay_or_analysis="ctdna_analysis"
+            trial_id="foo", assay_or_analysis="tcr_analysis"
         )
         df: pd.DataFrame = self._get_and_assert_df()
 
@@ -511,15 +491,15 @@ class Test_list_data_cimac_ids:
             pd.DataFrame(
                 [
                     {
-                        "batch_id": "ctdna_analysis_batch",
+                        "batch_id": "tcr_analysis_batch",
                         "cimac_id": "CTTTPP101.00",
                     },
                     {
-                        "batch_id": "ctdna_analysis_batch",
+                        "batch_id": "tcr_analysis_batch",
                         "cimac_id": "CTTTPP201.00",
                     },
                     {
-                        "batch_id": "ctdna_analysis_batch_2",
+                        "batch_id": "tcr_analysis_batch_2",
                         "cimac_id": "CTTTPP102.00",
                     },
                 ]

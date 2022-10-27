@@ -16,13 +16,11 @@ from .core import (
 # Windows doesn't handle current jsonschemas RefResolver configuration
 SUPPORTED_ANALYSES: List[str] = [
     "atacseq_analysis",
-    "ctdna_analysis",
     "cytof_analysis",
     "rna_level1_analysis",
     "tcr_analysis",
     "wes_analysis",
     "wes_tumor_only_analysis",
-    "microbiome_analysis",
 ]
 SUPPORTED_ASSAYS: List[str] = [
     "atacseq_fastq",
@@ -43,6 +41,7 @@ SUPPORTED_ASSAYS: List[str] = [
     "misc_data",
     "ctdna",
     "microbiome",
+    "mibi",
 ]
 
 SUPPORTED_ASSAYS_AND_ANALYSES: Set[str] = {
@@ -206,19 +205,6 @@ def _describe_wes_tumor_only_analysis(
     return ret.reset_index(drop=True)
 
 
-def _describe_microbiome_analysis(metadata_json: dict) -> pd.DataFrame:
-    return pd.DataFrame(
-        [
-            {
-                "batch_id": batch["batch_id"],
-            }
-            for batch in metadata_json.get("analysis", {}).get(
-                "microbiome_analysis", {"batches": []}
-            )["batches"]
-        ]
-    )
-
-
 def _describe_batched(metadata_json: dict, assay_or_analysis: str) -> pd.DataFrame:
     ret = pd.DataFrame(columns=["batch_id", "cimac_id"])
     for batch in metadata_json.get(
@@ -320,13 +306,8 @@ def list_data_cimac_ids(trial_id: str, assay_or_analysis: str) -> None:
                 just_old="old" in assay_or_analysis,
             )
 
-        elif assay_or_analysis == "microbiome_analysis":
-            cimac_ids: pd.DataFrame = _describe_microbiome_analysis(
-                metadata_json=trial.metadata_json,
-            )
-
         elif assay_or_analysis in [
-            "ctdna_analysis",
+            "mibi",
             "tcr_analysis",
         ]:
             cimac_ids: pd.DataFrame = _describe_batched(
