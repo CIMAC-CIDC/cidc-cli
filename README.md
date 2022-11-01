@@ -125,7 +125,7 @@ Under the `list` subcommand of `cidc admin`, you can get descriptions of the dat
   - any of the following values are allowed:
     - `clinical_data`, same as `cidc admin list clinical TRIAL_ID`
     - `misc_data`, same as `cidc admin list misc-data TRIAL_ID`
-    - analyses: `atacseq_analysis`, `ctdna_analysis`, `cytof_analysis`, `microbiome_analysis`, `rna_level1_analysis`, `tcr_analysis`, `wes_analysis`, `wes_analysis_old`, `wes_tumor_only_analysis`, `wes_tumor_only_analysis_old`
+    - analyses: `atacseq_analysis`, `cytof_analysis`, `rna_level1_analysis`, `tcr_analysis`, `wes_analysis`, `wes_analysis_old`, `wes_tumor_only_analysis`, `wes_tumor_only_analysis_old`
     - assays: `atacseq`, `ctdna`, `cytof`, `hande`, `ihc`, `elisa`, `microbiome`, `mif`, `nanostring`, `olink`, `rna`, `tcr`, `wes`
 
 #### Removing data

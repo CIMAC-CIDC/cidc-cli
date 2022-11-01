@@ -9,6 +9,10 @@ This Changelog tracks changes to this project. The notes below include a summary
 - `fixed` for any bug fixes.
 - `security` in case of vulnerabilities.
 
+## 31 Oct 2022
+
+- `changed` made README edits
+
 ## Version `0.10.2` - 27 Oct 2022
 
 - `removed` updated for microbiome and ctdna analysis
